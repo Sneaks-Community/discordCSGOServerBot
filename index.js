@@ -1,6 +1,9 @@
 const game = require('gamedig'); //Requires gamedig
 const Discord = require('discord.js') //Requires Discord.js
 const bot = new Discord.Client() //Creates new Discord Client
+const {
+    token
+} = require('./config.json');
 
 
 var gData = {} //Init Global Data
@@ -8,7 +11,7 @@ var gData = {} //Init Global Data
 var playersCommand = true
 
 
-bot.login('') //Logs in Bot 
+bot.login(token) //Logs in Bot 
 
 
 
