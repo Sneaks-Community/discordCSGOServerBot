@@ -2,7 +2,9 @@ const game = require('gamedig'); //Requires gamedig
 const Discord = require('discord.js') //Requires Discord.js
 const bot = new Discord.Client() //Creates new Discord Client
 const {
-    token
+    token,
+    channelID,
+    messageID
 } = require('./config.json');
 
 
@@ -176,8 +178,8 @@ async function go() {
 bot.on('ready', async () => { //Event is fired when the bot logins into discord
     console.log(bot.user.tag) //Logs bot's discord tag
     bot.user.setActivity('--players in #bot-commands')
-    var channel = '264241228013371392' //Define the channel which the embed will be placed in
-    var msg = '417458613393817603' //Define the message that the bot will update. Message must be sent by the bot. Use the command --id in the channel where you want the embed to get the message id
+    var channel = channelID //Define the channel which the embed will be placed in
+    var msg = messageID //Define the message that the bot will update. Message must be sent by the bot. Use the command --id in the channel where you want the embed to get the message id
 
     bot.channels.get(channel).fetchMessage(msg).then(m => { //Fetches the channel and the message and returns callback 'm' which is the message that will be updated.
         bot.setInterval(async () => { //Creates timer that will run every x ms. x is defined on line 151
