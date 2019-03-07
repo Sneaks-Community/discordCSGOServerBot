@@ -1,11 +1,12 @@
 const game = require('gamedig'); //Requires gamedig
-const Discord = require('discord.js') //Requires Discord.js
-const bot = new Discord.Client() //Creates new Discord Client
+const Discord = require('discord.js'); //Requires Discord.js
+const bot = new Discord.Client(); //Creates new Discord Client
 const {
     token,
     channelID,
     messageID
 } = require('./config.json');
+
 
 
 var gData = {} //Init Global Data
