@@ -8,7 +8,7 @@ var gData = {} //Init Global Data
 var playersCommand = true
 
 
-bot.login('') //Logs in Bot
+bot.login('') //Logs in Bot 
 
 
 
