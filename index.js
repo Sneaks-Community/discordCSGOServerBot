@@ -7,7 +7,7 @@ const {
     messageID
 } = require('./config.json');
 
-var version = '4.2'
+var version = '3.69'
 
 
 
