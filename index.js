@@ -210,7 +210,7 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
 
-    if(!message.content.startsWith('--')) return;
+    if(!message.content.startsWith(prefix)) return;
 
     if (message.author.bot) return;
     if (!['134088598684303360', '204729465564037120'].includes(message.author.id)) return; //If the message is not from Frumpy#0072 the bot will do nothing
