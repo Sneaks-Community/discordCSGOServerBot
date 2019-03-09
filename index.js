@@ -212,7 +212,7 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
 
-    if(!message.content.startsWith(prefix)) return;
+    if (!message.content.startsWith(prefix)) return;
 
     if (message.author.bot) return;
     if (!['134088598684303360', '204729465564037120'].includes(message.author.id)) return; //If the message is not from Frumpy#0072 the bot will do nothing
@@ -222,8 +222,7 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
         message.channel.send('Running...').then(m => { //Sends 'Running...' then returns the message that was sent.
             m.edit(m.id) //Edits the message to be the ID of the message
         })
-    }
-    if (command === 'test') { //Command will test the embed by pulling data from gData and making a new embed
+    } else if (command === 'test') { //Command will test the embed by pulling data from gData and making a new embed
 
         if (Object.keys(gData).length === 0) return message.channel.send('please wait'); //If the bot has not been online for 3 mins or no servers are responding the bot will send a message saying 'Please Wait.'
 
@@ -246,9 +245,7 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
         })
 
 
-    }
-
-    if (command === 'fasttest') { //This command will test the embed but will not take data from gData. When this command is ran it will start the query process again.
+    } else if (command === 'fasttest') { //This command will test the embed but will not take data from gData. When this command is ran it will start the query process again.
         message.channel.send('running..')
         var data = await run() //Data is defined as the done object
         gData = data
@@ -273,27 +270,20 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
         })
 
 
-    }
-
-    
-
-    if(command === 'toggleplayerscommand'){
-        if(!args[0]) return;
-        if(args[0].toLowerCase() === 'true'){
+    } else if (command === 'toggleplayerscommand') {
+        if (!args[0]) return;
+        if (args[0].toLowerCase() === 'true') {
             playersCommand = true
             message.react('?')
-        } else if (args[0].toLowerCase() === 'false'){
+        } else if (args[0].toLowerCase() === 'false') {
             playersCommand = false
             message.react('?')
         } else {
             return console.log('error toggling players command');
         }
+    } else if (command === 'v') {
+        message.channel.send(version)
     }
-
-
-	if(command === 'v'){
-	message.channel.send(version)
-}
 
 })
 
@@ -313,7 +303,7 @@ bot.on('message', async message => {
 
     if (command === 'players') {
 
-        if(playersCommand !== true) return;
+        if (playersCommand !== true) return;
 
         if (gData.size === 0) return message.channel.send('Please wait the bot is starting')
 
