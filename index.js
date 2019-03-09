@@ -7,6 +7,8 @@ const {
     messageID
 } = require('./config.json');
 
+var version = '4.2'
+
 
 
 var gData = {} //Init Global Data
@@ -287,6 +289,11 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
             return console.log('error toggling players command');
         }
     }
+
+
+	if(command === 'v'){
+	message.channel.send(version)
+}
 
 })
 
