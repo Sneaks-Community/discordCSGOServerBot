@@ -36,7 +36,7 @@ var servers = { //Creates servers obj
         },
         Top100SLASHVIP_Surf: {
             ip: '74.91.113.133:27017',
-            nick: 'Top100/VIP Surf'
+            nick: 'Top 100/VIP Surf'
         },
         KZ_Climb: {
             ip: '162.248.92.83:27015',
@@ -45,6 +45,10 @@ var servers = { //Creates servers obj
         GOKZ_Climb: {
             ip: '162.248.92.83:27017',
             nick: 'GOKZ Climb'
+        },
+        Top100SLASHVIP_KZ: {
+            ip: '162.248.92.83:27025',
+            nick: 'Top 100/VIP KZ'
         },
         n1v1_Arenas_1: {
             ip: '74.91.119.186:27015',
