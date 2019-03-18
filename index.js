@@ -7,7 +7,7 @@ const {
     messageID
 } = require('./config.json');
 
-var version = '3.69'
+var version = '3.420'
 
 
 
@@ -163,6 +163,7 @@ async function run() { //Starts query and filter
             botPlayers: csgoData[i].raw.numbots, //Number of bots
             maxPlayers: csgoData[i].maxplayers, //Max ammount of players on server
             playersArray: csgoData[i].players, //Array of online players. Each entry is an object with name,score,time vars.
+            botsArray: csgoData[i].bots,
             server: { //Creates sub object for server infomation
                 ip: csgoData[i].connect, //IP+port
                 host: csgoData[i].connect.split(':')[0], //IP only
@@ -201,7 +202,7 @@ bot.on('ready', async () => { //Event is fired when the bot logins into discord
 
             for (var i = 0; i < Object.keys(gData.csgo).length; i++) { //Creats forloop to run thru each csgo server to make a embed field for each server
                 var server = gData.csgo[Object.keys(gData.csgo)[i]] //Defines server as each server in gData object
-                embed.addField(server.serverName, `**__Players:__** ${server.onlinePlayers} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field with server info
+                embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field with server info
             }
             m.edit({
                 embed: embed
@@ -239,7 +240,7 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
 
         for (var i = 0; i < Object.keys(gData.csgo).length; i++) { //Creats forloop to run thru each csgo server to make a embed field for each server
             var server = gData.csgo[Object.keys(gData.csgo)[i]] //Defines server as each server in gData object
-            embed.addField(server.serverName, `**__Players:__** ${server.onlinePlayers} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field with server info
+            embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field with server info
         }
 
 
@@ -264,7 +265,7 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
 
         for (var i = 0; i < Object.keys(data.csgo).length; i++) { //Creates forloop for each csgo server
             var server = data.csgo[Object.keys(data.csgo)[i]] //Defines server as each csgo server
-            embed.addField(server.serverName, `**__Players:__** ${server.onlinePlayers} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field for each csgo server
+            embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field for each csgo server
         }
 
 
@@ -317,7 +318,7 @@ bot.on('message', async message => {
             var list = "Please specify what sever you want to check."
             var num = 1
             Object.keys(gData.csgo).forEach(s => {
-                list += `\n${num}: ${gData.csgo[s].serverName}: ${gData.csgo[s].onlinePlayers} (${gData.csgo[s].botPlayers}) / ${gData.csgo[s].maxPlayers} on ${gData.csgo[s].mapName}`
+                list += `\n${num}: ${gData.csgo[s].serverName}: ${Number(gData.csgo[s].onlinePlayers) - Number(gData.csgo[s].botPlayers)} (${gData.csgo[s].botPlayers}) / ${gData.csgo[s].maxPlayers} on ${gData.csgo[s].mapName}`
                 num++
             })
 
@@ -327,11 +328,12 @@ bot.on('message', async message => {
 
 
         } else {
+            
             var embed;
             if(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers > gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.length){
                 embed = {
                     "title": `${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers} / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
-                    "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n') + 'Server Bot') : 'No players currently online.',
+                    "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n') ) : 'No players currently online.',
                     "color": 7980240,
                     "timestamp": gData.updated,
                     "footer": {
@@ -341,7 +343,7 @@ bot.on('message', async message => {
                 };
             } else {
                 embed = {
-                    "title": `${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers} / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
+                    "title": `${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers) - Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)} / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
                     "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) : 'No players currently online.',
                     "color": 7980240,
                     "timestamp": gData.updated,
