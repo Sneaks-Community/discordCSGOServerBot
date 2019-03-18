@@ -327,18 +327,30 @@ bot.on('message', async message => {
 
 
         } else {
-            //message.channel.send(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].playersArray.map(player => player.name).join('\n'))
-
-            const embed = {
-                "title": `${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers} / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
-                "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) : 'No players currently online.',
-                "color": 7980240,
-                "timestamp": gData.updated,
-                "footer": {
-                    "icon_url": "https://snksrv.com/frumpy.gif",
-                    "text": "Last Updated"
-                }
-            };
+            var embed;
+            if(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers > gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.length){
+                embed = {
+                    "title": `${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers} / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
+                    "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n') + 'Server Bot') : 'No players currently online.',
+                    "color": 7980240,
+                    "timestamp": gData.updated,
+                    "footer": {
+                        "icon_url": "https://snksrv.com/frumpy.gif",
+                        "text": "Last Updated"
+                    }
+                };
+            } else {
+                embed = {
+                    "title": `${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers} / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
+                    "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) : 'No players currently online.',
+                    "color": 7980240,
+                    "timestamp": gData.updated,
+                    "footer": {
+                        "icon_url": "https://snksrv.com/frumpy.gif",
+                        "text": "Last Updated"
+                    }
+                };
+            }
 
             message.channel.send({
                 embed: embed
