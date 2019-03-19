@@ -328,12 +328,25 @@ bot.on('message', async message => {
 
 
         } else {
+
+            function botCheck(){
+                var bots = gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botsArray
+                var botArr = []
+
+                bots.forEach(b => {
+                    botArr.push(b.name)
+                })
+                var endString = '\n'
+                endString += botArr.join('\n')
+
+
+            }
             
             var embed;
             if(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers > gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.length){
                 embed = {
-                    "title": `${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers} / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
-                    "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n') ) : 'No players currently online.',
+                    "title": `${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers) - Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)} (${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)}) / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
+                    "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n') + await botCheck()) : 'No players currently online.',
                     "color": 7980240,
                     "timestamp": gData.updated,
                     "footer": {
@@ -343,7 +356,7 @@ bot.on('message', async message => {
                 };
             } else {
                 embed = {
-                    "title": `${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers) - Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)} / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
+                    "title": `${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers) - Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)} (${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)}) / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
                     "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) : 'No players currently online.',
                     "color": 7980240,
                     "timestamp": gData.updated,
