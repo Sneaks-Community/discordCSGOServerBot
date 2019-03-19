@@ -314,23 +314,37 @@ bot.on('message', async message => {
 
 
         if (args.length === 0) {
-            //console.log(gData.csgo[Object.keys(gData.csgo)[0]])
-            var list = "Please specify what sever you want to check."
-            var num = 1
+
+
+            var list = '';
+            var num = 1;
+
             Object.keys(gData.csgo).forEach(s => {
-                list += `\n${num}: ${gData.csgo[s].serverName}: ${Number(gData.csgo[s].onlinePlayers) - Number(gData.csgo[s].botPlayers)} (${gData.csgo[s].botPlayers}) / ${gData.csgo[s].maxPlayers} on ${gData.csgo[s].mapName}`
+                list += `\n**${num}**: ${gData.csgo[s].serverName}: ${Number(gData.csgo[s].onlinePlayers) - Number(gData.csgo[s].botPlayers)} (${gData.csgo[s].botPlayers}) / ${gData.csgo[s].maxPlayers} on ${gData.csgo[s].mapName}`
                 num++
             })
 
-            message.channel.send(list)
 
+            embed = {
+                "title": `Please specify what sever you want to check. Do \`--players <Server Number>\``,
+                "description": list,
+                "color": 7980240,
+                "timestamp": gData.updated,
+                "footer": {
+                    "icon_url": "https://snksrv.com/frumpy.gif",
+                    "text": "Last Updated"
+                }
+            };
 
+            message.channel.send({
+                embed: embed
+            })
 
 
         } else {
 
-            function botCheck(){
-                var bots = gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botsArray
+            function botCheck() {
+                var bots = gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].botsArray
                 var botArr = []
 
                 bots.forEach(b => {
@@ -341,9 +355,9 @@ bot.on('message', async message => {
 
                 return endString;
             }
-            
+
             var embed;
-            if(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers > gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.length){
+            if(gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].onlinePlayers > gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.length) {
                 embed = {
                     "title": `${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers) - Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)} (${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)}) / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
                     "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n') + await botCheck()) : 'No players currently online.',
