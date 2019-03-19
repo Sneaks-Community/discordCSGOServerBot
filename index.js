@@ -339,7 +339,7 @@ bot.on('message', async message => {
                 var endString = '\n'
                 endString += botArr.join('\n')
 
-
+                return endString;
             }
             
             var embed;
