@@ -1,6 +1,7 @@
 const game = require('gamedig'); //Requires gamedig
 const Discord = require('discord.js'); //Requires Discord.js
 const bot = new Discord.Client(); //Creates new Discord Client
+const process = require('process');
 const {
     token,
     channelID,
@@ -290,6 +291,10 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
         message.channel.send(version)
     }
 
+
+    else if(command === "restart"){
+        return process.exit();
+    }
 })
 
 
