@@ -8,7 +8,7 @@ const {
     messageID
 } = require('./config.json');
 
-var version = '3.420'
+var version = '3.420.fuck'
 
 
 
@@ -16,9 +16,31 @@ var gData = {} //Init Global Data
 
 var playersCommand = true
 
+var startTime = null;
+var endTime = null;
 
 bot.login(token) //Logs in Bot 
 
+
+
+// var servers = { //Creates servers obj
+//     csgo: { //Creates CSGO servers obj
+//         Beginner_Surf: {
+//             ip: '216.52.143.73:27015',
+//             nick: 'Beginner Surf'
+//         },
+//         Easy_Surf: {
+//             ip: '74.91.113.236:27015',
+//             nick: 'Easy Surf'
+//         },
+//         Advanced_Surf: {
+//             ip: '74.91.113.133:27015',
+//             nick: 'Advanced Surf'
+//         }
+//     }
+    
+
+// }
 
 
 var servers = { //Creates servers obj
@@ -67,9 +89,9 @@ var servers = { //Creates servers obj
             ip: '72.5.195.31:27017',
             nick: 'Retakes #2'
         },
-        FFA_Deathmatch: {
-            ip: '74.91.119.186:27019',
-            nick: 'FFA Deathmatch'
+        Retakes_3: {
+            ip: '72.5.195.31:27023',
+            nick: 'Retakes #3'
         },
         Bhop: {
             ip: '162.248.92.80:27015',
@@ -94,7 +116,7 @@ async function gameSplit(s) { //Splits Games Between CSGO and Minecraft(deprecat
     var done = new Object() //Creates new Done obj for filtered games
 
     if (Object.entries(csgo).length) { //Checks size of CSGO servers obj
-        var checked = await errorCheck(await csgoCheck(csgo)) //Returns servers that have responed to query//if a value in array is "error" it is removed //csgoCheck returns array of objects. if error returns "error"
+        var checked = await csgoCheck(csgo) //Returns servers that have responed to query//if a value in array is "error" it is removed //csgoCheck returns array of objects. if error returns "error"
         done['csgo'] = checked //Creates sub object in done object
 
     }
@@ -115,30 +137,20 @@ async function csgoCheck(s) {
             host: ip,
             port: port,
             maxAttempts: 3,
-        }).catch(e => { //if error push "error" to array
-            r.push('error')
+        }).catch(e => {
+            return;
         })
-        data.notes = [Object.keys(s)[i], Object.values(s)[i].nick]
-        r.push(data) //if NO error push responce obj to array
-        //console.log(data)
+
+        if(data){
+            data.notes = [Object.keys(s)[i], Object.values(s)[i].nick]
+            r.push(data) //if NO error push responce obj to array
+        }
     }
 
     return r //Function returns array of objects
 }
 
-async function errorCheck(arr) { //Checks if Arr includes "error" if so it is removed
-    if (arr.includes('error')) {
-        arr = arr.filter(function (item) {
-            if (item !== 'error') { //if not error return item
-                return item;
-            }
 
-
-        })
-
-    }
-    return arr; //Returns Arr of objs without errors
-}
 
 async function run() { //Starts query and filter
 
@@ -252,6 +264,8 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
 
 
     } else if (command === 'fasttest') { //This command will test the embed but will not take data from gData. When this command is ran it will start the query process again.
+        startTime = Date.now()
+        
         message.channel.send('running..')
         var data = await run() //Data is defined as the done object
         gData = data
@@ -273,6 +287,10 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
 
         message.channel.send({ //Send the finished embed to the channel where the orginal message was sent.
             embed: embed
+        }).then(m => {
+            endTime = Date.now()
+            let evalTime = endTime - startTime
+            m.channel.send(evalTime / 1000 + " seconds")
         })
 
 
