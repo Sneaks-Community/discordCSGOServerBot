@@ -5,10 +5,12 @@ const process = require('process');
 const {
     token,
     channelID,
-    messageID
+    messageID,
+    embedImage,
+    intervalMS
 } = require('./config.json');
 
-var version = '3.420.fuck'
+var version = '3.420.fuck.killMe'
 
 
 
@@ -27,15 +29,18 @@ bot.login(token) //Logs in Bot
 //     csgo: { //Creates CSGO servers obj
 //         Beginner_Surf: {
 //             ip: '216.52.143.73:27015',
-//             nick: 'Beginner Surf'
+//             nick: 'Beginner Surf',
+//             show: true
 //         },
 //         Easy_Surf: {
 //             ip: '74.91.113.236:27015',
-//             nick: 'Easy Surf'
+//             nick: 'Easy Surf',
+//             show: true
 //         },
 //         Advanced_Surf: {
 //             ip: '74.91.113.133:27015',
-//             nick: 'Advanced Surf'
+//             nick: 'Advanced Surf',
+//             show: false
 //         }
 //     }
     
@@ -43,71 +48,7 @@ bot.login(token) //Logs in Bot
 // }
 
 
-var servers = { //Creates servers obj
-    csgo: { //Creates CSGO servers obj
-        Beginner_Surf: {
-            ip: '216.52.143.73:27015',
-            nick: 'Beginner Surf'
-        },
-        Easy_Surf: {
-            ip: '74.91.113.236:27015',
-            nick: 'Easy Surf'
-        },
-        Advanced_Surf: {
-            ip: '74.91.113.133:27015',
-            nick: 'Advanced Surf'
-        },
-        Top100SLASHVIP_Surf: {
-            ip: '74.91.113.133:27017',
-            nick: 'Top 100/VIP Surf'
-        },
-        KZ_Climb: {
-            ip: '162.248.92.83:27015',
-            nick: 'KZ Climb'
-        },
-        GOKZ_Climb: {
-            ip: '162.248.92.83:27017',
-            nick: 'GOKZ Climb'
-        },
-        Top100SLASHVIP_KZ: {
-            ip: '162.248.92.83:27025',
-            nick: 'Top 100/VIP KZ'
-        },
-        n1v1_Arenas_1: {
-            ip: '74.91.119.186:27015',
-            nick: '1v1 Arenas #1'
-        },
-        n1v1_Arenas_2: {
-            ip: '74.91.119.186:27017',
-            nick: '1v1 Arenas #2'
-        },
-        Retakes_1: {
-            ip: '72.5.195.31:27015',
-            nick: 'Retakes #1'
-        },
-        Retakes_2: {
-            ip: '72.5.195.31:27017',
-            nick: 'Retakes #2'
-        },
-        Retakes_3: {
-            ip: '72.5.195.31:27023',
-            nick: 'Retakes #3'
-        },
-        Bhop: {
-            ip: '162.248.92.80:27015',
-            nick: 'Bhop'
-        },
-        Minigames: {
-            ip: '74.91.113.198:27015',
-            nick: 'Minigames'
-        },
-        CSCO_Casual: {
-            ip: '74.91.119.52:27015',
-            nick: 'CSCO Casual'
-        }
-    },
-
-}
+var servers = require('./servers.json');
 
 
 
@@ -143,6 +84,7 @@ async function csgoCheck(s) {
 
         if(data){
             data.notes = [Object.keys(s)[i], Object.values(s)[i].nick]
+			data.show = Object.values(s)[i].show
             r.push(data) //if NO error push responce obj to array
         }
     }
@@ -181,20 +123,13 @@ async function run() { //Starts query and filter
                 ip: csgoData[i].connect, //IP+port
                 host: csgoData[i].connect.split(':')[0], //IP only
                 port: csgoData[i].connect.split(':')[1] //Port Only
-            }
+            },
+			show: csgoData[i].show
         }
     }
     done.updated = Date.now()
     return done; //Returns object with all of csgo server data. done.csgo.serverSteamID is an object with server data
 }
-
-
-async function go() {
-    console.log(await run())
-}
-
-
-
 
 bot.on('ready', async () => { //Event is fired when the bot logins into discord
     console.log(bot.user.tag) //Logs bot's discord tag
@@ -210,18 +145,19 @@ bot.on('ready', async () => { //Event is fired when the bot logins into discord
                 .setTitle('Server List') //Adds title
                 .setDescription('This list is updated every 1.5 minutes.') //Adds description
                 .setTimestamp(gData.updated) //Adds timestamp of last update
-                .setFooter('Last Updated', 'https://snksrv.com/frumpy.gif') //Sets footer message and sets embed icon
+                .setFooter('Last Updated', embedImage) //Sets footer message and sets embed icon
                 .setColor(7980240) //Sets the color of the embed
 
             for (var i = 0; i < Object.keys(gData.csgo).length; i++) { //Creats forloop to run thru each csgo server to make a embed field for each server
                 var server = gData.csgo[Object.keys(gData.csgo)[i]] //Defines server as each server in gData object
+				if(!server.show) continue;
                 embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field with server info
             }
             m.edit({
                 embed: embed
             }) //Edits embed with most recent update of embed
 
-        }, 90000) //Sets interval in ms for function to run
+        }, intervalMS) //Sets interval in ms for function to run
     })
 })
 
@@ -248,11 +184,12 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
             .setTitle('Server List') //Adds title
             .setDescription('This list is updated every 1.5 minutes.') //Adds description
             .setTimestamp(gData.updated) //Adds timestamp of last update
-            .setFooter('Last Updated', 'https://snksrv.com/frumpy.gif') //Sets footer message and sets embed icon
+            .setFooter('Last Updated', embedImage) //Sets footer message and sets embed icon
             .setColor(7980240) //Sets the color of the embed
 
         for (var i = 0; i < Object.keys(gData.csgo).length; i++) { //Creats forloop to run thru each csgo server to make a embed field for each server
             var server = gData.csgo[Object.keys(gData.csgo)[i]] //Defines server as each server in gData object
+            if(!server.show) continue;
             embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field with server info
         }
 
@@ -275,11 +212,12 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
             .setTitle('Server List') //Adds title
             .setDescription('This list is updated every 1.5 minutes.') //Adds description
             .setTimestamp(data.updated) //Adds timestamp of last update
-            .setFooter('Last Updated', 'https://snksrv.com/frumpy.gif') //Sets footer message and sets embed icon
+            .setFooter('Last Updated', embedImage) //Sets footer message and sets embed icon
             .setColor(7980240) //Sets the color of the embed
 
         for (var i = 0; i < Object.keys(data.csgo).length; i++) { //Creates forloop for each csgo server
             var server = data.csgo[Object.keys(data.csgo)[i]] //Defines server as each csgo server
+            if(!server.show) continue;
             embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field for each csgo server
         }
 

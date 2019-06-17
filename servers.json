@@ -1,0 +1,90 @@
+{
+    "csgo": {
+        "Beginner_Surf": {
+            "ip": "216.52.143.73:27015",
+            "nick": "Beginner Surf",
+			"show": true
+        },
+        "Easy_Surf": {
+            "ip": "74.91.113.236:27015",
+            "nick": "Easy Surf",
+			"show": true
+        },
+        "Advanced_Surf": {
+            "ip": "74.91.113.133:27015",
+            "nick": "Advanced Surf",
+			"show": true
+        },
+        "Top100SLASHVIP_Surf": {
+            "ip": "74.91.113.133:27017",
+            "nick": "Top 100/VIP Surf",
+			"show": true
+        },
+        "KZ_Climb": {
+            "ip": "162.248.92.83:27015",
+            "nick": "KZ Climb",
+			"show": true
+        },
+        "GOKZ_Climb": {
+            "ip": "162.248.92.83:27017",
+            "nick": "GOKZ Climb",
+			"show": true
+        },
+        "Top100SLASHVIP_KZ": {
+            "ip": "162.248.92.83:27025",
+            "nick": "Top 100/VIP KZ",
+			"show": true
+        },
+        "n1v1_Arenas_1": {
+            "ip": "74.91.119.186:27015",
+            "nick": "1v1 Arenas #1",
+			"show": true
+        },
+        "n1v1_Arenas_2": {
+            "ip": "74.91.119.186:27017",
+            "nick": "1v1 Arenas #2",
+			"show": true
+        },
+        "Retakes_1": {
+            "ip": "72.5.195.31:27015",
+            "nick": "Retakes #1",
+			"show": true
+        },
+        "Retakes_2": {
+            "ip": "72.5.195.31:27017",
+            "nick": "Retakes #2",
+			"show": true
+        },
+        "Retakes_3": {
+            "ip": "72.5.195.31:27023",
+            "nick": "Retakes #3",
+			"show": true
+        },
+        "Bhop": {
+            "ip": "162.248.92.80:27015",
+            "nick": "Bhop",
+			"show": true
+        },
+        "Minigames": {
+            "ip": "74.91.113.198:27015",
+            "nick": "Minigames",
+			"show": true
+        },
+        "CSCO_Casual": {
+            "ip": "74.91.119.52:27015",
+            "nick": "CSCO Casual",
+			"show": true
+        },
+        "Wheelchair": {
+            "ip": "74.91.113.236:27019",
+            "nick": "♿",
+            "show": false
+        },
+        "Cornfield": {
+            "ip": "74.91.113.236:27045",
+            "nick": "🤠 Cornfield Surf",
+            "show": false
+        }
+    }
+
+}
