@@ -271,7 +271,7 @@ bot.on('message', async message => {
 
         if (playersCommand !== true) return;
 
-        if (gData.size === 0) return message.channel.send('Please wait the bot is starting')
+        if (Object.keys(gData).length === 0) return message.channel.send('Please wait while the bot is starting.')
 
 
         if (args.length === 0) {
