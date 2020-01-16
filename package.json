@@ -9,7 +9,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "discord.js": "^11.4.2",
-    "gamedig": "^2.0.14"
+    "discord.js": "^11.5.1",
+    "gamedig": "^2.0.20"
   }
 }
