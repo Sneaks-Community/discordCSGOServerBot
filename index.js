@@ -25,29 +25,6 @@ bot.login(token) //Logs in Bot
 
 
 
-// var servers = { //Creates servers obj
-//     csgo: { //Creates CSGO servers obj
-//         Beginner_Surf: {
-//             ip: '216.52.143.73:27015',
-//             nick: 'Beginner Surf',
-//             show: true
-//         },
-//         Easy_Surf: {
-//             ip: '74.91.113.236:27015',
-//             nick: 'Easy Surf',
-//             show: true
-//         },
-//         Advanced_Surf: {
-//             ip: '74.91.113.133:27015',
-//             nick: 'Advanced Surf',
-//             show: false
-//         }
-//     }
-    
-
-// }
-
-
 var servers = require('./servers.json');
 
 
@@ -271,7 +248,7 @@ bot.on('message', async message => {
 
         if (playersCommand !== true) return;
 
-        if (Object.keys(gData).length === 0) return message.channel.send('Please wait while the bot is starting.')
+        if (Object.keys(gData).length === 0) return message.channel.send('Please wait while the bot is starting.');
 
 
         if (args.length === 0) {
