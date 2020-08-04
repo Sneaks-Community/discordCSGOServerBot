@@ -114,7 +114,7 @@ bot.on('ready', async () => { //Event is fired when the bot logins into discord
     var channel = channelID //Define the channel which the embed will be placed in
     var msg = messageID //Define the message that the bot will update. Message must be sent by the bot. Use the command --id in the channel where you want the embed to get the message id
 
-    bot.channels.get(channel).fetchMessage(msg).then(m => { //Fetches the channel and the message and returns callback 'm' which is the message that will be updated.
+    bot.channels.cache.get(channel).fetch(msg).then(m => { //Fetches the channel and the message and returns callback 'm' which is the message that will be updated.
         bot.setInterval(async () => { //Creates timer that will run every x ms. x is defined on line 151
 
             gData = await run() //Runs the run function which returns the done.csgo object. Sets gData to this data so it can be called in other functions.
