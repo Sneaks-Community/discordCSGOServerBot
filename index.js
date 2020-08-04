@@ -118,7 +118,7 @@ bot.on('ready', async () => { //Event is fired when the bot logins into discord
         bot.setInterval(async () => { //Creates timer that will run every x ms. x is defined on line 151
 
             gData = await run() //Runs the run function which returns the done.csgo object. Sets gData to this data so it can be called in other functions.
-            var embed = new Discord.RichEmbed() //Creates discord embed
+            var embed = new Discord.MessageEmbed() //Creates discord embed
                 .setTitle('Server List') //Adds title
                 .setDescription('This list is updated every 1.5 minutes.') //Adds description
                 .setTimestamp(gData.updated) //Adds timestamp of last update
@@ -157,7 +157,7 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
 
         if (Object.keys(gData).length === 0) return message.channel.send('please wait'); //If the bot has not been online for 3 mins or no servers are responding the bot will send a message saying 'Please Wait.'
 
-        var embed = new Discord.RichEmbed() //Creates discord embed
+        var embed = new Discord.MessageEmbed() //Creates discord embed
             .setTitle('Server List') //Adds title
             .setDescription('This list is updated every 1.5 minutes.') //Adds description
             .setTimestamp(gData.updated) //Adds timestamp of last update
@@ -185,7 +185,7 @@ bot.on('message', async message => { //Event is fired when a message is sent //M
         gData = data
 
 
-        var embed = new Discord.RichEmbed() //Creates discord embed
+        var embed = new Discord.MessageEmbed() //Creates discord embed
             .setTitle('Server List') //Adds title
             .setDescription('This list is updated every 1.5 minutes.') //Adds description
             .setTimestamp(data.updated) //Adds timestamp of last update
