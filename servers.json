@@ -65,26 +65,15 @@
             "nick": "Bhop",
 			"show": true
         },
+		"Top50SLASHVIP_Bhop": {
+            "ip": "162.248.92.80:27019",
+            "nick": "Top 50/VIP Bhop",
+			"show": true
+        },
         "Minigames": {
             "ip": "74.91.113.198:27015",
             "nick": "Minigames",
 			"show": true
-        },
-        "CSCO_Casual": {
-            "ip": "74.91.119.52:27015",
-            "nick": "CSCO Casual",
-			"show": true
-        },
-        "Wheelchair": {
-            "ip": "74.91.113.236:27019",
-            "nick": "♿",
-            "show": false
-        },
-        "Cornfield": {
-            "ip": "74.91.113.236:27045",
-            "nick": "🤠 Cornfield Surf",
-            "show": false
         }
     }
-
 }
