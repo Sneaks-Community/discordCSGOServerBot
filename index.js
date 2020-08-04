@@ -10,7 +10,7 @@ const {
     intervalMS
 } = require('./config.json');
 
-var version = '3.420.fuck.killMe'
+var version = '3.5'
 
 
 
