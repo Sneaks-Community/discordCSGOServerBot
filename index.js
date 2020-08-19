@@ -237,7 +237,7 @@ bot.on('message', async message => {
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
 
-    if (!['308362832557113344', '269171320732778496', '546037656887361567', '546037725116235787'].includes(message.channel.id) && message.channel.type !== 'dm') {
+    if (!['308362832557113344', '269171320732778496', '546037656887361567', '546037725116235787'].includes(message.channel.id) && message.channel.type !== 'dm' && command == 'players') {
         //if(['134088598684303360', '204729465564037120'].includes(message.author.id)) return;
         message.delete().catch(e => console.log)
         message.author.send('Please only use this command in #bot-commands or in my DM channel.')
