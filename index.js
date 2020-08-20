@@ -10,7 +10,7 @@ const {
     intervalMS
 } = require('./config.json');
 
-var version = '3.5'
+var version = '3.5.1'
 
 
 
