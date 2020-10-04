@@ -1,0 +1,6 @@
+{
+    "token": "token",
+    "channelID": "x",
+    "messageID": "x",
+    "intervalMS": 90000
+}
