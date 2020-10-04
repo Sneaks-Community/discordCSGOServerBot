@@ -1,0 +1,23 @@
+{
+  "name": "discordcsgoserverbot",
+  "version": "4.0.0",
+  "description": "Server info bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Sneaks-Community/discordCSGOServerBot.git"
+  },
+  "author": "Frumpy7",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Sneaks-Community/discordCSGOServerBot/issues"
+  },
+  "homepage": "https://github.com/Sneaks-Community/discordCSGOServerBot#readme",
+  "dependencies": {
+    "discord.js": "^12.3.1",
+    "gamedig": "^2.0.23"
+  }
+}
