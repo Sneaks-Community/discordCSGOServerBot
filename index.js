@@ -20,6 +20,8 @@ bot.on("ready", async () => {
     bot.user.setActivity("--players in #bot-commands");
     frumpyAvatarLink = bot.users.cache.get("134088598684303360").avatarURL() || "https://i.imgur.com/cBiDnMi.png"
 
+    intervalFunction();
+
     bot.setInterval(intervalFunction, config.intervalMS)//starts embed update loop
 
 })
@@ -164,4 +166,73 @@ bot.on('message', async message => {//dev commands
 
         message.channel.send(out);
     }
+
+    else if (command == "players") {
+        if (isEmpty(gData)) {
+            return message.channel.send("Please Wait. The bot is starting.")
+        }
+
+        if (args.length == 0) {
+            return message.channel.send("print list")
+        }
+
+        let server = await keywordToServer(args.join(" "));
+
+        if (server == false) {
+            return message.channel.send("Please enter a valid server.");
+        } else {//if returns valid server obj
+            let embed = await playerListEmbed(server);
+
+            message.channel.send({embed: embed})
+        }
+
+
+    }
 })
+
+function keywordToServer(keyword) {
+    for (let s in gData) {
+        let server = gData[s];
+
+        if (server.keywords.includes(keyword)) {
+            return gData[s];
+        }
+    }
+    return false;
+}
+
+function isEmpty(obj) {//checks if bot has started//if empty bot is starting
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+function playerListEmbed(server) {
+    let embed = new Discord.MessageEmbed()
+        .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`)
+        .setColor(7980240)
+        .setFooter("Last Updated", frumpyAvatarLink)
+        .setTimestamp(Date.now())
+
+        let list = "";
+
+        for(let i in server.players){
+            let player = server.players[i];
+
+            list += player.name + "\n"
+        }
+
+        for(let i in server.bots){
+            let bot = server.bots[i];
+
+            list += bot.name += "\n";
+        }
+
+        list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
+
+        embed.setDescription(list);
+
+        return embed;
+}
