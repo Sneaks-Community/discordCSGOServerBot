@@ -8,6 +8,8 @@ bot.login(config.token);
 
 const serverObject = require("./servers.json");
 
+let gData = {}
+
 
 bot.on("ready", async () => {
     console.log("Started as " + bot.user.tag);
@@ -15,7 +17,16 @@ bot.on("ready", async () => {
 })
 
 async function refresh(servers){
+    let allData = {}
+    for(let s in servers){//loops thru servers 
+        let server = servers[s];
+
+        let data = await getInfo(server)//gets info from server 
+
+        allData[s] = data;//adds to temp obj
+    }
     
+    gData = allData;//overwrites Global data var
 }
 
 async function getInfo(server){
@@ -44,4 +55,5 @@ async function getInfo(server){
 
     return data;
 }
+
 
