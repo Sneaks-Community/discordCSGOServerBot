@@ -113,12 +113,14 @@ function makeEmbed() {
                 server.name,
                 `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
                 **__Map:__** ${getWebsite(server.map)}
-                **__IP:__** ${server.fullIP}`
+                **__IP:__** ${server.fullIP}`,
+                true
             )
         } else {//checks if offline
             embed.addField(
                 server.name,
-                "**Server is not avaiable.**"
+                "**Server is not avaiable.**",
+                true
             )
         }
 
