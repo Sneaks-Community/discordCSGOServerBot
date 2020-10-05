@@ -2,16 +2,28 @@
         "Beginner_Surf": {
             "ip": "216.52.143.73:27015",
             "nick": "Beginner Surf",
-			"show": true
+            "show": true,
+            "keywords": [
+                "beg",
+                "beginner"
+            ]
         },
         "Easy_Surf": {
             "ip": "74.91.113.236:27015",
             "nick": "Easy Surf",
-			"show": true
+			"show": true,
+            "keywords": [
+                "ez",
+                "easy"
+            ]
         },
         "Advanced_Surf": {
             "ip": "74.91.113.133:27015",
             "nick": "Advanced Surf",
-			"show": true
+			"show": true,
+            "keywords": [
+                "adv",
+                "advanced"
+            ]
         }
 }
