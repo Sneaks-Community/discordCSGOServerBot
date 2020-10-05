@@ -109,8 +109,8 @@ async function makeEmbed(){
             embed.addField(
                 server.name,
                 `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
-                **__Map:__** ${server.map}
-                **__IP:__** ${server.fullIP}`//**__Map:__** [${server.map}](https://snksrv.com/surfstats/?view=map&name=${server.map})
+                **__Map:__** ${await getWebsite(server.map)}
+                **__IP:__** ${server.fullIP}`
             )    
         }else{
             embed.addField(
@@ -122,6 +122,18 @@ async function makeEmbed(){
     }
 
     return embed;
+}
+
+async function getWebsite(mapName){
+    //https://snksrv.com/surfstats/?view=map&name=x
+    //https://snksrv.com/kzstats/#/maps/x
+    if(mapName.startsWith("surf_")){
+        return `[${mapName}](https://snksrv.com/surfstats/?view=map&name=${mapName})`
+    } else if(mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")){
+        return `[${mapName}](https://snksrv.com/kzstats/#/maps/${mapName})`
+    } else{
+        return mapName
+    }
 }
 
 
