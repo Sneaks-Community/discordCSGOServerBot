@@ -10,10 +10,13 @@ const serverObject = require("./servers.json");
 
 let gData = {}
 
+let frumpyAvatarLink;
+
 
 bot.on("ready", async () => {
     console.log("Started as " + bot.user.tag);
     bot.user.setActivity("--players in #bot-commands");
+    frumpyAvatarLink = bot.users.cache.get("134088598684303360").avatarURL() || "https://i.imgur.com/cBiDnMi.png"
 
 })
 
@@ -61,7 +64,7 @@ async function makeEmbed(){
     let embed = new Discord.MessageEmbed()
     .setTitle("Server List")
     .setColor(7980240)
-    .setFooter("Last Updated")
+    .setFooter("Last Updated", frumpyAvatarLink)
     .setTimestamp(Date.now())
 
     for(let s in gData){
