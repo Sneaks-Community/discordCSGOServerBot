@@ -116,7 +116,7 @@ function makeEmbed() {
         } else {//checks if offline
             embed.addField(
                 server.name,
-                "**Server is offline.**"
+                "**Server is not avaiable.**"
             )
         }
 
