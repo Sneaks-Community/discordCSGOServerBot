@@ -14,6 +14,7 @@ let gData = {}
 bot.on("ready", async () => {
     console.log("Started as " + bot.user.tag);
     bot.user.setActivity("--players in #bot-commands");
+
 })
 
 async function refresh(servers){
@@ -44,7 +45,7 @@ async function getInfo(server){
         name: server.nick,//Short nickname
         fullIP: res.connect,//String with ip:port
         map: res.map,//Current map
-        maxPlayers: res.raw.maxplayers,
+        maxPlayers: res.maxplayers,
         players: res.players,//Players array {name, score, time}
         bots: res.bots,//Bots array {name, score, time}
         numPlayers: res.raw.numplayers,//int
@@ -54,6 +55,26 @@ async function getInfo(server){
     }
 
     return data;
+}
+
+async function makeEmbed(){
+    let embed = new Discord.MessageEmbed()
+    .setTitle("Server List")
+    .setColor(7980240)
+    .setFooter("Last Updated")
+    .setTimestamp(Date.now())
+
+    for(let s in gData){
+        let server = gData[s];
+        embed.addField(
+            server.name,
+            `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
+            **__Map:__** ${server.map}
+            **__IP:__** ${server.fullIP}`//**__Map:__** [${server.map}](https://snksrv.com/surfstats/?view=map&name=${server.map})
+        )
+    }
+
+    return embed;
 }
 
 
