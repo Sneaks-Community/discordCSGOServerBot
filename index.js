@@ -18,6 +18,8 @@ bot.on("ready", async () => {
     bot.user.setActivity("--players in #bot-commands");
     frumpyAvatarLink = bot.users.cache.get("134088598684303360").avatarURL() || "https://i.imgur.com/cBiDnMi.png"
 
+    
+
 })
 
 async function refresh(servers){
@@ -38,23 +40,38 @@ async function getInfo(server){
     let ip = server.ip.split(":")[0];
     let port = server.ip.split(":")[1];
 
+    let valid = true;
+
     let res = await Gamedig.query({
         type: "csgo",
         host: ip,
         port: port
+    }).catch(e => {
+        valid = false;
     })
 
-    let data = {
-        name: server.nick,//Short nickname
-        fullIP: res.connect,//String with ip:port
-        map: res.map,//Current map
-        maxPlayers: res.maxplayers,
-        players: res.players,//Players array {name, score, time}
-        bots: res.bots,//Bots array {name, score, time}
-        numPlayers: res.raw.numplayers,//int
-        numBots: res.raw.numbots,//int
-        show: server.show,//bool to print server in embed
-        keywords: server.keywords//array of keywords for --players command
+    let data;
+
+    if(valid){
+        data = {
+            online: true,
+            name: server.nick,//Short nickname
+            fullIP: res.connect,//String with ip:port
+            map: res.map,//Current map
+            maxPlayers: res.maxplayers,
+            players: res.players,//Players array {name, score, time}
+            bots: res.bots,//Bots array {name, score, time}
+            numPlayers: res.raw.numplayers,//int
+            numBots: res.raw.numbots,//int
+            show: server.show,//bool to print server in embed
+            keywords: server.keywords//array of keywords for --players command
+        }
+    }
+    else{
+        data = {
+            name: server.nick,
+            online: false
+        }
     }
 
     return data;
@@ -69,12 +86,21 @@ async function makeEmbed(){
 
     for(let s in gData){
         let server = gData[s];
-        embed.addField(
-            server.name,
-            `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
-            **__Map:__** ${server.map}
-            **__IP:__** ${server.fullIP}`//**__Map:__** [${server.map}](https://snksrv.com/surfstats/?view=map&name=${server.map})
-        )
+
+        if(server.online){
+            embed.addField(
+                server.name,
+                `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
+                **__Map:__** ${server.map}
+                **__IP:__** ${server.fullIP}`//**__Map:__** [${server.map}](https://snksrv.com/surfstats/?view=map&name=${server.map})
+            )    
+        }else {
+            embed.addField(
+                server.name,
+                "**Server is offline.**"
+            )
+        }
+
     }
 
     return embed;
