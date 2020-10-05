@@ -6,7 +6,8 @@
         "show": true,
         "keywords": [
             "beg",
-            "beginner"
+            "beginner",
+            "beginner surf"
         ]
     },
     "Easy_Surf": {
@@ -15,7 +16,8 @@
         "show": true,
         "keywords": [
             "ez",
-            "easy"
+            "easy",
+            "easy surf"
         ]
     },
     "Advanced_Surf": {
@@ -24,7 +26,8 @@
         "show": true,
         "keywords": [
             "adv",
-            "advanced"
+            "advanced",
+            "advanced surf"
         ]
     },
     "Top100SLASHVIP_Surf": {
@@ -32,8 +35,10 @@
         "nick": "Top 100/VIP Surf",
         "show": true,
         "keywords": [
-            "vip",
-            "top100"
+            "top100",
+            "top 100",
+            "vip surf",
+            "top 100/vip surf"
         ]
     },
     "KZ_Climb": {
@@ -41,7 +46,8 @@
         "nick": "KZ Climb",
         "show": true,
         "keywords": [
-            "kz"
+            "kz",
+            "kz climb"
         ]
     },
     "GOKZ_Climb": {
@@ -49,7 +55,8 @@
         "nick": "GOKZ Climb",
         "show": true,
         "keywords": [
-            "gokz"
+            "gokz",
+            "gokz climb"
         ]
     },
     "Top100SLASHVIP_KZ": {
@@ -57,8 +64,9 @@
         "nick": "Top 100/VIP KZ",
         "show": true,
         "keywords": [
-            "vipkz",
-            "top100kz"
+            "vip kz",
+            "top 100 kz",
+            "top 100/vip kz"
         ]
     },
     "n1v1_Arenas_1": {
@@ -67,7 +75,8 @@
         "show": true,
         "keywords": [
             "1v11",
-            "arenas1"
+            "arenas1",
+            "1v1 arenas #1"
         ]
     },
     "n1v1_Arenas_2": {
@@ -76,7 +85,8 @@
         "show": true,
         "keywords": [
             "1v12",
-            "arenas2"
+            "arenas2",
+            "1v1 arenas #2"
         ]
     },
     "Retakes_1": {
@@ -85,7 +95,8 @@
         "show": true,
         "keywords": [
             "re1",
-            "retakes1"
+            "retakes1",
+            "retakes #1"
         ]
     },
     "Retakes_2": {
@@ -94,7 +105,8 @@
         "show": true,
         "keywords": [
             "re2",
-            "retakes2"
+            "retakes2",
+            "retakes #2"
         ]
     },
     "Retakes_3": {
@@ -103,7 +115,8 @@
         "show": true,
         "keywords": [
             "re3",
-            "retakes3"
+            "retakes3",
+            "retakes #3"
         ]
     },
     "Bhop": {
@@ -120,7 +133,8 @@
         "show": true,
         "keywords": [
             "vipbhop",
-            "top50bhop"
+            "top50bhop",
+            "top 50/vip bhop"
         ]
     },
     "Minigames": {

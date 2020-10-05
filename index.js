@@ -79,7 +79,7 @@ async function getInfo(server) {//gets info for 1 server at a time
             maxPlayers: res.maxplayers,
             players: res.players,//Players array {name, score, time}
             bots: res.bots,//Bots array {name, score, time}
-            numPlayers: res.raw.numplayers,//int
+            numPlayers: res.raw.numplayers - res.raw.numbots,//int
             numBots: res.raw.numbots,//int
             show: server.show,//bool to print server in embed
             keywords: server.keywords//array of keywords for --players command
@@ -140,6 +140,37 @@ function getWebsite(mapName) {//returns stats website if avaiable
 
 }
 
+bot.on('message', async message => {//public commands
+
+    const prefix = '--'
+    const args = message.content.slice(prefix.length).split(/ +/)
+    const command = args.shift().toLowerCase()
+    if (!message.content.startsWith(prefix)) return;
+
+    if (command == "players" || command == "p") {
+        if (isEmpty(gData)) {
+            return message.channel.send("Please Wait. The bot is starting.")
+        }
+
+        if (args.length == 0) {
+            return message.channel.send({embed: await makeServerList()})
+        }
+
+        let server = await keywordToServer(args.join(" ").toLowerCase());
+
+        if (server == false) {
+            return message.channel.send("Please enter a valid server.");
+        } else {//if returns valid server obj
+            let embed = await playerListEmbed(server);
+
+            message.channel.send({ embed: embed })
+        }
+
+
+    }
+
+})
+
 
 bot.on('message', async message => {//dev commands
 
@@ -165,28 +196,6 @@ bot.on('message', async message => {//dev commands
         out += "```"
 
         message.channel.send(out);
-    }
-
-    else if (command == "players") {
-        if (isEmpty(gData)) {
-            return message.channel.send("Please Wait. The bot is starting.")
-        }
-
-        if (args.length == 0) {
-            return message.channel.send("print list")
-        }
-
-        let server = await keywordToServer(args.join(" "));
-
-        if (server == false) {
-            return message.channel.send("Please enter a valid server.");
-        } else {//if returns valid server obj
-            let embed = await playerListEmbed(server);
-
-            message.channel.send({embed: embed})
-        }
-
-
     }
 })
 
@@ -216,23 +225,43 @@ function playerListEmbed(server) {
         .setFooter("Last Updated", frumpyAvatarLink)
         .setTimestamp(Date.now())
 
-        let list = "";
+    let list = "";
 
-        for(let i in server.players){
-            let player = server.players[i];
+    for (let i in server.players) {
+        let player = server.players[i];
 
-            list += player.name + "\n"
-        }
+        list += player.name + "\n"
+    }
 
-        for(let i in server.bots){
-            let bot = server.bots[i];
+    for (let i in server.bots) {
+        let bot = server.bots[i];
 
-            list += bot.name += "\n";
-        }
+        list += bot.name += "\n";
+    }
 
-        list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
+    list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
 
-        embed.setDescription(list);
+    embed.setDescription(list);
 
-        return embed;
+    return embed;
+}
+
+function makeServerList() {
+    let embed = new Discord.MessageEmbed()
+        .setTitle("Please specify what sever you want to check. Do `--players <Server Name>`")
+        .setColor(7980240)
+        .setFooter("Last Updated", frumpyAvatarLink)
+        .setTimestamp(Date.now())
+
+    let list = "";
+
+    for(let i in gData){
+        let server = gData[i];
+
+        list += `**__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
+    }
+    
+    embed.setDescription(list)
+
+    return embed;
 }
