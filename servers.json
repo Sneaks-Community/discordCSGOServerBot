@@ -1,29 +1,135 @@
+
 {
-        "Beginner_Surf": {
-            "ip": "216.52.143.73:27015",
-            "nick": "Beginner Surf",
-            "show": true,
-            "keywords": [
-                "beg",
-                "beginner"
-            ]
-        },
-        "Easy_Surf": {
-            "ip": "74.91.113.236:27015",
-            "nick": "Easy Surf",
-			"show": true,
-            "keywords": [
-                "ez",
-                "easy"
-            ]
-        },
-        "Advanced_Surf": {
-            "ip": "74.91.113.133:27015",
-            "nick": "Advanced Surf",
-			"show": true,
-            "keywords": [
-                "adv",
-                "advanced"
-            ]
-        }
+    "Beginner_Surf": {
+        "ip": "216.52.143.73:27015",
+        "nick": "Beginner Surf",
+        "show": true,
+        "keywords": [
+            "beg",
+            "beginner"
+        ]
+    },
+    "Easy_Surf": {
+        "ip": "74.91.113.236:27015",
+        "nick": "Easy Surf",
+        "show": true,
+        "keywords": [
+            "ez",
+            "easy"
+        ]
+    },
+    "Advanced_Surf": {
+        "ip": "74.91.113.133:27015",
+        "nick": "Advanced Surf",
+        "show": true,
+        "keywords": [
+            "adv",
+            "advanced"
+        ]
+    },
+    "Top100SLASHVIP_Surf": {
+        "ip": "74.91.113.133:27017",
+        "nick": "Top 100/VIP Surf",
+        "show": true,
+        "keywords": [
+            "vip",
+            "top100"
+        ]
+    },
+    "KZ_Climb": {
+        "ip": "162.248.92.83:27015",
+        "nick": "KZ Climb",
+        "show": true,
+        "keywords": [
+            "kz"
+        ]
+    },
+    "GOKZ_Climb": {
+        "ip": "162.248.92.83:27017",
+        "nick": "GOKZ Climb",
+        "show": true,
+        "keywords": [
+            "gokz"
+        ]
+    },
+    "Top100SLASHVIP_KZ": {
+        "ip": "162.248.92.83:27025",
+        "nick": "Top 100/VIP KZ",
+        "show": true,
+        "keywords": [
+            "vipkz",
+            "top100kz"
+        ]
+    },
+    "n1v1_Arenas_1": {
+        "ip": "74.91.119.186:27015",
+        "nick": "1v1 Arenas #1",
+        "show": true,
+        "keywords": [
+            "1v11",
+            "arenas1"
+        ]
+    },
+    "n1v1_Arenas_2": {
+        "ip": "74.91.119.186:27017",
+        "nick": "1v1 Arenas #2",
+        "show": true,
+        "keywords": [
+            "1v12",
+            "arenas2"
+        ]
+    },
+    "Retakes_1": {
+        "ip": "72.5.195.31:27015",
+        "nick": "Retakes #1",
+        "show": true,
+        "keywords": [
+            "re1",
+            "retakes1"
+        ]
+    },
+    "Retakes_2": {
+        "ip": "72.5.195.31:27017",
+        "nick": "Retakes #2",
+        "show": true,
+        "keywords": [
+            "re2",
+            "retakes2"
+        ]
+    },
+    "Retakes_3": {
+        "ip": "72.5.195.31:27023",
+        "nick": "Retakes #3",
+        "show": true,
+        "keywords": [
+            "re3",
+            "retakes3"
+        ]
+    },
+    "Bhop": {
+        "ip": "162.248.92.80:27015",
+        "nick": "Bhop",
+        "show": true,
+        "keywords": [
+            "bhop"
+        ]
+    },
+    "Top50SLASHVIP_Bhop": {
+        "ip": "162.248.92.80:27019",
+        "nick": "Top 50/VIP Bhop",
+        "show": true,
+        "keywords": [
+            "vipbhop",
+            "top50bhop"
+        ]
+    },
+    "Minigames": {
+        "ip": "74.91.113.198:27015",
+        "nick": "Minigames",
+        "show": true,
+        "keywords": [
+            "mini",
+            "minigames"
+        ]
+    }
 }
