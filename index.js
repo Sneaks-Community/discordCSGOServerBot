@@ -18,9 +18,23 @@ bot.on("ready", async () => {
     bot.user.setActivity("--players in #bot-commands");
     frumpyAvatarLink = bot.users.cache.get("134088598684303360").avatarURL() || "https://i.imgur.com/cBiDnMi.png"
 
-    
+    bot.setInterval(intervalFunction, config.intervalMS)
 
 })
+
+async function intervalFunction(b){//b for bot object
+
+    
+
+    await refresh(serverObject);
+
+    bot.channels.cache.get(config.channelID).messages.fetch(config.messageID).then(async m => {
+        m.edit({embed: await makeEmbed()})
+    })
+
+    
+
+}
 
 async function refresh(servers){
     let allData = {}
@@ -36,6 +50,8 @@ async function refresh(servers){
 }
 
 async function getInfo(server){
+
+    
 
     let ip = server.ip.split(":")[0];
     let port = server.ip.split(":")[1];
@@ -74,6 +90,8 @@ async function getInfo(server){
         }
     }
 
+    
+
     return data;
 }
 
@@ -94,7 +112,7 @@ async function makeEmbed(){
                 **__Map:__** ${server.map}
                 **__IP:__** ${server.fullIP}`//**__Map:__** [${server.map}](https://snksrv.com/surfstats/?view=map&name=${server.map})
             )    
-        }else {
+        }else{
             embed.addField(
                 server.name,
                 "**Server is offline.**"
