@@ -29,7 +29,7 @@ async function intervalFunction(b){//b for bot object
     await refresh(serverObject);
 
     bot.channels.cache.get(config.channelID).messages.fetch(config.messageID).then(async m => {
-        m.edit({embed: await makeEmbed()})
+        m.edit("‎", {embed: await makeEmbed()})
     })
 
     
@@ -125,3 +125,15 @@ async function makeEmbed(){
 }
 
 
+bot.on('message', async message => {
+    const prefix = '--'
+    const args = message.content.slice(prefix.length).split(/ +/)
+    const command = args.shift().toLowerCase()
+    if (!message.content.startsWith(prefix)) return;
+
+    if(command == "id"){
+        message.channel.send("does sneak gay?").then(m => {
+            m.edit(m.id);
+        })
+    }
+})
