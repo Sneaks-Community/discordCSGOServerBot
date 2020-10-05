@@ -18,7 +18,7 @@ bot.on("ready", async () => {
     bot.user.setActivity("--players in #bot-commands");
     frumpyAvatarLink = bot.users.cache.get("134088598684303360").avatarURL() || "https://i.imgur.com/cBiDnMi.png"
 
-    bot.setInterval(intervalFunction, config.intervalMS)
+    bot.setInterval(intervalFunction, config.intervalMS)//starts embed update loop
 
 })
 
@@ -28,15 +28,15 @@ async function intervalFunction(){
 
     await refresh(serverObject);
 
-    bot.channels.cache.get(config.channelID).messages.fetch(config.messageID).then(async m => {
-        m.edit("‎", {embed: await makeEmbed()})
+    bot.channels.cache.get(config.channelID).messages.fetch(config.messageID).then(async m => {//fetches config message
+        m.edit("‎", {embed: await makeEmbed()})//sends embed with blank char
     })
 
     // console.timeEnd("all")
 
 }
 
-async function refresh(servers){
+async function refresh(servers){//refreshes all servers
 
     let allData = {}
 
@@ -47,7 +47,7 @@ async function refresh(servers){
     gData = allData;//overwrites Global data var
 }
 
-async function getInfo(server){
+async function getInfo(server){//gets info for 1 server at a time
 
     // console.time("server")
 
@@ -101,7 +101,7 @@ function makeEmbed(){
     .setFooter("Last Updated", frumpyAvatarLink)
     .setTimestamp(Date.now())
 
-    for(let s in gData){
+    for(let s in gData){//makes field for ever server 
         let server = gData[s];
 
         if(server.online){
@@ -111,7 +111,7 @@ function makeEmbed(){
                 **__Map:__** ${getWebsite(server.map)}
                 **__IP:__** ${server.fullIP}`
             )    
-        }else{
+        }else{//checks if offline
             embed.addField(
                 server.name,
                 "**Server is offline.**"
@@ -123,7 +123,7 @@ function makeEmbed(){
     return embed;
 }
 
-function getWebsite(mapName){
+function getWebsite(mapName){//returns stats website if avaiable 
     //https://snksrv.com/surfstats/?view=map&name=x
     //https://snksrv.com/kzstats/#/maps/x
     if(mapName.startsWith("surf_")){
