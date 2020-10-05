@@ -22,9 +22,9 @@ bot.on("ready", async () => {
 
 })
 
-async function intervalFunction(b){//b for bot object
+async function intervalFunction(){
 
-    
+    // console.time("all")
 
     await refresh(serverObject);
 
@@ -32,18 +32,16 @@ async function intervalFunction(b){//b for bot object
         m.edit("‎", {embed: await makeEmbed()})
     })
 
-    
+    // console.timeEnd("all")
 
 }
 
 async function refresh(servers){
+
     let allData = {}
+
     for(let s in servers){//loops thru servers 
-        let server = servers[s];
-
-        let data = await getInfo(server)//gets info from server 
-
-        allData[s] = data;//adds to temp obj
+        allData[s] = await getInfo(servers[s])//gets info from server 
     }
     
     gData = allData;//overwrites Global data var
@@ -51,7 +49,7 @@ async function refresh(servers){
 
 async function getInfo(server){
 
-    
+    // console.time("server")
 
     let ip = server.ip.split(":")[0];
     let port = server.ip.split(":")[1];
@@ -90,12 +88,13 @@ async function getInfo(server){
         }
     }
 
-    
+    // console.timeEnd("server")
 
     return data;
 }
 
-async function makeEmbed(){
+function makeEmbed(){
+    // console.time("embed")
     let embed = new Discord.MessageEmbed()
     .setTitle("Server List")
     .setColor(7980240)
@@ -109,7 +108,7 @@ async function makeEmbed(){
             embed.addField(
                 server.name,
                 `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
-                **__Map:__** ${await getWebsite(server.map)}
+                **__Map:__** ${getWebsite(server.map)}
                 **__IP:__** ${server.fullIP}`
             )    
         }else{
@@ -120,11 +119,11 @@ async function makeEmbed(){
         }
 
     }
-
+    // console.timeEnd("embed")
     return embed;
 }
 
-async function getWebsite(mapName){
+function getWebsite(mapName){
     //https://snksrv.com/surfstats/?view=map&name=x
     //https://snksrv.com/kzstats/#/maps/x
     if(mapName.startsWith("surf_")){
@@ -134,6 +133,7 @@ async function getWebsite(mapName){
     } else{
         return mapName
     }
+    
 }
 
 
