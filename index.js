@@ -238,7 +238,7 @@ function makeServerList() {
     return embed;
 }
 
-function getMapImage(mapName){
+function getMapImage(mapName) {
     if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
         return `https://snksrv.com/bans/images/maps/${mapName}.jpg`
     } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
@@ -248,7 +248,7 @@ function getMapImage(mapName){
     }
 }
 
-function getStatsPage(mapName){
+function getStatsPage(mapName) {
     if (mapName.startsWith("surf_")) {
         return `https://snksrv.com/surfstats/?view=map&name=${mapName}`
     } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
@@ -268,6 +268,23 @@ bot.on('message', async message => {//public commands
     if (!message.content.startsWith(prefix)) return;
 
     if (command == "players" || command == "p") {
+
+        if (args[0].toLowerCase() == "frumpy") {
+            message.delete();
+            let egg = new Discord.MessageEmbed()
+                .setTitle(`listen here`)
+                .setURL("https://www.youtube.com/watch?v=lPGipwoJiOM")
+                .setColor("#26bf7a")
+                .setDescription(require("fs").readFileSync("./meme.txt"))
+                .setFooter("ｆｒｕｍｐｙ７", frumpyAvatarLink)
+                .setTimestamp(Date.parse("Sat Mar 15 4207 04:20:07 GMT-0456"))
+                .setImage("https://i.imgur.com/FHTK2WB.gif")
+                .setAuthor("( ͡° ͜ʖ ͡°)", "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676", "https://mrdoob.com/#/157/spin_painter")
+                
+
+                return message.channel.send({embed: egg})
+        }
+
         if (isEmpty(gData)) {
             return message.channel.send("Please Wait. The bot is starting.")
         }
@@ -278,7 +295,7 @@ bot.on('message', async message => {//public commands
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
 
-        if (server == false) {
+        if (!server) {
             return message.channel.send("Please enter a valid server.");
         } else {//if returns valid server obj
             let embed = await playerListEmbed(server);
@@ -295,12 +312,12 @@ bot.on('message', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send({embed: await makeServerList()})
+            return message.channel.send({ embed: await makeServerList() })
         }
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
 
-        if (server == false) {
+        if (!server) {
             return message.channel.send("Please choose a valid server.");
         } else {
 
@@ -316,10 +333,10 @@ bot.on('message', async message => {//public commands
                     .setColor(7980240)
                     .setFooter("Last Updated", frumpyAvatarLink)
                     .setTimestamp(Date.now())
-                    if(stats) embed.setURL(stats)
-                    if(image) embed.setImage(image)
+                if (stats) embed.setURL(stats)
+                if (image) embed.setImage(image)
 
-            }else {
+            } else {
 
                 embed = new Discord.MessageEmbed()
                     .setTitle(`${server.name} is currently unavailable.`)
@@ -330,7 +347,7 @@ bot.on('message', async message => {//public commands
 
             }
 
-            message.channel.send({embed: embed})
+            message.channel.send({ embed: embed })
 
         }
 
