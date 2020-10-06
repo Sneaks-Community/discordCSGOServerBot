@@ -88,6 +88,7 @@ async function getInfo(server) {//gets info for 1 server at a time
     else {
         data = {
             name: server.nick,
+            keywords: server.keywords,
             online: false
         }
     }
@@ -108,6 +109,8 @@ function makeEmbed() {
     for (let s in gData) {//makes field for ever server 
         let server = gData[s];
 
+        if(!server.show) continue;
+
         if (server.online) {
             embed.addField(
                 server.name,
@@ -119,7 +122,7 @@ function makeEmbed() {
         } else {//checks if offline
             embed.addField(
                 server.name,
-                "**Server is not avaiable.**",
+                "**Server is not available.**",
                 true
             )
         }
@@ -129,7 +132,7 @@ function makeEmbed() {
     return embed;
 }
 
-function getWebsite(mapName) {//returns stats website if avaiable 
+function getWebsite(mapName) {//returns stats website if available 
     //https://snksrv.com/surfstats/?view=map&name=x
     //https://snksrv.com/kzstats/#/maps/x
     if (mapName.startsWith("surf_")) {
@@ -155,7 +158,7 @@ bot.on('message', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send({embed: await makeServerList()})
+            return message.channel.send({ embed: await makeServerList() })
         }
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
@@ -221,30 +224,41 @@ function isEmpty(obj) {//checks if bot has started//if empty bot is starting
 }
 
 function playerListEmbed(server) {
-    let embed = new Discord.MessageEmbed()
-        .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`)
+
+    let embed;
+
+    if (server.online) {
+        embed = new Discord.MessageEmbed()
+            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`)
+            .setColor(7980240)
+            .setFooter("Last Updated", frumpyAvatarLink)
+            .setTimestamp(Date.now())
+
+        let list = "";
+
+        for (let i in server.players) {
+            let player = server.players[i];
+
+            list += player.name + "\n"
+        }
+
+        for (let i in server.bots) {
+            let bot = server.bots[i];
+
+            list += bot.name += "\n";
+        }
+
+        list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
+
+        embed.setDescription(list);
+    } else {
+        embed = new Discord.MessageEmbed()
+        .setTitle(`${server.name} is currently unavailable.`)
         .setColor(7980240)
         .setFooter("Last Updated", frumpyAvatarLink)
         .setTimestamp(Date.now())
-
-    let list = "";
-
-    for (let i in server.players) {
-        let player = server.players[i];
-
-        list += player.name + "\n"
+        .setImage("https://i.imgur.com/WnS0Biz.png")
     }
-
-    for (let i in server.bots) {
-        let bot = server.bots[i];
-
-        list += bot.name += "\n";
-    }
-
-    list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
-
-    embed.setDescription(list);
-
     return embed;
 }
 
@@ -257,12 +271,17 @@ function makeServerList() {
 
     let list = "";
 
-    for(let i in gData){
+    for (let i in gData) {
         let server = gData[i];
 
-        list += `**__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
+        if (server.online) {
+            list += `**__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
+        } else {
+            list += `**__${server.name}__**: is currently unavailable.\n`
+        }
+
     }
-    
+
     embed.setDescription(list)
 
     return embed;
