@@ -1,6 +1,13 @@
 {
-    "token": "token",
-    "channelID": "x",
-    "messageID": "x",
-    "intervalMS": 90000
+    "token": "x",
+    "intervalMS": 90000,
+    "embeds": [{
+            "channelID": "x",
+            "messageID": "x"
+        },
+        {
+            "channelID": "x",
+            "messageID": "x"
+        }
+    ]
 }

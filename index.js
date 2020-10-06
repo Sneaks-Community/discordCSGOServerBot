@@ -20,8 +20,14 @@ async function intervalFunction() {
 
     await refresh(serverObject);
 
-    bot.channels.cache.get(config.channelID).messages.fetch(config.messageID).then(async m => {//fetches config message
-        m.edit("‎", { embed: await makeEmbed() })//sends embed with blank char
+    // bot.channels.cache.get(config.channelID).messages.fetch(config.messageID).then(async m => {//fetches config message
+    //     m.edit("‎", { embed: await makeEmbed() })//sends embed with blank char
+    // })
+
+    config.embeds.forEach(e => {//loops thru updating embeds
+        bot.channels.cache.get(e.channelID).messages.fetch(e.messageID).then(async m => {//fetches config message
+            m.edit("‎", { embed: await makeEmbed() })//sends embed with blank char
+        })
     })
 
     // console.timeEnd("all")
@@ -280,9 +286,9 @@ bot.on('message', async message => {//public commands
                 .setTimestamp(Date.parse("Sat Mar 15 4207 04:20:07 GMT-0456"))
                 .setImage("https://i.imgur.com/FHTK2WB.gif")
                 .setAuthor("( ͡° ͜ʖ ͡°)", "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676", "https://mrdoob.com/#/157/spin_painter")
-                
 
-                return message.channel.send({embed: egg})
+
+            return message.channel.send({ embed: egg })
         }
 
         if (isEmpty(gData)) {
