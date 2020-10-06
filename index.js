@@ -251,7 +251,7 @@ function playerListEmbed(server) {
         list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
 
         embed.setDescription(list);
-    } else {
+    } else {//if offline
         embed = new Discord.MessageEmbed()
         .setTitle(`${server.name} is currently unavailable.`)
         .setColor(7980240)
