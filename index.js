@@ -146,7 +146,9 @@ function getWebsite(mapName) {//returns stats website if available
     if (mapName.startsWith("surf_")) {
         return `[${mapName}](https://snksrv.com/surfstats/?view=map&name=${mapName})`
     } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
-        return `[${mapName}](https://snksrv.com/kzstats/#/maps/${mapName})`
+        return `[${mapName}](https://snksrv.com/kzstats/#/maps/${mapName}/)`
+    } else if (mapName.startsWith("bhop")) {
+        return `[${mapName}](https://snksrv.com/bhopstats/index.php?map=${mapName})`
     } else {
         return mapName
     }
