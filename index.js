@@ -163,7 +163,7 @@ function isEmpty(obj) {//checks if bot has started//if empty bot is starting
     return true;
 }
 
-function keywordToServer(keyword) {
+function keywordToServer(keyword) {//takes keywords and returns server obj
     for (let s in gData) {
         let server = gData[s];
 
@@ -174,7 +174,7 @@ function keywordToServer(keyword) {
     return false;
 }
 
-function playerListEmbed(server) {
+function playerListEmbed(server) {//makes embed with list of players
 
     let embed;
 
@@ -213,7 +213,7 @@ function playerListEmbed(server) {
     return embed;
 }
 
-function makeServerList() {
+function makeServerList() {//make server list embed for public commands
     let embed = new Discord.MessageEmbed()
         .setTitle("Please specify what sever you want to check.")
         .setColor(7980240)
@@ -238,7 +238,7 @@ function makeServerList() {
     return embed;
 }
 
-function getMapImage(mapName) {
+function getMapImage(mapName) {//looks for map image
     if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
         return `https://snksrv.com/bans/images/maps/${mapName}.jpg`
     } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
@@ -248,7 +248,7 @@ function getMapImage(mapName) {
     }
 }
 
-function getStatsPage(mapName) {
+function getStatsPage(mapName) {//looks for stats page
     if (mapName.startsWith("surf_")) {
         return `https://snksrv.com/surfstats/?view=map&name=${mapName}`
     } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
@@ -269,7 +269,7 @@ bot.on('message', async message => {//public commands
 
     if (command == "players" || command == "p") {
 
-        if (args[0].toLowerCase() == "frumpy") {
+        if (args[0].toLowerCase() == "frumpy") {//easteregg
             message.delete();
             let egg = new Discord.MessageEmbed()
                 .setTitle(`listen here`)
