@@ -99,7 +99,7 @@ async function getInfo(server, index) {//gets info for 1 server at a time
         }
     }
 
-    
+
 
     // console.timeEnd("server")
 
@@ -117,7 +117,7 @@ function makeEmbed() {
     for (let s in gData) {//makes field for ever server 
         let server = gData[s];
 
-        if(!server.show) continue;
+        if (!server.show) continue;
 
         if (server.online) {
             embed.addField(
@@ -181,6 +181,53 @@ bot.on('message', async message => {//public commands
             message.channel.send({ embed: embed })
         }
 
+
+    }
+
+    if (command == "map" || command == "m") {
+        if (isEmpty(gData)) {
+            return message.channel.send("Please Wait. The bot is starting.")
+        }
+
+        if (args.length == 0) {
+            return message.channel.send("Please choose a server.")
+        }
+
+        let server = await keywordToServer(args.join(" ").toLowerCase());
+
+        if (server == false) {
+            return message.channel.send("Please choose a valid server.");
+        } else {
+
+            let embed;
+
+            if (server.online) {
+
+                let image = getMapImage(server.map)
+                let stats = getStatsPage(server.map)
+
+                embed = new Discord.MessageEmbed()
+                    .setTitle(`${server.name} is currently on ${server.map}`)
+                    .setColor(7980240)
+                    .setFooter("Last Updated", frumpyAvatarLink)
+                    .setTimestamp(Date.now())
+                    if(stats) embed.setURL(stats)
+                    if(image) embed.setImage(image)
+
+            }else {
+
+                embed = new Discord.MessageEmbed()
+                    .setTitle(`${server.name} is currently unavailable.`)
+                    .setColor(7980240)
+                    .setFooter("Last Updated", frumpyAvatarLink)
+                    .setTimestamp(Date.now())
+                    .setImage("https://i.imgur.com/WnS0Biz.png")
+
+            }
+
+            message.channel.send({embed: embed})
+
+        }
 
     }
 
@@ -263,11 +310,11 @@ function playerListEmbed(server) {
         embed.setDescription(list);
     } else {//if offline
         embed = new Discord.MessageEmbed()
-        .setTitle(`${server.name} is currently unavailable.`)
-        .setColor(7980240)
-        .setFooter("Last Updated", frumpyAvatarLink)
-        .setTimestamp(Date.now())
-        .setImage("https://i.imgur.com/WnS0Biz.png")
+            .setTitle(`${server.name} is currently unavailable.`)
+            .setColor(7980240)
+            .setFooter("Last Updated", frumpyAvatarLink)
+            .setTimestamp(Date.now())
+            .setImage("https://i.imgur.com/WnS0Biz.png")
     }
     return embed;
 }
@@ -295,4 +342,26 @@ function makeServerList() {
     embed.setDescription(list)
 
     return embed;
+}
+
+function getMapImage(mapName){
+    if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
+        return `https://snksrv.com/bans/images/maps/${mapName}.jpg`
+    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
+        return `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${mapName}.jpg`
+    } else {
+        return false;
+    }
+}
+
+function getStatsPage(mapName){
+    if (mapName.startsWith("surf_")) {
+        return `https://snksrv.com/surfstats/?view=map&name=${mapName}`
+    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
+        return `https://snksrv.com/kzstats/#/maps/${mapName}/`
+    } else if (mapName.startsWith("bhop")) {
+        return `https://snksrv.com/bhopstats/index.php?map=${mapName}`
+    } else {
+        return false;
+    }
 }
