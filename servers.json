@@ -1,4 +1,3 @@
-
 {
     "Beginner_Surf": {
         "ip": "216.52.143.73:27015",
@@ -69,24 +68,22 @@
             "top 100/vip kz"
         ]
     },
-    "n1v1_Arenas_1": {
-        "ip": "74.91.119.186:27015",
-        "nick": "1v1 Arenas #1",
+    "Bhop": {
+        "ip": "162.248.92.80:27015",
+        "nick": "Bhop",
         "show": true,
         "keywords": [
-            "1v11",
-            "arenas1",
-            "1v1 arenas #1"
+            "bhop"
         ]
     },
-    "n1v1_Arenas_2": {
-        "ip": "74.91.119.186:27017",
-        "nick": "1v1 Arenas #2",
+    "Top50SLASHVIP_Bhop": {
+        "ip": "162.248.92.80:27019",
+        "nick": "Top 50/VIP Bhop",
         "show": true,
         "keywords": [
-            "1v12",
-            "arenas2",
-            "1v1 arenas #2"
+            "vipbhop",
+            "top50bhop",
+            "top 50/vip bhop"
         ]
     },
     "Retakes_1": {
@@ -119,22 +116,24 @@
             "retakes #3"
         ]
     },
-    "Bhop": {
-        "ip": "162.248.92.80:27015",
-        "nick": "Bhop",
+    "n1v1_Arenas_1": {
+        "ip": "74.91.119.186:27015",
+        "nick": "1v1 Arenas #1",
         "show": true,
         "keywords": [
-            "bhop"
+            "1v11",
+            "arenas1",
+            "1v1 arenas #1"
         ]
     },
-    "Top50SLASHVIP_Bhop": {
-        "ip": "162.248.92.80:27019",
-        "nick": "Top 50/VIP Bhop",
+    "n1v1_Arenas_2": {
+        "ip": "74.91.119.186:27017",
+        "nick": "1v1 Arenas #2",
         "show": true,
         "keywords": [
-            "vipbhop",
-            "top50bhop",
-            "top 50/vip bhop"
+            "1v12",
+            "arenas2",
+            "1v1 arenas #2"
         ]
     },
     "Minigames": {
