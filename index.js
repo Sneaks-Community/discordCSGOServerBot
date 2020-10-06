@@ -44,14 +44,17 @@ async function refresh(servers) {//refreshes all servers
 
     let allData = {}
 
+    let index = 1;
+
     for (let s in servers) {//loops thru servers 
-        allData[s] = await getInfo(servers[s])//gets info from server 
+        allData[s] = await getInfo(servers[s], index)//gets info from server
+        index++;
     }
 
     gData = allData;//overwrites Global data var
 }
 
-async function getInfo(server) {//gets info for 1 server at a time
+async function getInfo(server, index) {//gets info for 1 server at a time
 
     // console.time("server")
 
@@ -70,6 +73,7 @@ async function getInfo(server) {//gets info for 1 server at a time
 
     let data;
 
+
     if (valid) {
         data = {
             online: true,
@@ -82,16 +86,20 @@ async function getInfo(server) {//gets info for 1 server at a time
             numPlayers: res.raw.numplayers - res.raw.numbots,//int
             numBots: res.raw.numbots,//int
             show: server.show,//bool to print server in embed
-            keywords: server.keywords//array of keywords for --players command
+            keywords: server.keywords,//array of keywords for --players command
+            index: index
         }
     }
     else {
         data = {
+            online: false,
             name: server.nick,
             keywords: server.keywords,
-            online: false
+            index: index
         }
     }
+
+    
 
     // console.timeEnd("server")
 
@@ -208,7 +216,7 @@ function keywordToServer(keyword) {
     for (let s in gData) {
         let server = gData[s];
 
-        if (server.keywords.includes(keyword)) {
+        if (server.keywords.includes(keyword) || server.index == keyword) {
             return gData[s];
         }
     }
@@ -275,9 +283,9 @@ function makeServerList() {
         let server = gData[i];
 
         if (server.online) {
-            list += `**__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
+            list += `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
         } else {
-            list += `**__${server.name}__**: is currently unavailable.\n`
+            list += `${server.index}: **__${server.name}__**: is currently unavailable.\n`
         }
 
     }
