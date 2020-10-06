@@ -14,18 +14,6 @@ let frumpyAvatarLink;
 
 let allowedDevs = ["134088598684303360", "204729465564037120"];
 
-
-bot.on("ready", async () => {
-    console.log("Started as " + bot.user.tag);
-    bot.user.setActivity("--players in #bot-commands");
-    frumpyAvatarLink = bot.users.cache.get("134088598684303360").avatarURL() || "https://i.imgur.com/cBiDnMi.png"
-
-    intervalFunction();
-
-    bot.setInterval(intervalFunction, config.intervalMS)//starts embed update loop
-
-})
-
 async function intervalFunction() {
 
     // console.time("all")
@@ -140,6 +128,18 @@ function makeEmbed() {
     return embed;
 }
 
+bot.on("ready", async () => {
+    console.log("Started as " + bot.user.tag);
+    bot.user.setActivity("--players in #bot-commands");
+    frumpyAvatarLink = bot.users.cache.get("134088598684303360").avatarURL() || "https://i.imgur.com/cBiDnMi.png"
+
+    intervalFunction();
+
+    bot.setInterval(intervalFunction, config.intervalMS)//starts embed update loop
+
+})
+
+
 function getWebsite(mapName) {//returns stats website if available 
     //https://snksrv.com/surfstats/?view=map&name=x
     //https://snksrv.com/kzstats/#/maps/x
@@ -153,6 +153,111 @@ function getWebsite(mapName) {//returns stats website if available
         return mapName
     }
 
+}
+
+function isEmpty(obj) {//checks if bot has started//if empty bot is starting
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+function keywordToServer(keyword) {
+    for (let s in gData) {
+        let server = gData[s];
+
+        if (server.keywords.includes(keyword) || server.index == keyword) {
+            return gData[s];
+        }
+    }
+    return false;
+}
+
+function playerListEmbed(server) {
+
+    let embed;
+
+    if (server.online) {
+        embed = new Discord.MessageEmbed()
+            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`)
+            .setColor(7980240)
+            .setFooter("Last Updated", frumpyAvatarLink)
+            .setTimestamp(Date.now())
+
+        let list = "";
+
+        for (let i in server.players) {
+            let player = server.players[i];
+
+            list += player.name + "\n"
+        }
+
+        for (let i in server.bots) {
+            let bot = server.bots[i];
+
+            list += bot.name += "\n";
+        }
+
+        list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
+
+        embed.setDescription(list);
+    } else {//if offline
+        embed = new Discord.MessageEmbed()
+            .setTitle(`${server.name} is currently unavailable.`)
+            .setColor(7980240)
+            .setFooter("Last Updated", frumpyAvatarLink)
+            .setTimestamp(Date.now())
+            .setImage("https://i.imgur.com/WnS0Biz.png")
+    }
+    return embed;
+}
+
+function makeServerList() {
+    let embed = new Discord.MessageEmbed()
+        .setTitle("Please specify what sever you want to check.")
+        .setColor(7980240)
+        .setFooter("Last Updated", frumpyAvatarLink)
+        .setTimestamp(Date.now())
+
+    let list = "";
+
+    for (let i in gData) {
+        let server = gData[i];
+
+        if (server.online) {
+            list += `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
+        } else {
+            list += `${server.index}: **__${server.name}__**: is currently unavailable.\n`
+        }
+
+    }
+
+    embed.setDescription(list)
+
+    return embed;
+}
+
+function getMapImage(mapName){
+    if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
+        return `https://snksrv.com/bans/images/maps/${mapName}.jpg`
+    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
+        return `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${mapName}.jpg`
+    } else {
+        return false;
+    }
+}
+
+function getStatsPage(mapName){
+    if (mapName.startsWith("surf_")) {
+        return `https://snksrv.com/surfstats/?view=map&name=${mapName}`
+    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
+        return `https://snksrv.com/kzstats/#/maps/${mapName}/`
+    } else if (mapName.startsWith("bhop")) {
+        return `https://snksrv.com/bhopstats/index.php?map=${mapName}`
+    } else {
+        return false;
+    }
 }
 
 bot.on('message', async message => {//public commands
@@ -260,108 +365,3 @@ bot.on('message', async message => {//dev commands
         message.channel.send(out);
     }
 })
-
-function keywordToServer(keyword) {
-    for (let s in gData) {
-        let server = gData[s];
-
-        if (server.keywords.includes(keyword) || server.index == keyword) {
-            return gData[s];
-        }
-    }
-    return false;
-}
-
-function isEmpty(obj) {//checks if bot has started//if empty bot is starting
-    for (var key in obj) {
-        if (obj.hasOwnProperty(key))
-            return false;
-    }
-    return true;
-}
-
-function playerListEmbed(server) {
-
-    let embed;
-
-    if (server.online) {
-        embed = new Discord.MessageEmbed()
-            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`)
-            .setColor(7980240)
-            .setFooter("Last Updated", frumpyAvatarLink)
-            .setTimestamp(Date.now())
-
-        let list = "";
-
-        for (let i in server.players) {
-            let player = server.players[i];
-
-            list += player.name + "\n"
-        }
-
-        for (let i in server.bots) {
-            let bot = server.bots[i];
-
-            list += bot.name += "\n";
-        }
-
-        list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
-
-        embed.setDescription(list);
-    } else {//if offline
-        embed = new Discord.MessageEmbed()
-            .setTitle(`${server.name} is currently unavailable.`)
-            .setColor(7980240)
-            .setFooter("Last Updated", frumpyAvatarLink)
-            .setTimestamp(Date.now())
-            .setImage("https://i.imgur.com/WnS0Biz.png")
-    }
-    return embed;
-}
-
-function makeServerList() {
-    let embed = new Discord.MessageEmbed()
-        .setTitle("Please specify what sever you want to check.")
-        .setColor(7980240)
-        .setFooter("Last Updated", frumpyAvatarLink)
-        .setTimestamp(Date.now())
-
-    let list = "";
-
-    for (let i in gData) {
-        let server = gData[i];
-
-        if (server.online) {
-            list += `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
-        } else {
-            list += `${server.index}: **__${server.name}__**: is currently unavailable.\n`
-        }
-
-    }
-
-    embed.setDescription(list)
-
-    return embed;
-}
-
-function getMapImage(mapName){
-    if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
-        return `https://snksrv.com/bans/images/maps/${mapName}.jpg`
-    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
-        return `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${mapName}.jpg`
-    } else {
-        return false;
-    }
-}
-
-function getStatsPage(mapName){
-    if (mapName.startsWith("surf_")) {
-        return `https://snksrv.com/surfstats/?view=map&name=${mapName}`
-    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
-        return `https://snksrv.com/kzstats/#/maps/${mapName}/`
-    } else if (mapName.startsWith("bhop")) {
-        return `https://snksrv.com/bhopstats/index.php?map=${mapName}`
-    } else {
-        return false;
-    }
-}
