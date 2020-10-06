@@ -190,7 +190,7 @@ bot.on('message', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send("Please choose a server.")
+            return message.channel.send({embed: await makeServerList()})
         }
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
@@ -321,7 +321,7 @@ function playerListEmbed(server) {
 
 function makeServerList() {
     let embed = new Discord.MessageEmbed()
-        .setTitle("Please specify what sever you want to check. Do `--players <Server Name>`")
+        .setTitle("Please specify what sever you want to check.")
         .setColor(7980240)
         .setFooter("Last Updated", frumpyAvatarLink)
         .setTimestamp(Date.now())
