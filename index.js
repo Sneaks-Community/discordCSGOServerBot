@@ -50,7 +50,7 @@ async function refresh(servers) {//refreshes all servers
 
 async function getInfo(server, index) {//gets info for 1 server at a time
 
-    // console.time("server")
+    console.time("server")
 
     let ip = server.ip.split(":")[0];
     let port = server.ip.split(":")[1];
@@ -95,7 +95,7 @@ async function getInfo(server, index) {//gets info for 1 server at a time
 
 
 
-    // console.timeEnd("server")
+    console.timeEnd("server")
 
     return data;
 }
