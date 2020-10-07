@@ -400,20 +400,27 @@ bot.on('message', async message => {//dev commands
 
     else if(command == "listallplayers"){
         let list = "";
+        let embed = new Discord.MessageEmbed()
+        .setTitle(`All Players`)
+        .setColor(7980240)
+        .setTimestamp(Date.now())
+        
 
         for(let i in gData){
             let server = gData[i];
 
-            list += `**${server.name}**\n`;
+            list += "**" + server.name + "**\n";
 
             for(let p of server.players){
                 if(p.name == undefined) continue;
-                list += p.name + "\n"
+                list += p.name + "\n";
             }
-
-            list += "\n\n"
+            list += "\n\n";
+           
         }
 
-        message.author.send(list, {split: true})
+        embed.setDescription(list)
+
+        message.author.send({embed: embed})
     }
 })
