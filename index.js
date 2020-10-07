@@ -16,7 +16,7 @@ let allowedDevs = ["134088598684303360", "204729465564037120"];
 
 async function intervalFunction() {
 
-    // console.time("all")
+    console.time("all")
 
     await refresh(serverObject);
 
@@ -30,7 +30,7 @@ async function intervalFunction() {
         })
     })
 
-    // console.timeEnd("all")
+    console.timeEnd("all")
 
 }
 
@@ -275,6 +275,14 @@ bot.on('message', async message => {//public commands
 
     if (command == "players" || command == "p") {
 
+        if (args.length == 0) {
+            return message.channel.send({ embed: await makeServerList() })
+        }
+
+        if (isEmpty(gData)) {
+            return message.channel.send("Please Wait. The bot is starting.")
+        }
+
         if (args[0].toLowerCase() == "frumpy") {//easteregg
             message.delete();
             let egg = new Discord.MessageEmbed()
@@ -289,14 +297,6 @@ bot.on('message', async message => {//public commands
 
 
             return message.channel.send({ embed: egg })
-        }
-
-        if (isEmpty(gData)) {
-            return message.channel.send("Please Wait. The bot is starting.")
-        }
-
-        if (args.length == 0) {
-            return message.channel.send({ embed: await makeServerList() })
         }
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
