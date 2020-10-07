@@ -312,7 +312,7 @@ bot.on('message', async message => {//public commands
 
     }
 
-    if (command == "map" || command == "m") {
+    else if (command == "map" || command == "m") {
         if (isEmpty(gData)) {
             return message.channel.send("Please Wait. The bot is starting.")
         }
@@ -359,7 +359,7 @@ bot.on('message', async message => {//public commands
 
     }
 
-    if(command == "help" || command == "commands") {
+    else if(command == "help" || command == "commands") {
         let embed = new Discord.MessageEmbed()
         .setTitle(`List of commands`)
         .setColor(7980240)
@@ -396,5 +396,24 @@ bot.on('message', async message => {//dev commands
         out += "```"
 
         message.channel.send(out);
+    }
+
+    else if(command == "listallplayers"){
+        let list = "";
+
+        for(let i in gData){
+            let server = gData[i];
+
+            list += `**${server.name}**\n`;
+
+            for(let p of server.players){
+                if(p.name == undefined) continue;
+                list += p.name + "\n"
+            }
+
+            list += "\n\n"
+        }
+
+        message.author.send(list, {split: true})
     }
 })
