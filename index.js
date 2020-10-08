@@ -104,6 +104,7 @@ function makeEmbed() {
     // console.time("embed")
     let embed = new Discord.MessageEmbed()
         .setTitle("Server List")
+        .setDescription("This list is updated every 1.5 minutes.")
         .setColor(7980240)
         .setFooter("Last Updated", frumpyAvatarLink)
         .setTimestamp(Date.now())
