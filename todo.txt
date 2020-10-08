@@ -1,0 +1,17 @@
+//Make function that runs when map changes on server. then query for people following new map
+
+//Create table
+    CREATE TABLE players_follow (
+        discord_id INTEGER,
+        map_name TEXT,
+        UNIQUE(discord_id, map_name) ON CONFLICT REPLACE
+    );
+
+//select from table
+then to get all people following a map
+    SELECT discord_id FROM players_follow WHERE map_name = `surf_kitsune`
+
+or all maps that a person follows
+    SELECT map_name FROM players_follow WHERE discord_id = 123
+
+//On member leave delete all follows with discordID
