@@ -273,6 +273,7 @@ bot.on('message', async message => {//public commands
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
+    if(message.author.bot) return;
 
     if (command == "players" || command == "p") {
 
@@ -381,6 +382,7 @@ bot.on('message', async message => {//dev commands
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
+    if(message.author.bot) return;
 
     if (command == "id") {
         message.channel.send("does sneak gay?").then(m => {
