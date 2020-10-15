@@ -112,9 +112,12 @@ function makeEmbed() {
     for (let s in gData) {//makes field for ever server 
         let server = gData[s];
 
-        if (!server.show) continue;
+        
 
         if (server.online) {
+            
+            if (!server.show) continue;
+
             embed.addField(
                 server.name,
                 `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
