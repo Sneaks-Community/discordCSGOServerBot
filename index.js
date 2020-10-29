@@ -141,7 +141,8 @@ function makeEmbed() {
 bot.on("ready", async () => {
     console.log("Started as " + bot.user.tag);
     bot.user.setActivity("--players in #bot-commands");
-    frumpyAvatarLink = bot.users.cache.get("134088598684303360").avatarURL() || "https://i.imgur.com/cBiDnMi.png"
+    let frumpy = await bot.users.fetch("134088598684303360")
+    frumpyAvatarLink = frumpy.avatarURL() || "https://i.imgur.com/cBiDnMi.png"
 
     intervalFunction();
 
