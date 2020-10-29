@@ -24,10 +24,17 @@ async function intervalFunction() {
     //     m.edit("‎", { embed: await makeEmbed() })//sends embed with blank char
     // })
 
-    config.embeds.forEach(e => {//loops thru updating embeds
-        bot.channels.cache.get(e.channelID).messages.fetch(e.messageID).then(async m => {//fetches config message
-            m.edit("‎", { embed: await makeEmbed() })//sends embed with blank char
-        })
+    let embed = await makeEmbed();
+
+    config.embeds.forEach(async e => {//loops thru updating embeds
+        // bot.channels.cache.get(e.channelID).messages.fetch(e.messageID).then(async m => {//fetches config message
+        //     m.edit("‎", { embed: await makeEmbed() })//sends embed with blank char
+        // })
+
+        let channel = await bot.channels.fetch(e.channelID);
+        let message = await channel.messages.fetch(e.messageID)
+        message.edit("‎", { embed: embed })
+
     })
 
     // console.timeEnd("all")
