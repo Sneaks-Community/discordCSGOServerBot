@@ -112,10 +112,10 @@ function makeEmbed() {
     for (let s in gData) {//makes field for ever server 
         let server = gData[s];
 
-        
+
 
         if (server.online) {
-            
+
             if (!server.show) continue;
 
             embed.addField(
@@ -277,16 +277,15 @@ bot.on('message', async message => {//public commands
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
-    if(message.author.bot) return;
+    if (message.author.bot) return;
 
     if (command == "players" || command == "p") {
+        if (isEmpty(gData)) {
+            return message.channel.send("Please Wait. The bot is starting.")
+        }
 
         if (args.length == 0) {
             return message.channel.send({ embed: await makeServerList() })
-        }
-
-        if (isEmpty(gData)) {
-            return message.channel.send("Please Wait. The bot is starting.")
         }
 
         if (args[0].toLowerCase() == "frumpy") {//easteregg
@@ -365,15 +364,15 @@ bot.on('message', async message => {//public commands
 
     }
 
-    else if(command == "help" || command == "commands") {
+    else if (command == "help" || command == "commands") {
         let embed = new Discord.MessageEmbed()
-        .setTitle(`List of commands`)
-        .setColor(7980240)
-        .setTimestamp(Date.now())
-        .addField("--players/--p", "`--players <server>`\nThis command will return a list of currently connected users to the specified server.")
-        .addField("--map/--m", "`--map <Server>`\nThis command return with what map a server is on, along with any other relevant information about the map.")
+            .setTitle(`List of commands`)
+            .setColor(7980240)
+            .setTimestamp(Date.now())
+            .addField("--players/--p", "`--players <server>`\nThis command will return a list of currently connected users to the specified server.")
+            .addField("--map/--m", "`--map <Server>`\nThis command return with what map a server is on, along with any other relevant information about the map.")
 
-        message.channel.send({embed: embed})
+        message.channel.send({ embed: embed })
     }
 })
 
@@ -386,7 +385,7 @@ bot.on('message', async message => {//dev commands
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
-    if(message.author.bot) return;
+    if (message.author.bot) return;
 
     if (command == "id") {
         message.channel.send("does sneak gay?").then(m => {
@@ -405,29 +404,29 @@ bot.on('message', async message => {//dev commands
         message.channel.send(out);
     }
 
-    else if(command == "listallplayers"){
+    else if (command == "listallplayers") {
         let list = "";
         let embed = new Discord.MessageEmbed()
-        .setTitle(`All Players`)
-        .setColor(7980240)
-        .setTimestamp(Date.now())
-        
+            .setTitle(`All Players`)
+            .setColor(7980240)
+            .setTimestamp(Date.now())
 
-        for(let i in gData){
+
+        for (let i in gData) {
             let server = gData[i];
 
             list += "**" + server.name + "**\n";
 
-            for(let p of server.players){
-                if(p.name == undefined) continue;
+            for (let p of server.players) {
+                if (p.name == undefined) continue;
                 list += p.name + "\n";
             }
             list += "\n\n";
-           
+
         }
 
         embed.setDescription(list)
 
-        message.author.send({embed: embed})
+        message.author.send({ embed: embed })
     }
 })
