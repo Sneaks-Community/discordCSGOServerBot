@@ -217,7 +217,7 @@ function playerListEmbed(server) {//makes embed with list of players
             list += bot.name += "\n";
         }
 
-        list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
+        list = list.replace(/\`/g, "'").replace(/\*/g, "\\*").replace(/\_/g, "\\_").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
 
         embed.setDescription(list);
     } else {//if offline
