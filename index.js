@@ -1,333 +1,433 @@
-const game = require('gamedig'); //Requires gamedig
-const Discord = require('discord.js'); //Requires Discord.js
-const bot = new Discord.Client(); //Creates new Discord Client
-const process = require('process');
-const {
-    token,
-    channelID,
-    messageID,
-    embedImage,
-    intervalMS
-} = require('./config.json');
+const Discord = require("discord.js");
+const Gamedig = require("gamedig");
 
-var version = '3.5.1'
+const config = require("./config.json")
 
+const bot = new Discord.Client();
+bot.login(config.token);
 
+const serverObject = require("./servers.json");
 
-var gData = {} //Init Global Data
+let gData = {}
 
-var playersCommand = true
+let frumpyAvatarLink;
 
-var startTime = null;
-var endTime = null;
+let allowedDevs = ["134088598684303360", "204729465564037120"];
 
-bot.login(token) //Logs in Bot 
+async function intervalFunction() {
 
+    // console.time("all")
 
+    await refresh(serverObject);
+    let embed = await makeEmbed();
 
-var servers = require('./servers.json');
+    // bot.channels.cache.get(config.channelID).messages.fetch(config.messageID).then(async m => {//fetches config message
+    //     m.edit("‎", { embed: await makeEmbed() })//sends embed with blank char
+    // })
 
-
-
-async function gameSplit(s) { //Splits Games Between CSGO and Minecraft(deprecated)
-    var csgo = s.csgo //Takes CSGO server obj out of Servers Object
-    var done = new Object() //Creates new Done obj for filtered games
-
-    if (Object.entries(csgo).length) { //Checks size of CSGO servers obj
-        var checked = await csgoCheck(csgo) //Returns servers that have responed to query//if a value in array is "error" it is removed //csgoCheck returns array of objects. if error returns "error"
-        done['csgo'] = checked //Creates sub object in done object
-
-    }
-
-    return done; //returns CSGO server data
-}
-
-
-
-async function csgoCheck(s) {
-
-    var r = [] //Creates array for responces 
-    for (var i = 0; i < Object.values(s).length; i++) { //ForLoop for each csgo server
-        var ip = Object.values(s)[i].ip.split(':')[0] //Takes server ip and splits on ":" and takes first element. //IP
-        var port = Object.values(s)[i].ip.split(':')[1] //Takes server ip and splits on ":" and takes seccond element. //PORT
-        var data = await game.query({ //Querys CSGO server
-            type: 'csgo',
-            host: ip,
-            port: port,
-            maxAttempts: 3,
-        }).catch(e => {
-            return;
+    config.embeds.forEach(e => {//loops thru updating embeds
+        bot.channels.cache.get(e.channelID).messages.fetch(e.messageID).then(async m => {//fetches config message
+            m.edit("‎", { embed: embed })//sends embed with blank char
         })
-
-        if(data){
-            data.notes = [Object.keys(s)[i], Object.values(s)[i].nick]
-			data.show = Object.values(s)[i].show
-            r.push(data) //if NO error push responce obj to array
-        }
-    }
-
-    return r //Function returns array of objects
-}
-
-
-
-async function run() { //Starts query and filter
-
-
-
-    let data = await gameSplit(servers) //Splits games into their own objects
-    //console.log(data)
-
-    let csgoData = data.csgo //Takes csgo data out of split
-
-    var done = { //Creates empty object for forloop to enter data
-        csgo: {
-
-        },
-
-    }
-    for (var i = 0; i < csgoData.length; i++) { //Loops thru csgo servers
-
-        done.csgo[csgoData[i].notes[0]] = { //Creates new obj in done.csgo for each server
-            serverName: csgoData[i].notes[1], //Takes server name and replaces place holders for forbidden var names with the forbidden chars 
-            mapName: csgoData[i].map, //Current server map
-            onlinePlayers: csgoData[i].raw.numplayers, //Number of online players
-            botPlayers: csgoData[i].raw.numbots, //Number of bots
-            maxPlayers: csgoData[i].maxplayers, //Max ammount of players on server
-            playersArray: csgoData[i].players, //Array of online players. Each entry is an object with name,score,time vars.
-            botsArray: csgoData[i].bots,
-            server: { //Creates sub object for server infomation
-                ip: csgoData[i].connect, //IP+port
-                host: csgoData[i].connect.split(':')[0], //IP only
-                port: csgoData[i].connect.split(':')[1] //Port Only
-            },
-			show: csgoData[i].show
-        }
-    }
-    done.updated = Date.now()
-    return done; //Returns object with all of csgo server data. done.csgo.serverSteamID is an object with server data
-}
-
-bot.on('ready', async () => { //Event is fired when the bot logins into discord
-    console.log(bot.user.tag) //Logs bot's discord tag
-    bot.user.setActivity('--players in #bot-commands')
-    var channel = channelID //Define the channel which the embed will be placed in
-    var msg = messageID //Define the message that the bot will update. Message must be sent by the bot. Use the command --id in the channel where you want the embed to get the message id
-
-    bot.channels.cache.get(channel).fetch(msg).then(m => { //Fetches the channel and the message and returns callback 'm' which is the message that will be updated.
-        bot.setInterval(async () => { //Creates timer that will run every x ms. x is defined on line 151
-
-            gData = await run() //Runs the run function which returns the done.csgo object. Sets gData to this data so it can be called in other functions.
-            var embed = new Discord.MessageEmbed() //Creates discord embed
-                .setTitle('Server List') //Adds title
-                .setDescription('This list is updated every 1.5 minutes.') //Adds description
-                .setTimestamp(gData.updated) //Adds timestamp of last update
-                .setFooter('Last Updated', embedImage) //Sets footer message and sets embed icon
-                .setColor(7980240) //Sets the color of the embed
-
-            for (var i = 0; i < Object.keys(gData.csgo).length; i++) { //Creats forloop to run thru each csgo server to make a embed field for each server
-                var server = gData.csgo[Object.keys(gData.csgo)[i]] //Defines server as each server in gData object
-				if(!server.show) continue;
-                embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field with server info
-            }
-            m.edit({
-                embed: embed
-            }) //Edits embed with most recent update of embed
-
-        }, intervalMS) //Sets interval in ms for function to run
     })
+
+    // console.timeEnd("all")
+
+}
+
+async function refresh(servers) {//refreshes all servers
+
+    let allData = {}
+
+    let index = 1;
+
+    for (let s in servers) {//loops thru servers 
+        allData[s] = await getInfo(servers[s], index)//gets info from server
+        index++;
+    }
+
+    gData = allData;//overwrites Global data var
+}
+
+async function getInfo(server, index) {//gets info for 1 server at a time
+
+    // console.time("server")
+
+    let ip = server.ip.split(":")[0];
+    let port = server.ip.split(":")[1];
+
+    let valid = true;
+
+    let res = await Gamedig.query({
+        type: "csgo",
+        host: ip,
+        port: port
+    }).catch(e => {
+        valid = false;
+    })
+
+    let data;
+
+
+    if (valid) {
+        data = {
+            online: true,
+            name: server.nick,//Short nickname
+            fullIP: res.connect,//String with ip:port
+            map: res.map,//Current map
+            maxPlayers: res.maxplayers,
+            players: res.players,//Players array {name, score, time}
+            bots: res.bots,//Bots array {name, score, time}
+            numPlayers: res.raw.numplayers - res.raw.numbots,//int
+            numBots: res.raw.numbots,//int
+            show: server.show,//bool to print server in embed
+            keywords: server.keywords,//array of keywords for --players command
+            index: index
+        }
+    }
+    else {
+        data = {
+            online: false,
+            name: server.nick,
+            keywords: server.keywords,
+            index: index
+        }
+    }
+
+
+
+    // console.timeEnd("server")
+
+    return data;
+}
+
+function makeEmbed() {
+    // console.time("embed")
+    let embed = new Discord.MessageEmbed()
+        .setTitle("Server List")
+        .setDescription("This list is updated every 1.5 minutes.")
+        .setColor(7980240)
+        .setFooter("Last Updated", frumpyAvatarLink)
+        .setTimestamp(Date.now())
+
+    for (let s in gData) {//makes field for ever server 
+        let server = gData[s];
+
+
+
+        if (server.online) {
+
+            if (!server.show) continue;
+
+            embed.addField(
+                server.name,
+                `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
+                **__Map:__** ${getWebsite(server.map)}
+                **__IP:__** ${server.fullIP}`,
+                true
+            )
+        } else {//checks if offline
+            embed.addField(
+                server.name,
+                "**Server is not available.**",
+                true
+            )
+        }
+
+    }
+    // console.timeEnd("embed")
+    return embed;
+}
+
+bot.on("ready", async () => {
+    console.log("Started as " + bot.user.tag);
+    bot.user.setActivity("--players in #bot-commands");
+    let frumpy = await bot.users.fetch("134088598684303360")
+    frumpyAvatarLink = frumpy.avatarURL() || "https://i.imgur.com/cBiDnMi.png"
+
+    intervalFunction();
+
+    bot.setInterval(intervalFunction, config.intervalMS)//starts embed update loop
+
 })
 
-bot.on('message', async message => { //Event is fired when a message is sent //Maintenance commands//ONLY TO BE USED BY FRUMPY AND SNEAK
+
+function getWebsite(mapName) {//returns stats website if available 
+    //https://snksrv.com/surfstats/?view=map&name=x
+    //https://snksrv.com/kzstats/#/maps/x
+    if (mapName.startsWith("surf_")) {
+        return `[${mapName}](https://snksrv.com/surfstats/?view=map&name=${mapName})`
+    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
+        return `[${mapName}](https://snksrv.com/kzstats/#/maps/${mapName}/)`
+    } else if (mapName.startsWith("bhop")) {
+        return `[${mapName}](https://snksrv.com/bhopstats/index.php?map=${mapName})`
+    } else {
+        return mapName
+    }
+
+}
+
+function isEmpty(obj) {//checks if bot has started//if empty bot is starting
+    for (var key in obj) {
+        if (obj.hasOwnProperty(key))
+            return false;
+    }
+    return true;
+}
+
+function keywordToServer(keyword) {//takes keywords and returns server obj
+    for (let s in gData) {
+        let server = gData[s];
+
+        if (server.keywords.includes(keyword) || server.index == keyword) {
+            return gData[s];
+        }
+    }
+    return false;
+}
+
+function playerListEmbed(server) {//makes embed with list of players
+
+    let embed;
+
+    if (server.online) {
+        embed = new Discord.MessageEmbed()
+            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`)
+            .setColor(7980240)
+            .setFooter("Last Updated", frumpyAvatarLink)
+            .setTimestamp(Date.now())
+
+        let list = "";
+
+        for (let i in server.players) {
+            let player = server.players[i];
+
+            list += player.name + "\n"
+        }
+
+        for (let i in server.bots) {
+            let bot = server.bots[i];
+
+            list += bot.name += "\n";
+        }
+
+        list = list.replace(/\`/g, "'").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
+
+        embed.setDescription(list);
+    } else {//if offline
+        embed = new Discord.MessageEmbed()
+            .setTitle(`${server.name} is currently unavailable.`)
+            .setColor(7980240)
+            .setFooter("Last Updated", frumpyAvatarLink)
+            .setTimestamp(Date.now())
+            .setImage("https://i.imgur.com/WnS0Biz.png")
+    }
+    return embed;
+}
+
+function makeServerList() {//make server list embed for public commands
+    let embed = new Discord.MessageEmbed()
+        .setTitle("Please specify what sever you want to check.")
+        .setColor(7980240)
+        .setFooter("Last Updated", frumpyAvatarLink)
+        .setTimestamp(Date.now())
+
+    let list = "";
+
+    for (let i in gData) {
+        let server = gData[i];
+
+        if (server.online) {
+            list += `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
+        } else {
+            list += `${server.index}: **__${server.name}__**: is currently unavailable.\n`
+        }
+
+    }
+
+    embed.setDescription(list)
+
+    return embed;
+}
+
+function getMapImage(mapName) {//looks for map image
+    if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
+        return `https://snksrv.com/bans/images/maps/${mapName}.jpg`
+    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
+        return `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${mapName}.jpg`
+    } else {
+        return false;
+    }
+}
+
+function getStatsPage(mapName) {//looks for stats page
+    if (mapName.startsWith("surf_")) {
+        return `https://snksrv.com/surfstats/?view=map&name=${mapName}`
+    } else if (mapName.startsWith("bkz_") || mapName.startsWith("kz_") || mapName.startsWith("kzpro_") || mapName.startsWith("skz_") || mapName.startsWith("vnl_") || mapName.startsWith("xc_")) {
+        return `https://snksrv.com/kzstats/#/maps/${mapName}/`
+    } else if (mapName.startsWith("bhop")) {
+        return `https://snksrv.com/bhopstats/index.php?map=${mapName}`
+    } else {
+        return false;
+    }
+}
+
+bot.on('message', async message => {//public commands
+
     const prefix = '--'
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
-
     if (!message.content.startsWith(prefix)) return;
-
     if (message.author.bot) return;
-    if (!['134088598684303360', '204729465564037120'].includes(message.author.id)) return; //If the message is not from Frumpy#0072 the bot will do nothing
+
+    if (command == "players" || command == "p") {
+        if (isEmpty(gData)) {
+            return message.channel.send("Please Wait. The bot is starting.")
+        }
+
+        if (args.length == 0) {
+            return message.channel.send({ embed: await makeServerList() })
+        }
+
+        if (args[0].toLowerCase() == "frumpy") {//easteregg
+            message.delete();
+            let egg = new Discord.MessageEmbed()
+                .setTitle(`listen here`)
+                .setURL("https://www.youtube.com/watch?v=lPGipwoJiOM")
+                .setColor("#26bf7a")
+                .setDescription(require("fs").readFileSync("./meme.txt"))
+                .setFooter("ｆｒｕｍｐｙ７", frumpyAvatarLink)
+                .setTimestamp(Date.parse("Sat Mar 15 4207 04:20:07 GMT-0456"))
+                .setImage("https://i.imgur.com/FHTK2WB.gif")
+                .setAuthor("( ͡° ͜ʖ ͡°)", "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676", "https://mrdoob.com/#/157/spin_painter")
 
 
-    if (command === 'id') { //This command will make the bot send a message and then edit the message to be the ID of the message.
-        message.channel.send('Running...').then(m => { //Sends 'Running...' then returns the message that was sent.
-            m.edit(m.id) //Edits the message to be the ID of the message
-        })
-    } else if (command === 'test') { //Command will test the embed by pulling data from gData and making a new embed
+            return message.channel.send({ embed: egg })
+        }
 
-        if (Object.keys(gData).length === 0) return message.channel.send('please wait'); //If the bot has not been online for 3 mins or no servers are responding the bot will send a message saying 'Please Wait.'
+        let server = await keywordToServer(args.join(" ").toLowerCase());
 
-        var embed = new Discord.MessageEmbed() //Creates discord embed
-            .setTitle('Server List') //Adds title
-            .setDescription('This list is updated every 1.5 minutes.') //Adds description
-            .setTimestamp(gData.updated) //Adds timestamp of last update
-            .setFooter('Last Updated', embedImage) //Sets footer message and sets embed icon
-            .setColor(7980240) //Sets the color of the embed
+        if (!server) {
+            return message.channel.send("Please enter a valid server.");
+        } else {//if returns valid server obj
+            let embed = await playerListEmbed(server);
 
-        for (var i = 0; i < Object.keys(gData.csgo).length; i++) { //Creats forloop to run thru each csgo server to make a embed field for each server
-            var server = gData.csgo[Object.keys(gData.csgo)[i]] //Defines server as each server in gData object
-            if(!server.show) continue;
-            embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field with server info
+            message.channel.send({ embed: embed })
         }
 
 
-
-        message.channel.send({ //Sends the embed to the channel where orginal message was sent
-            embed: embed
-        })
-
-
-    } else if (command === 'fasttest') { //This command will test the embed but will not take data from gData. When this command is ran it will start the query process again.
-        startTime = Date.now()
-        
-        message.channel.send('running..')
-        var data = await run() //Data is defined as the done object
-        gData = data
-
-
-        var embed = new Discord.MessageEmbed() //Creates discord embed
-            .setTitle('Server List') //Adds title
-            .setDescription('This list is updated every 1.5 minutes.') //Adds description
-            .setTimestamp(data.updated) //Adds timestamp of last update
-            .setFooter('Last Updated', embedImage) //Sets footer message and sets embed icon
-            .setColor(7980240) //Sets the color of the embed
-
-        for (var i = 0; i < Object.keys(data.csgo).length; i++) { //Creates forloop for each csgo server
-            var server = data.csgo[Object.keys(data.csgo)[i]] //Defines server as each csgo server
-            if(!server.show) continue;
-            embed.addField(server.serverName, `**__Players:__** ${Number(server.onlinePlayers) - Number(server.botPlayers)} (${server.botPlayers}) / ${server.maxPlayers}\n**__Map:__** ${server.mapName}\n**__IP:__** ${server.server.ip}`) //Adds embed field for each csgo server
-        }
-
-
-
-        message.channel.send({ //Send the finished embed to the channel where the orginal message was sent.
-            embed: embed
-        }).then(m => {
-            endTime = Date.now()
-            let evalTime = endTime - startTime
-            m.channel.send(evalTime / 1000 + " seconds")
-        })
-
-
-    } else if (command === 'toggleplayerscommand') {
-        if (!args[0]) return;
-        if (args[0].toLowerCase() === 'true') {
-            playersCommand = true
-            message.react('?')
-        } else if (args[0].toLowerCase() === 'false') {
-            playersCommand = false
-            message.react('?')
-        } else {
-            return console.log('error toggling players command');
-        }
-    } else if (command === 'v') {
-        message.channel.send(version)
     }
 
+    else if (command == "map" || command == "m") {
+        if (isEmpty(gData)) {
+            return message.channel.send("Please Wait. The bot is starting.")
+        }
 
-    else if(command === "restart"){
-        return process.exit();
+        if (args.length == 0) {
+            return message.channel.send({ embed: await makeServerList() })
+        }
+
+        let server = await keywordToServer(args.join(" ").toLowerCase());
+
+        if (!server) {
+            return message.channel.send("Please choose a valid server.");
+        } else {
+
+            let embed;
+
+            if (server.online) {
+
+                let image = getMapImage(server.map)
+                let stats = getStatsPage(server.map)
+
+                embed = new Discord.MessageEmbed()
+                    .setTitle(`${server.name} is currently on ${server.map}`)
+                    .setColor(7980240)
+                    .setFooter("Last Updated", frumpyAvatarLink)
+                    .setTimestamp(Date.now())
+                if (stats) embed.setURL(stats)
+                if (image) embed.setImage(image)
+
+            } else {
+
+                embed = new Discord.MessageEmbed()
+                    .setTitle(`${server.name} is currently unavailable.`)
+                    .setColor(7980240)
+                    .setFooter("Last Updated", frumpyAvatarLink)
+                    .setTimestamp(Date.now())
+                    .setImage("https://i.imgur.com/WnS0Biz.png")
+
+            }
+
+            message.channel.send({ embed: embed })
+
+        }
+
+    }
+
+    else if (command == "help" || command == "commands") {
+        let embed = new Discord.MessageEmbed()
+            .setTitle(`List of commands`)
+            .setColor(7980240)
+            .setTimestamp(Date.now())
+            .addField("--players/--p", "`--players <server>`\nThis command will return a list of currently connected users to the specified server.")
+            .addField("--map/--m", "`--map <Server>`\nThis command return with what map a server is on, along with any other relevant information about the map.")
+
+        message.channel.send({ embed: embed })
     }
 })
 
 
-bot.on('message', async message => {
+bot.on('message', async message => {//dev commands
+
+    if (!allowedDevs.includes(message.author.id)) return;//if not frumpy or sneak no commands will run
+
     const prefix = '--'
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
+    if (message.author.bot) return;
 
-    if (!['308362832557113344', '269171320732778496', '546037656887361567', '546037725116235787'].includes(message.channel.id) && message.channel.type !== 'dm' && command == 'players') {
-        //if(['134088598684303360', '204729465564037120'].includes(message.author.id)) return;
-        message.delete().catch(e => console.log)
-        message.author.send('Please only use this command in #bot-commands or in my DM channel.')
-        return;
+    if (command == "id") {
+        message.channel.send("does sneak gay?").then(m => {
+            m.edit(m.id);
+        })
     }
 
-    if (command === 'players') {
-
-        if (playersCommand !== true) return;
-
-        if (Object.keys(gData).length === 0) return message.channel.send('Please wait while the bot is starting.');
-
-
-        if (args.length === 0) {
-
-
-            var list = '';
-            var num = 1;
-
-            Object.keys(gData.csgo).forEach(s => {
-                list += `\n**${num}**: ${gData.csgo[s].serverName}: ${Number(gData.csgo[s].onlinePlayers) - Number(gData.csgo[s].botPlayers)} (${gData.csgo[s].botPlayers}) / ${gData.csgo[s].maxPlayers} on ${gData.csgo[s].mapName}`
-                num++
-            })
-
-
-            embed = {
-                "title": `Please specify what sever you want to check. Do \`--players <Server Number>\``,
-                "description": list,
-                "color": 7980240,
-                "timestamp": gData.updated,
-                "footer": {
-                    "icon_url": "https://snksrv.com/frumpy.gif",
-                    "text": "Last Updated"
-                }
-            };
-
-            message.channel.send({
-                embed: embed
-            })
-
-
-        } else {
-
-            function botCheck() {
-                var bots = gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].botsArray
-                var botArr = []
-
-                bots.forEach(b => {
-                    botArr.push(b.name)
-                })
-                var endString = '\n'
-                endString += botArr.join('\n')
-
-                return endString;
-            }
-
-            var embed;
-            if(gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].onlinePlayers > gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.length) {
-                embed = {
-                    "title": `${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers) - Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)} (${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)}) / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
-                    "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n') + await botCheck()).replace(/`/g, '') : 'No players currently online.',
-                    "color": 7980240,
-                    "timestamp": gData.updated,
-                    "footer": {
-                        "icon_url": "https://snksrv.com/frumpy.gif",
-                        "text": "Last Updated"
-                    }
-                };
-            } else {
-                embed = {
-                    "title": `${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].onlinePlayers) - Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)} (${Number(gData.csgo[Object.keys(gData.csgo)[args[0]-1]].botPlayers)}) / ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].maxPlayers} players connected to ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].serverName} on ${gData.csgo[Object.keys(gData.csgo)[args[0]-1]].mapName}`,
-                    "description": (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) ? (gData.csgo[Object.keys(gData.csgo)[args[0] - 1]].playersArray.map(player => player.name).join('\n')) : 'No players currently online.',
-                    "color": 7980240,
-                    "timestamp": gData.updated,
-                    "footer": {
-                        "icon_url": "https://snksrv.com/frumpy.gif",
-                        "text": "Last Updated"
-                    }
-                };
-            }
-
-            message.channel.send({
-                embed: embed
-            })
+    else if (command == "mem") {
+        let used = process.memoryUsage();
+        let out = "```";
+        for (let key in used) {
+            out += `${key} ${Math.round(used[key] / 1024 / 1024 * 100) / 100} MB\n`
         }
+        out += "```"
+
+        message.channel.send(out);
     }
 
+    else if (command == "listallplayers") {
+        let list = "";
+        let embed = new Discord.MessageEmbed()
+            .setTitle(`All Players`)
+            .setColor(7980240)
+            .setTimestamp(Date.now())
 
 
+        for (let i in gData) {
+            let server = gData[i];
 
+            list += "**" + server.name + "**\n";
+
+            for (let p of server.players) {
+                if (p.name == undefined) continue;
+                list += p.name + "\n";
+            }
+            list += "\n\n";
+
+        }
+
+        embed.setDescription(list)
+
+        message.author.send({ embed: embed })
+    }
 })
-
-bot.on('error', console.error)
