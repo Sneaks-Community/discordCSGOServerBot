@@ -375,6 +375,21 @@ bot.on('message', async message => {//public commands
 
         message.channel.send({ embed: embed })
     }
+
+    else if(command == "keywords" || command == "keys"){
+        let list = "";
+        
+        for(let i in serverObject){
+            let server = serverObject[i];
+            list += "**" + server.nick + ":**\n"
+            for(let k of server.keywords){
+                list += "\t" + k;
+            }
+            list += "\n"
+        }
+
+        message.channel.send(list)
+    }
 })
 
 
