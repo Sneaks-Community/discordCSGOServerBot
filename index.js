@@ -19,6 +19,7 @@ async function intervalFunction() {
     // console.time("all")
 
     await refresh(serverObject);
+    let embed = await makeEmbed();
 
     // bot.channels.cache.get(config.channelID).messages.fetch(config.messageID).then(async m => {//fetches config message
     //     m.edit("‎", { embed: await makeEmbed() })//sends embed with blank char
