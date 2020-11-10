@@ -199,7 +199,7 @@ function playerListEmbed(server) {//makes embed with list of players
 
     if (server.online) {
         embed = new Discord.MessageEmbed()
-            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`)
+            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/\_/g, "\\_"))
             .setColor(7980240)
             .setFooter("Last Updated", frumpyAvatarLink)
             .setTimestamp(Date.now())
@@ -348,7 +348,7 @@ bot.on('message', async message => {//public commands
                 let stats = getStatsPage(server.map)
 
                 embed = new Discord.MessageEmbed()
-                    .setTitle(`${server.name} is currently on ${server.map}`)
+                    .setTitle(`${server.name} is currently on ${server.map}`.replace(/\_/g, "\\_"))
                     .setColor(7980240)
                     .setFooter("Last Updated", frumpyAvatarLink)
                     .setTimestamp(Date.now())
