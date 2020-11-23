@@ -24,7 +24,7 @@ async function intervalFunction() {
     let embed = await makeEmbed();
 
     config.embeds.forEach(async e => {
-        
+
         let channel = await bot.channels.fetch(e.channelID);
         let message = await channel.messages.fetch(e.messageID)
         message.edit("‎", { embed: embed })
@@ -388,6 +388,10 @@ bot.on('message', async message => {//public commands
         }
 
         message.channel.send(list)
+    }
+
+    else if(command == "ping"){
+        message.react("🏓")
     }
 })
 
