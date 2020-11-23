@@ -393,6 +393,10 @@ bot.on('message', async message => {//public commands
     else if(command == "ping"){
         message.react("🏓")
     }
+
+    else if(command == "v" || command == "version"){
+        message.channel.send(require("./package.json").version)
+    }
 })
 
 
