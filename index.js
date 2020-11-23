@@ -14,6 +14,8 @@ let frumpyAvatarLink;
 
 let allowedDevs = ["134088598684303360", "204729465564037120"];
 
+const prefix = '--';
+
 async function intervalFunction() {
 
     // console.time("all")
@@ -281,7 +283,6 @@ function getStatsPage(mapName) {//looks for stats page
 
 bot.on('message', async message => {//public commands
 
-    const prefix = '--'
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
@@ -404,7 +405,7 @@ bot.on('message', async message => {//dev commands
 
     if (!allowedDevs.includes(message.author.id)) return;//if not frumpy or sneak no commands will run
 
-    const prefix = '--'
+    
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
