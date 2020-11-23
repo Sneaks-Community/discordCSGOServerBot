@@ -17,7 +17,7 @@
   },
   "homepage": "https://github.com/Sneaks-Community/discordCSGOServerBot#readme",
   "dependencies": {
-    "discord.js": "^12.4.1",
+    "discord.js": "^12.5.0",
     "gamedig": "^2.0.23"
   }
 }
