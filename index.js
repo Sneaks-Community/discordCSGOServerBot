@@ -369,7 +369,7 @@ bot.on('message', async message => {//public commands
             .setTitle(`List of commands`)
             .setColor(7980240)
             .setTimestamp(Date.now())
-            .addField("--players/--p", "`--players <server>`\nThis command will return a list of currently connected users to the specified server.")
+            .addField("--players/--p", "`--players <Server>`\nThis command will return a list of currently connected users to the specified server.")
             .addField("--map/--m", "`--map <Server>`\nThis command return with what map a server is on, along with any other relevant information about the map.")
 
         message.channel.send({ embed: embed })
