@@ -14,7 +14,7 @@ let frumpyAvatarLink;
 
 let allowedDevs = ["134088598684303360", "204729465564037120"];
 
-const prefix = '--';
+const prefix = '==';
 
 async function intervalFunction() {
 
@@ -272,6 +272,27 @@ function getStatsPage(mapName) {//looks for stats page
     }
 }
 
+function makeMapEmbed(mapName, server){
+
+    server = server || false;
+
+    let image = getMapImage(mapName)
+    let stats = getStatsPage(mapName)
+
+    let embed = new Discord.MessageEmbed()
+        //.setTitle(`${server.name} is currently on ${mapName}`.replace(/\_/g, "\\_"))
+        .setColor(7980240)
+        .setFooter("Last Updated", frumpyAvatarLink)
+        .setTimestamp(Date.now())
+    if (stats) embed.setURL(stats)
+    if (image) embed.setImage(image)
+    if (server) embed.setTitle(`${server.name} is currently on ${mapName}`.replace(/\_/g, "\\_"))
+    if (!server) embed.setTitle(mapName.replace(/\_/g, "\\_"))
+
+    return embed;
+
+}
+
 bot.on('message', async message => {//public commands
 
     const args = message.content.slice(prefix.length).split(/ +/)
@@ -329,23 +350,22 @@ bot.on('message', async message => {//public commands
         let server = await keywordToServer(args.join(" ").toLowerCase());
 
         if (!server) {
-            return message.channel.send("Please choose a valid server.");
+            // return message.channel.send("Please choose a valid server.");
+            let isMap = getMapImage(args[0])
+
+            if(!isMap) return message.channel.send("Please choose a valid server/map.")
+
+            let embed;
+            embed = makeMapEmbed(args[0])
+            message.channel.send({embed: embed})
+
         } else {
 
             let embed;
 
             if (server.online) {
 
-                let image = getMapImage(server.map)
-                let stats = getStatsPage(server.map)
-
-                embed = new Discord.MessageEmbed()
-                    .setTitle(`${server.name} is currently on ${server.map}`.replace(/\_/g, "\\_"))
-                    .setColor(7980240)
-                    .setFooter("Last Updated", frumpyAvatarLink)
-                    .setTimestamp(Date.now())
-                if (stats) embed.setURL(stats)
-                if (image) embed.setImage(image)
+                embed = makeMapEmbed(server.map, server);
 
             } else {
 
