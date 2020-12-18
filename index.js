@@ -287,7 +287,7 @@ function makeMapEmbed(mapName, server){
     if (stats) embed.setURL(stats)
     if (image) embed.setImage(image)
     if (server) embed.setTitle(`${server.name} is currently on ${mapName}`.replace(/\_/g, "\\_"))
-    if (!server) embed.setTitle(mapName.replace(/\_/g, "\\_"))
+    if (!server) embed.setTitle(`${mapName} stats`.replace(/\_/g, "\\_"))
 
     return embed;
 
