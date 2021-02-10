@@ -1,5 +1,6 @@
 const Discord = require("discord.js");
 const Gamedig = require("gamedig");
+const fetch = require("node-fetch");
 
 const config = require("./config.json")
 
@@ -353,7 +354,13 @@ bot.on('message', async message => {//public commands
             // return message.channel.send("Please choose a valid server.");
             let isMap = getMapImage(args[0])
 
-            if(!isMap) return message.channel.send("Please choose a valid server/map.")
+            let res;
+
+            if(isMap){
+                res = await fetch(isMap, {method: "HEAD"})
+            }
+
+            if(!isMap || !res.ok) return message.channel.send("Please choose a valid server/map.")
 
             let embed;
             embed = makeMapEmbed(args[0])
