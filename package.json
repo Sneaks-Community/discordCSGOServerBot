@@ -1,6 +1,6 @@
 {
   "name": "discordcsgoserverbot",
-  "version": "4.2.0",
+  "version": "4.2.5",
   "description": "Server info bot",
   "main": "index.js",
   "scripts": {
