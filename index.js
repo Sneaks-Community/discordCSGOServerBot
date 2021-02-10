@@ -15,7 +15,7 @@ let frumpyAvatarLink;
 
 let allowedDevs = ["134088598684303360", "204729465564037120"];
 
-const prefix = '==';
+const prefix = '--';
 
 async function intervalFunction() {
 
