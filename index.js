@@ -1,6 +1,5 @@
 const Discord = require("discord.js");
 const Gamedig = require("gamedig");
-const { checkServerIdentity } = require("tls");
 const fetch = require("node-fetch");
 
 
