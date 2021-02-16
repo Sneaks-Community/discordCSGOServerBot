@@ -2,6 +2,7 @@ const Discord = require("discord.js");
 const Gamedig = require("gamedig");
 const fetch = require("node-fetch");
 
+
 const config = require("./config.json")
 
 const bot = new Discord.Client();
@@ -18,6 +19,7 @@ let allowedDevs = ["134088598684303360", "204729465564037120"];
 const prefix = '--';
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
+
 
 async function intervalFunction() {
 
@@ -275,7 +277,7 @@ function getStatsPage(mapName) {//looks for stats page
     }
 }
 
-function makeMapEmbed(mapName, server){
+function makeMapEmbed(mapName, server) {
 
     server = server || false;
 
@@ -366,7 +368,7 @@ bot.on('message', async message => {//public commands
 
             let embed;
             embed = makeMapEmbed(args[0])
-            message.channel.send({embed: embed})
+            message.channel.send({ embed: embed })
 
         } else {
 
@@ -404,13 +406,13 @@ bot.on('message', async message => {//public commands
         message.channel.send({ embed: embed })
     }
 
-    else if(command == "keywords" || command == "keys"){
+    else if (command == "keywords" || command == "keys") {
         let list = "";
-        
-        for(let i in serverObject){
+
+        for (let i in serverObject) {
             let server = serverObject[i];
             list += "**" + server.nick + ":**\n"
-            for(let k of server.keywords){
+            for (let k of server.keywords) {
                 list += "\t" + k;
             }
             list += "\n"
@@ -419,11 +421,11 @@ bot.on('message', async message => {//public commands
         message.channel.send(list)
     }
 
-    else if(command == "ping"){
+    else if (command == "ping") {
         message.react("🏓")
     }
 
-    else if(command == "v" || command == "version"){
+    else if (command == "v" || command == "version") {
         message.channel.send(require("./package.json").version)
     }
 })
@@ -433,7 +435,7 @@ bot.on('message', async message => {//dev commands
 
     if (!allowedDevs.includes(message.author.id)) return;//if not frumpy or sneak no commands will run
 
-    
+
     const args = message.content.slice(prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
     if (!message.content.startsWith(prefix)) return;
@@ -481,4 +483,83 @@ bot.on('message', async message => {//dev commands
 
         message.author.send({ embed: embed })
     }
+
+    else if (command == "check") {
+        let ip = args[0]
+
+        if (!args[0]) return message.channel.send("Please enter an ip.")
+
+        let embed = await checkIP(ip);
+
+        if (!embed) return message.channel.send("The server is unavailable.")
+
+        message.channel.send({embed: embed})
+    }
 })
+
+async function checkIP(ip) {
+
+    let port = "27015";
+
+    if (ip.includes(":")) {
+        port = ip.split(":")[1]
+        ip = ip.split(":")[0]
+    }
+
+    let valid = true;
+
+    let res = await Gamedig.query({
+        type: "csgo",
+        host: ip,
+        port: port
+    }).catch(e => {
+        valid = false;
+    })
+
+    if (!valid) return false;
+
+    let data = {
+        name: res.name,//Short nickname
+        fullIP: res.connect,//String with ip:port
+        map: res.map,//Current map
+        maxPlayers: res.maxplayers,
+        players: res.players,//Players array {name, score, time}
+        bots: res.bots,//Bots array {name, score, time}
+        numPlayers: res.raw.numplayers - res.raw.numbots,//int
+        numBots: res.raw.numbots,//int
+    }
+
+
+    let image = getMapImage(data.map)
+
+    let embed = new Discord.MessageEmbed()
+        .setTitle(`${data.numPlayers} (${data.numBots}) / ${data.maxPlayers} players connected to ${data.name} on ${data.map}`.replace(/\_/g, "\\_"))
+        .setColor(7980240)
+        .setFooter("Last Updated", frumpyAvatarLink)
+        .setTimestamp(Date.now())
+        if(image) embed.setImage(image);
+
+    let list = "";
+
+    for (let i in data.players) {
+        let player = data.players[i];
+
+        list += player.name + "\n"
+    }
+
+    for (let i in data.bots) {
+        let bot = data.bots[i];
+
+        list += bot.name += "\n";
+    }
+
+    list = list.replace(/\`/g, "'").replace(/\*/g, "\\*").replace(/\_/g, "\\_").replace(/undefined\n/g, "");//removes back ticks for discord, and removes connecting players... i think
+
+    embed.setDescription(list);
+
+    return embed;
+
+
+
+
+}
