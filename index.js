@@ -16,7 +16,7 @@ let frumpyAvatarLink;
 
 let allowedDevs = ["134088598684303360", "204729465564037120"];
 
-const prefix = '--';
+const prefix = config.prefix;
 
 process.env['NODE_TLS_REJECT_UNAUTHORIZED'] = '0';
 
