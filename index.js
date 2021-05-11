@@ -66,7 +66,8 @@ async function getInfo(server, index) {//gets info for 1 server at a time
     let res = await Gamedig.query({
         type: "csgo",
         host: ip,
-        port: port
+        port: port,
+        maxAttempts: 4
     }).catch(e => {
         valid = false;
     })
