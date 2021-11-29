@@ -616,12 +616,13 @@ let notifyUsers = async function (map, server) {
     let users = await db.getUsersFollowingMap(map)
     for (let i in users) {
         let user = users[i];
-        console.log(user)
+        //console.log(user)
 
 
         bot.users.fetch(user.discord_id).then(u => {
             try{
             u.send(`${map} is now on ${server}!`)
+            console.log(`Sent message to ${u.tag}`)
             } catch(e){
                 bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send(`${map} is now on ${server}!`)
             }
