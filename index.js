@@ -430,24 +430,26 @@ bot.on('message', async message => {//public commands
     else if (command == "v" || command == "version") {
         message.channel.send(require("./package.json").version)
     }
-    else if (command == "followmap") {
+    else if (command == "follow") {
         let map = args.join(" ").toLowerCase();
         if (!map) return message.channel.send("Please enter a valid map name.")
         db.followMap(message.author.id, map)
+        message.channel.send("You are now following " + map + ".").then(msg => msg.react("👍"))
         console.log(message.author.tag + " followed map " + map)
     }
-    else if (command == "unfollowmap") {
+    else if (command == "unfollow") {
         let map = args.join(" ").toLowerCase();
         //if user isnt following the map
         if (!db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map.")
         db.unfollowMap(message.author.id, map)
+        message.channel.send("You are no longer following " + map + ".")
         console.log(message.author.tag + " unfollowed map " + map)
     }
     else if (command == "listfollows") {
         //list all users follows
         let follows = await db.getUserFollows(message.author.id)
         console.log(follows)
-        if (!follows) return message.channel.send("You are not following any maps.")
+        if (!follows) return message.channel.send("You are not following any maps.").then(msg => msg.react("👍"))
         let list = "";
         for (let i in follows) {
             list += follows[i].map_name + "\n"
