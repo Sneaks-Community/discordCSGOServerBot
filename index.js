@@ -436,6 +436,8 @@ bot.on('message', async message => {//public commands
     else if (command == "follow") {
         let map = args.join(" ").toLowerCase();
         if (!map) return message.channel.send("Please enter a valid map name.")
+        if (await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are already following this map.") 
+        
         db.followMap(message.author.id, map)
         message.channel.send("You are now following " + map + ".").then(msg => msg.react("👍"))
         console.log(message.author.tag + " followed map " + map)
@@ -537,6 +539,8 @@ bot.on('message', async message => {//dev commands
         if (!map) return message.channel.send("Please enter a valid map name.")
         //if the map isnt in the database
         if(!db.hasMap(map)) return message.channel.send("No one is following this map.")
+        //react a thumbs up to the message
+        message.react("👍")
         notifyUsers(map)
     }
 })
