@@ -439,10 +439,11 @@ bot.on('message', async message => {//public commands
     }
     else if (command == "unfollow") {
         let map = args.join(" ").toLowerCase();
+        if (!map) return message.channel.send("Please enter a valid map name.")
         //if user isnt following the map
-        if (!db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map.")
+        if (!await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map.")
         db.unfollowMap(message.author.id, map)
-        message.channel.send("You are no longer following " + map + ".")
+        message.channel.send("You are no longer following " + map + ".").then(msg => msg.react("👍"))
         console.log(message.author.tag + " unfollowed map " + map)
     }
     else if (command == "listfollows") {
@@ -630,5 +631,5 @@ bot.setInterval(async function () {
             }
         }
     }
-    console.log(oldData)
+    // console.log(oldData)
 }, 60000);
