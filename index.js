@@ -466,29 +466,7 @@ bot.on('message', async message => {//public commands
         message.channel.send({ embed: embed })
 
     }
-    //make a command that lists all users follows
-    else if (command == "listallfollows") {
-        let follows = await db.getAllFollows()
-        console.log(follows)
-        if (!follows) return message.channel.send("There are no users following any maps.")
-        let list = "";
-        for (let i in follows) {
-            list += "<@" + follows[i].discord_id + ">" + ": " + follows[i].map_name + "\n"
-        }
-        let embed = new Discord.MessageEmbed()
-            .setTitle(`List of all followed maps:`)
-            .setColor(7980240)
-            .setTimestamp(Date.now())
-            .setDescription(list)
-        message.channel.send({ embed: embed })
-    }
-    else if (command == "testnotify"){
-        let map = args.join(" ").toLowerCase();
-        if (!map) return message.channel.send("Please enter a valid map name.")
-        //if the map isnt in the database
-        if(!db.hasMap(map)) return message.channel.send("No one is following this map.")
-        notifyUsers(map)
-    }
+    
 })
 
 
@@ -531,6 +509,28 @@ bot.on('message', async message => {//dev commands
         if (!embed) return message.channel.send("The server is unavailable.")
 
         message.channel.send({ embed: embed })
+    }
+    else if (command == "listallfollows") {
+        let follows = await db.getAllFollows()
+        console.log(follows)
+        if (!follows) return message.channel.send("There are no users following any maps.")
+        let list = "";
+        for (let i in follows) {
+            list += "<@" + follows[i].discord_id + ">" + ": " + follows[i].map_name + "\n"
+        }
+        let embed = new Discord.MessageEmbed()
+            .setTitle(`List of all followed maps:`)
+            .setColor(7980240)
+            .setTimestamp(Date.now())
+            .setDescription(list)
+        message.channel.send({ embed: embed })
+    }
+    else if (command == "testnotify"){
+        let map = args.join(" ").toLowerCase();
+        if (!map) return message.channel.send("Please enter a valid map name.")
+        //if the map isnt in the database
+        if(!db.hasMap(map)) return message.channel.send("No one is following this map.")
+        notifyUsers(map)
     }
 })
 
