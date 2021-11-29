@@ -635,4 +635,4 @@ bot.setInterval(async function () {
         }
     }
     // console.log(oldData)
-}, 60000);
+}, 91000);
