@@ -601,8 +601,13 @@ let notifyUsers = async function (map, server) {
         let user = users[i];
         console.log(user)
 
+
         bot.users.fetch(user.discord_id).then(u => {
-            u.send(`${map} is now on ${server}`)
+            try{
+            u.send(`${map} is now on ${server}!`)
+            } catch(e){
+                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send(`${map} is now on ${server}!`)
+            }
         })
     }
 }
