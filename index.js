@@ -148,7 +148,7 @@ function makeEmbed() {
 
 bot.on("ready", async () => {
     console.log("Started as " + bot.user.tag);
-    bot.user.setActivity("--players in #bot-commands");
+    bot.user.setActivity("--follow <map> in #bot-commands");
     let frumpy = await bot.users.fetch("134088598684303360")
     frumpyAvatarLink = frumpy.avatarURL() || "https://i.imgur.com/cBiDnMi.png"
 
