@@ -84,6 +84,19 @@ let hasMap = function (map_name) {//returns true if map exists
     });
 }
 
+let unfollowAll = function (discord_id) {//unfollows all maps for user
+    return new Promise(function (resolve, reject) {
+        db.run("DELETE FROM players_follow WHERE discord_id = ?", [discord_id], function (err) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve();
+        });
+    });
+}
+
+
 //export all functions
 module.exports = {
     followMap: followMap,
@@ -93,5 +106,6 @@ module.exports = {
     getUserFollows: getUserFollows,
     isFollowingMap: isFollowingMap,
     getUsersFollowingMap: getUsersFollowingMap,
-    hasMap: hasMap
+    hasMap: hasMap,
+    unfollowAll: unfollowAll
 };
