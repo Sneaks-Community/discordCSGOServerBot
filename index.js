@@ -405,7 +405,7 @@ bot.on('message', async message => {//public commands
             .addField("--players/--p", "`--players <Server>`\nThis command will return a list of currently connected users to the specified server.")
             .addField("--map/--m", "`--map <Server>`\nThis command return with what map a server is on, along with any other relevant information about the map.")
             .addField("--follow", "`--follow <Map>`\nThis command will DM you whenever a map you follow is on a server.")
-            .addField("--unfollow", "`--unfollow <map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server.")
+            .addField("--unfollow", "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server.")
             .addField("--listfollows", "`--listfollows`\nThis command will return a list of all maps you are following.")
 
         message.channel.send({ embed: embed })
@@ -439,7 +439,7 @@ bot.on('message', async message => {//public commands
         if (await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are already following this map.") 
         
         db.followMap(message.author.id, map)
-        message.channel.send("You are now following " + map + ".").then(msg => msg.react("👍"))
+        message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(msg => msg.react("👍"))
         console.log(message.author.tag + " followed map " + map)
     }
     else if (command == "unfollow") {
