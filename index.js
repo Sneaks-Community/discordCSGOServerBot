@@ -521,6 +521,12 @@ bot.on('message', async message => {//dev commands
     }
     else if (command == "listallfollows") {
         let follows = await db.getAllFollows()
+        //sort follows by discord id
+        follows.sort((a, b) => {
+            if (a.discord_id < b.discord_id) return -1;
+            if (a.discord_id > b.discord_id) return 1;
+            return 0;
+        })
         console.log(follows)
         if (!follows) return message.channel.send("There are no users following any maps.")
         let list = "";
