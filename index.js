@@ -4,6 +4,7 @@ const fetch = require("node-fetch");
 
 
 const config = require("./config.json")
+const db = require("./db.js")
 
 const bot = new Discord.Client();
 bot.login(config.token);
@@ -147,7 +148,7 @@ function makeEmbed() {
 
 bot.on("ready", async () => {
     console.log("Started as " + bot.user.tag);
-    bot.user.setActivity("--players in #bot-commands");
+    bot.user.setActivity("--follow <map> in #bot-commands");
     let frumpy = await bot.users.fetch("134088598684303360")
     frumpyAvatarLink = frumpy.avatarURL() || "https://i.imgur.com/cBiDnMi.png"
 
@@ -361,11 +362,11 @@ bot.on('message', async message => {//public commands
 
             let res;
 
-            if(isMap){
-                res = await fetch(isMap, {method: "HEAD"})
+            if (isMap) {
+                res = await fetch(isMap, { method: "HEAD" })
             }
 
-            if(!isMap || !res.ok) return message.channel.send("Please choose a valid server/map.")
+            if (!isMap || !res.ok) return message.channel.send("Please choose a valid server/map.")
 
             let embed;
             embed = makeMapEmbed(args[0])
@@ -403,6 +404,9 @@ bot.on('message', async message => {//public commands
             .setTimestamp(Date.now())
             .addField("--players/--p", "`--players <Server>`\nThis command will return a list of currently connected users to the specified server.")
             .addField("--map/--m", "`--map <Server>`\nThis command return with what map a server is on, along with any other relevant information about the map.")
+            .addField("--follow", "`--follow <Map>`\nThis command will DM you whenever a map you follow is on a server.")
+            .addField("--unfollow", "`--unfollow <map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server.")
+            .addField("--listfollows", "`--listfollows`\nThis command will return a list of all servers you are following.")
 
         message.channel.send({ embed: embed })
     }
@@ -429,6 +433,49 @@ bot.on('message', async message => {//public commands
     else if (command == "v" || command == "version") {
         message.channel.send(require("./package.json").version)
     }
+    else if (command == "follow") {
+        let map = args.join(" ").toLowerCase();
+        if (!map) return message.channel.send("Please enter a valid map name.")
+        if (await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are already following this map.") 
+        
+        db.followMap(message.author.id, map)
+        message.channel.send("You are now following " + map + ".").then(msg => msg.react("👍"))
+        console.log(message.author.tag + " followed map " + map)
+    }
+    else if (command == "unfollow") {
+        let map = args.join(" ").toLowerCase();
+        if (!map) return message.channel.send("Please enter a valid map name.")
+        //if the args is "all" unfollow all maps
+        if (map == "all") {
+            db.unfollowAll(message.author.id)
+            message.channel.send("You are no longer following any maps.").then(msg => msg.react("👍"))
+            console.log(message.author.tag + " unfollowed all maps")
+        } else {
+        //if user isnt following the map
+        if (!await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map.")
+        db.unfollowMap(message.author.id, map)
+        message.channel.send("You are no longer following " + map + ".").then(msg => msg.react("👍"))
+        console.log(message.author.tag + " unfollowed map " + map)
+        }
+    }
+    else if (command == "listfollows") {
+        //list all users follows
+        let follows = await db.getUserFollows(message.author.id)
+        console.log(follows)
+        if (follows.length == 0) return message.channel.send("You are not following any maps.").then(msg => msg.react("👍"))
+        let list = "";
+        for (let i in follows) {
+            list += follows[i].map_name + "\n"
+        }
+        let embed = new Discord.MessageEmbed()
+            .setTitle(`List of maps you are following:`)
+            .setColor(7980240)
+            .setTimestamp(Date.now())
+            .setDescription(list)
+        message.channel.send({ embed: embed })
+
+    }
+    
 })
 
 
@@ -459,7 +506,7 @@ bot.on('message', async message => {//dev commands
         message.channel.send(out);
     }
 
-    
+
 
     else if (command == "check") {
         let ip = args[0]
@@ -470,7 +517,37 @@ bot.on('message', async message => {//dev commands
 
         if (!embed) return message.channel.send("The server is unavailable.")
 
-        message.channel.send({embed: embed})
+        message.channel.send({ embed: embed })
+    }
+    else if (command == "listallfollows") {
+        let follows = await db.getAllFollows()
+        //sort follows by discord id
+        follows.sort((a, b) => {
+            if (a.discord_id < b.discord_id) return -1;
+            if (a.discord_id > b.discord_id) return 1;
+            return 0;
+        })
+        console.log(follows)
+        if (!follows) return message.channel.send("There are no users following any maps.")
+        let list = "";
+        for (let i in follows) {
+            list += "<@" + follows[i].discord_id + ">" + ": " + follows[i].map_name + "\n"
+        }
+        let embed = new Discord.MessageEmbed()
+            .setTitle(`List of all followed maps:`)
+            .setColor(7980240)
+            .setTimestamp(Date.now())
+            .setDescription(list)
+        message.channel.send({ embed: embed })
+    }
+    else if (command == "testnotify"){
+        let map = args.join(" ").toLowerCase();
+        if (!map) return message.channel.send("Please enter a valid map name.")
+        //if the map isnt in the database
+        if(!db.hasMap(map)) return message.channel.send("No one is following this map.")
+        //react a thumbs up to the message
+        message.react("👍")
+        notifyUsers(map)
     }
 })
 
@@ -514,7 +591,7 @@ async function checkIP(ip) {
         .setColor(7980240)
         .setFooter("Last Updated", frumpyAvatarLink)
         .setTimestamp(Date.now())
-        if(image) embed.setImage(image);
+    if (image) embed.setImage(image);
 
     let list = "";
 
@@ -540,3 +617,40 @@ async function checkIP(ip) {
 
 
 }
+
+let notifyUsers = async function (map, server) {
+    let users = await db.getUsersFollowingMap(map)
+    for (let i in users) {
+        let user = users[i];
+        //console.log(user)
+
+
+        bot.users.fetch(user.discord_id).then(u => {
+            try{
+            u.send(`${map} is now on ${server}!`)
+            console.log(`Sent message to ${u.tag}`)
+            } catch(e){
+                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send(`${map} is now on ${server}!`)
+            }
+        })
+    }
+}
+
+let oldData = {}
+for(server in Object.keys(serverObject)){
+    oldData[Object.keys(serverObject)[server]] = 0
+}
+
+
+bot.setInterval(async function () {
+    for(server in Object.keys(oldData)){
+        if(oldData == 0) oldData[Object.keys(oldData)[server]] = gData[Object.keys(gData)[server]].map;
+        else{
+            if(oldData[Object.keys(oldData)[server]] != gData[Object.keys(gData)[server]].map){
+                notifyUsers(gData[Object.keys(gData)[server]].map, Object.values(serverObject)[server].nick)
+                oldData[Object.keys(oldData)[server]] = gData[Object.keys(gData)[server]].map;
+            }
+        }
+    }
+    // console.log(oldData)
+}, 91000);

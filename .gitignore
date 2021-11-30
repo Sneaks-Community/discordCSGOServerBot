@@ -3,3 +3,4 @@ package-lock.json
 config.json
 notes.txt
 .vscode
+db.sqlite
