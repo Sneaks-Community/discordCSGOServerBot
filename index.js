@@ -618,7 +618,7 @@ async function checkIP(ip) {
 
 }
 
-let notifyUsers = async function (map, server) {
+let notifyUsers = async function (map, server, ip) {
     let users = await db.getUsersFollowingMap(map)
     for (let i in users) {
         let user = users[i];
@@ -627,10 +627,10 @@ let notifyUsers = async function (map, server) {
 
         bot.users.fetch(user.discord_id).then(u => {
             try{
-            u.send(`${map} is now on ${server}!`)
-            console.log(`Sent message to ${u.tag}`)
+            u.send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
+            console.log(`Sent message to ${u.tag} about ${map}`)
             } catch(e){
-                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send(`${map} is now on ${server}!`)
+                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
             }
         })
     }
@@ -647,7 +647,7 @@ bot.setInterval(async function () {
         if(oldData == 0) oldData[Object.keys(oldData)[server]] = gData[Object.keys(gData)[server]].map;
         else{
             if(oldData[Object.keys(oldData)[server]] != gData[Object.keys(gData)[server]].map){
-                notifyUsers(gData[Object.keys(gData)[server]].map, Object.values(serverObject)[server].nick)
+                notifyUsers(gData[Object.keys(gData)[server]].map, Object.values(serverObject)[server].nick, Object.values(serverObject)[server].ip)
                 oldData[Object.keys(oldData)[server]] = gData[Object.keys(gData)[server]].map;
             }
         }
