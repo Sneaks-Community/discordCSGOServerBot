@@ -438,7 +438,8 @@ bot.on('message', async message => {//public commands
         let map = args.join(" ").toLowerCase();
         //if no map or a mention is given return
         //discord id regex
-        if (!map || map.match(/<@!?\d+>/)) return message.channel.send("Please enter a valid map name.")
+        console.log(map.match((Discord.MessageMentions.USERS_PATTERN)))
+        if (!map || map.match(Discord.MessageMentions.USERS_PATTERN) || map.match(Discord.MessageMentions.ROLES_PATTERN) || map.match(Discord.MessageMentions.EVERYONE_PATTERN)) return message.channel.send("Please enter a valid map name.")
         if (await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are already following this map.") 
         
         db.followMap(message.author.id, map)
@@ -447,7 +448,7 @@ bot.on('message', async message => {//public commands
     }
     else if (command == "unfollow" || command == "uf") {
         let map = args.join(" ").toLowerCase();
-        if (!map || map.match(/<@!?\d+>/)) return message.channel.send("Please enter a valid map name.")
+        if (!map || map.match(Discord.MessageMentions.USERS_PATTERN) || map.match(Discord.MessageMentions.ROLES_PATTERN) || map.match(Discord.MessageMentions.EVERYONE_PATTERN)) return message.channel.send("Please enter a valid map name.")
         //if the args is "all" unfollow all maps
         if (map == "all") {
             db.unfollowAll(message.author.id)
