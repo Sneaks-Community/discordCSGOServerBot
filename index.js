@@ -433,7 +433,7 @@ bot.on('message', async message => {//public commands
     else if (command == "v" || command == "version") {
         message.channel.send(require("./package.json").version)
     }
-    else if (command == "follow") {
+    else if (command == "follow" || command == "f") {
         let map = args.join(" ").toLowerCase();
         if (!map) return message.channel.send("Please enter a valid map name.")
         if (await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are already following this map.") 
@@ -442,7 +442,7 @@ bot.on('message', async message => {//public commands
         message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(msg => msg.react("👍"))
         console.log(message.author.tag + " followed map " + map)
     }
-    else if (command == "unfollow") {
+    else if (command == "unfollow" || command == "uf") {
         let map = args.join(" ").toLowerCase();
         if (!map) return message.channel.send("Please enter a valid map name.")
         //if the args is "all" unfollow all maps
@@ -458,7 +458,7 @@ bot.on('message', async message => {//public commands
         console.log(message.author.tag + " unfollowed map " + map)
         }
     }
-    else if (command == "listfollows") {
+    else if (command == "listfollows" || command == "lf") {
         //list all users follows
         let follows = await db.getUserFollows(message.author.id)
         console.log(follows)
