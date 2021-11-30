@@ -406,7 +406,7 @@ bot.on('message', async message => {//public commands
             .addField("--map/--m", "`--map <Server>`\nThis command return with what map a server is on, along with any other relevant information about the map.")
             .addField("--follow", "`--follow <Map>`\nThis command will DM you whenever a map you follow is on a server.")
             .addField("--unfollow", "`--unfollow <map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server.")
-            .addField("--listfollows", "`--listfollows`\nThis command will return a list of all servers you are following.")
+            .addField("--listfollows", "`--listfollows`\nThis command will return a list of all maps you are following.")
 
         message.channel.send({ embed: embed })
     }
