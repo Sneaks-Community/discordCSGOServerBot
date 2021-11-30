@@ -96,6 +96,18 @@ let unfollowAll = function (discord_id) {//unfollows all maps for user
     });
 }
 
+let totalFollows = function () {//returns total number of follows
+    return new Promise(function (resolve, reject) {
+        db.get("SELECT COUNT(*) AS total FROM players_follow", function (err, row) {
+            if (err) {
+                reject(err);
+                return;
+            }
+            resolve(row);
+        });
+    });
+}
+
 
 //export all functions
 module.exports = {
