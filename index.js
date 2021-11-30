@@ -522,7 +522,7 @@ bot.on('message', async message => {//dev commands
 
         message.channel.send({ embed: embed })
     }
-    else if (command == "listallfollows") {
+    else if (command == "listallfollows" || command == "laf") {
         let follows = await db.getAllFollows()
         //sort follows by discord id
         follows.sort((a, b) => {
