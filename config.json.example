@@ -10,5 +10,10 @@
             "channelID": "x",
             "messageID": "x"
         }
-    ]
+    ],
+    "logging": {
+        "enabled": true,
+        "guildID": "x",//sneaks: 253812864786235402
+        "channelID": "x"//discord-log: 476810519341432842
+    }
 }

@@ -16,6 +16,7 @@ let gData = {}
 let frumpyAvatarLink;
 
 let allowedDevs = ["134088598684303360", "204729465564037120"];
+let logChannel;
 
 const prefix = config.prefix;
 
@@ -151,6 +152,7 @@ bot.on("ready", async () => {
     bot.user.setActivity("--follow <map> in #bot-commands");
     let frumpy = await bot.users.fetch("134088598684303360")
     frumpyAvatarLink = frumpy.avatarURL() || "https://i.imgur.com/cBiDnMi.png"
+    logChannel = bot.guilds.cache.get(config.logging.guildID).channels.cache.get(config.logging.channelID)
 
     intervalFunction();
 
@@ -632,7 +634,16 @@ let notifyUsers = async function (map, server, ip) {
         bot.users.fetch(user.discord_id).then(u => {
             try{
             u.send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
-            console.log(`Sent message to ${u.tag} about ${map}`)
+            //make embed for logging channel
+            let embed = new Discord.MessageEmbed()
+                .setTitle(`Notification has been sent.`)
+                .setColor(7980240)
+                .setTimestamp(Date.now())
+                .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
+                .setAuthor(u.tag, u.displayAvatarURL())
+                .setThumbnail(u.displayAvatarURL())
+            logChannel.send({ embed: embed })
+            console.log(`Sent notification to ${u.tag} about ${map}`)
             } catch(e){
                 bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
             }
