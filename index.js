@@ -442,8 +442,8 @@ bot.on('message', async message => {//public commands
         //discord id regex
         console.log(map.match((Discord.MessageMentions.USERS_PATTERN)))
         if (!map || map.match(Discord.MessageMentions.USERS_PATTERN) || map.match(Discord.MessageMentions.ROLES_PATTERN) || map.match(Discord.MessageMentions.EVERYONE_PATTERN)) return message.channel.send("Please enter a valid map name.")
-        if (await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are already following this map.") 
-        
+        if (await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are already following this map.")
+
         db.followMap(message.author.id, map)
         message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(msg => msg.react("👍"))
         console.log(message.author.tag + " followed map " + map)
@@ -457,11 +457,11 @@ bot.on('message', async message => {//public commands
             message.channel.send("You are no longer following any maps.").then(msg => msg.react("👍"))
             console.log(message.author.tag + " unfollowed all maps")
         } else {
-        //if user isnt following the map
-        if (!await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map.")
-        db.unfollowMap(message.author.id, map)
-        message.channel.send("You are no longer following " + map + ".").then(msg => msg.react("👍"))
-        console.log(message.author.tag + " unfollowed map " + map)
+            //if user isnt following the map
+            if (!await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map.")
+            db.unfollowMap(message.author.id, map)
+            message.channel.send("You are no longer following " + map + ".").then(msg => msg.react("👍"))
+            console.log(message.author.tag + " unfollowed map " + map)
         }
     }
     else if (command == "listfollows" || command == "lf") {
@@ -481,7 +481,7 @@ bot.on('message', async message => {//public commands
         message.channel.send({ embed: embed })
 
     }
-    
+
 })
 
 
@@ -546,11 +546,11 @@ bot.on('message', async message => {//dev commands
             .setDescription(list)
         message.channel.send({ embed: embed })
     }
-    else if (command == "testnotify"){
+    else if (command == "testnotify") {
         let map = args.join(" ").toLowerCase();
         if (!map) return message.channel.send("Please enter a valid map name.")
         //if the map isnt in the database
-        if(!db.hasMap(map)) return message.channel.send("No one is following this map.")
+        if (!db.hasMap(map)) return message.channel.send("No one is following this map.")
         //react a thumbs up to the message
         message.react("👍")
         notifyUsers(map)
@@ -632,36 +632,53 @@ let notifyUsers = async function (map, server, ip) {
 
 
         bot.users.fetch(user.discord_id).then(u => {
-            try{
-            u.send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
-            //make embed for logging channel
-            let embed = new Discord.MessageEmbed()
-                .setTitle(`Notification has been sent.`)
-                .setColor(7980240)
-                .setTimestamp(Date.now())
-                .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
-                .setAuthor(u.tag, u.displayAvatarURL())
-                .setThumbnail(u.displayAvatarURL())
-            logChannel.send({ embed: embed })
-            console.log(`Sent notification to ${u.tag} about ${map}`)
-            } catch(e){
-                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
+            try {
+                // u.send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
+                //make embed
+                let dmEmbed = new Discord.MessageEmbed()
+                    .setTitle(`${map} is now on ${server}!`)
+                    .setColor(7980240)
+                    .setFooter("Last Updated", frumpyAvatarLink)
+                    .setTimestamp(Date.now())
+                if (getMapImage(map)) dmEmbed.setImage(getMapImage(map))
+                u.send({
+                    embed: dmEmbed,
+                    content: `steam://connect/${ip}`
+                })
+                //make embed for logging channel
+                let logEmbed = new Discord.MessageEmbed()
+                    .setTitle(`Notification has been sent.`)
+                    .setColor(7980240)
+                    .setTimestamp(Date.now())
+                    .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
+                    .setAuthor(u.tag, u.displayAvatarURL())
+                    .setThumbnail(u.displayAvatarURL())
+                logChannel.send({ embed: logEmbed })
+                console.log(`Sent notification to ${u.tag} about ${map}`)
+            } catch (e) {
+                let embed = new Discord.MessageEmbed()
+                    .setTitle(`${map} is now on ${server}!`)
+                    .setColor(7980240)
+                    .setFooter("Last Updated", frumpyAvatarLink)
+                    .setTimestamp(Date.now())
+                if (getMapImage(map)) embed.setImage(getMapImage(map))
+                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send({embed: embed, content: `${u}\nsteam://connect/${ip}`})
             }
         })
     }
 }
 
 let oldData = {}
-for(server in Object.keys(serverObject)){
+for (server in Object.keys(serverObject)) {
     oldData[Object.keys(serverObject)[server]] = 0
 }
 
 
 bot.setInterval(async function () {
-    for(server in Object.keys(oldData)){
-        if(oldData == 0) oldData[Object.keys(oldData)[server]] = gData[Object.keys(gData)[server]].map;
-        else{
-            if(oldData[Object.keys(oldData)[server]] != gData[Object.keys(gData)[server]].map){
+    for (server in Object.keys(oldData)) {
+        if (oldData == 0) oldData[Object.keys(oldData)[server]] = gData[Object.keys(gData)[server]].map;
+        else {
+            if (oldData[Object.keys(oldData)[server]] != gData[Object.keys(gData)[server]].map) {
                 notifyUsers(gData[Object.keys(gData)[server]].map, Object.values(serverObject)[server].nick, Object.values(serverObject)[server].ip)
                 oldData[Object.keys(oldData)[server]] = gData[Object.keys(gData)[server]].map;
             }
