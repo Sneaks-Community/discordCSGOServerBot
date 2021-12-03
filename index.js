@@ -632,38 +632,37 @@ let notifyUsers = async function (map, server, ip) {
 
 
         bot.users.fetch(user.discord_id).then(u => {
-            try {
-                // u.send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
-                //make embed
-                let dmEmbed = new Discord.MessageEmbed()
-                    .setTitle(`${map} is now on ${server}!`)
-                    .setColor(7980240)
-                    .setFooter("Last Updated", frumpyAvatarLink)
-                    .setTimestamp(Date.now())
-                if (getMapImage(map)) dmEmbed.setImage(getMapImage(map))
-                u.send({
-                    embed: dmEmbed,
-                    content: `steam://connect/${ip}`
-                })
-                //make embed for logging channel
-                let logEmbed = new Discord.MessageEmbed()
-                    .setTitle(`Notification has been sent.`)
-                    .setColor(7980240)
-                    .setTimestamp(Date.now())
-                    .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
-                    .setAuthor(u.tag, u.displayAvatarURL())
-                    .setThumbnail(u.displayAvatarURL())
-                logChannel.send({ embed: logEmbed })
-                console.log(`Sent notification to ${u.tag} about ${map}`)
-            } catch (e) {
+            // u.send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
+            //make embed
+            let dmEmbed = new Discord.MessageEmbed()
+                .setTitle(`${map} is now on ${server}!`)
+                .setColor(7980240)
+                .setFooter("Last Updated", frumpyAvatarLink)
+                .setTimestamp(Date.now())
+            if (getMapImage(map)) dmEmbed.setImage(getMapImage(map))
+            u.send({
+                embed: dmEmbed,
+                content: `steam://connect/${ip}`
+            }).catch(e => {
                 let embed = new Discord.MessageEmbed()
                     .setTitle(`${map} is now on ${server}!`)
                     .setColor(7980240)
                     .setFooter("Last Updated", frumpyAvatarLink)
                     .setTimestamp(Date.now())
                 if (getMapImage(map)) embed.setImage(getMapImage(map))
-                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send({embed: embed, content: `${u}\nsteam://connect/${ip}`})
-            }
+                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send({ embed: embed, content: `${u}\nsteam://connect/${ip}` })
+            })
+            //make embed for logging channel
+            let logEmbed = new Discord.MessageEmbed()
+                .setTitle(`Notification has been sent.`)
+                .setColor(7980240)
+                .setTimestamp(Date.now())
+                .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
+                .setAuthor(u.tag, u.displayAvatarURL())
+                .setThumbnail(u.displayAvatarURL())
+            logChannel.send({ embed: logEmbed })
+            console.log(`Sent notification to ${u.tag} about ${map}`)
+
         })
     }
 }
