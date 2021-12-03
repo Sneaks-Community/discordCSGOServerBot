@@ -447,6 +447,17 @@ bot.on('message', async message => {//public commands
         db.followMap(message.author.id, map)
         message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(msg => msg.react("👍"))
         console.log(message.author.tag + " followed map " + map)
+
+        let logEmbed = new Discord.MessageEmbed()
+            .setTitle("User Followed Map")
+            .setColor(7980240)
+            .setTimestamp(Date.now())
+            .addField("User", message.author)
+            .addField("Map", map)
+            .setThumbnail(message.author.displayAvatarURL())
+            .setAuthor(message.author.tag, message.author.displayAvatarURL())
+
+        logChannel.send({ embed: logEmbed })
     }
     else if (command == "unfollow" || command == "uf") {
         let map = args.join(" ").toLowerCase();
@@ -463,6 +474,16 @@ bot.on('message', async message => {//public commands
             message.channel.send("You are no longer following " + map + ".").then(msg => msg.react("👍"))
             console.log(message.author.tag + " unfollowed map " + map)
         }
+        let logEmbed = new Discord.MessageEmbed()
+            .setTitle("User Unfollowed Map")
+            .setColor(7980240)
+            .setTimestamp(Date.now())
+            .addField("User", message.author)
+            .addField("Map", map)
+            .setThumbnail(message.author.displayAvatarURL())
+            .setAuthor(message.author.tag, message.author.displayAvatarURL())
+
+        logChannel.send({ embed: logEmbed })
     }
     else if (command == "listfollows" || command == "lf") {
         //list all users follows
