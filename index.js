@@ -562,7 +562,7 @@ bot.on('message', async message => {//dev commands
             if (a.discord_id > b.discord_id) return 1;
             return 0;
         })
-        console.log(follows)
+        // console.log(follows)
         if (!follows) return message.channel.send("There are no users following any maps.")
         let list = "";
         for (let i in follows) {
