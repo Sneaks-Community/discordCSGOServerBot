@@ -671,11 +671,13 @@ let notifyUsers = async function (map, server, ip) {
         bot.users.fetch(user.discord_id).then(u => {
             // u.send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
             //make embed
+            let stats = getStatsPage(map)
             let dmEmbed = new Discord.MessageEmbed()
                 .setTitle(`${map} is now on ${server}!`)
                 .setColor(7980240)
                 .setFooter("Last Updated", frumpyAvatarLink)
                 .setTimestamp(Date.now())
+            if (stats) dmEmbed.setURL(stats)
             if (getMapImage(map)) dmEmbed.setImage(getMapImage(map))
             u.send({
                 embed: dmEmbed,
@@ -686,6 +688,7 @@ let notifyUsers = async function (map, server, ip) {
                     .setColor(7980240)
                     .setFooter("Last Updated", frumpyAvatarLink)
                     .setTimestamp(Date.now())
+                if (stats) embed.setURL(stats)
                 if (getMapImage(map)) embed.setImage(getMapImage(map))
                 bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send({ embed: embed, content: `${u}\nsteam://connect/${ip}` })
             })
