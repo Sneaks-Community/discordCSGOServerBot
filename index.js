@@ -440,12 +440,13 @@ bot.on('message', async message => {//public commands
         let map = args.join(" ").toLowerCase();
         //if no map or a mention is given return
         //discord id regex
-        console.log(map.match((Discord.MessageMentions.USERS_PATTERN)))
+        // console.log(map.match((Discord.MessageMentions.USERS_PATTERN)))
         if (!map || map.match(Discord.MessageMentions.USERS_PATTERN) || map.match(Discord.MessageMentions.ROLES_PATTERN) || map.match(Discord.MessageMentions.EVERYONE_PATTERN)) return message.channel.send("Please enter a valid map name.")
         if (await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are already following this map.")
 
         db.followMap(message.author.id, map)
-        message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(msg => msg.react("👍"))
+        message.react("👍")
+        message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.")
         console.log(message.author.tag + " followed map " + map)
 
         let logEmbed = new Discord.MessageEmbed()
@@ -465,13 +466,15 @@ bot.on('message', async message => {//public commands
         //if the args is "all" unfollow all maps
         if (map == "all") {
             db.unfollowAll(message.author.id)
-            message.channel.send("You are no longer following any maps.").then(msg => msg.react("👍"))
+            message.react("👍")
+            message.channel.send("You are no longer following any maps.")
             console.log(message.author.tag + " unfollowed all maps")
         } else {
             //if user isnt following the map
             if (!await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map.")
             db.unfollowMap(message.author.id, map)
-            message.channel.send("You are no longer following " + map + ".").then(msg => msg.react("👍"))
+            message.react("👍")
+            message.channel.send("You are no longer following " + map + ".")
             console.log(message.author.tag + " unfollowed map " + map)
         }
         let logEmbed = new Discord.MessageEmbed()
@@ -488,8 +491,8 @@ bot.on('message', async message => {//public commands
     else if (command == "listfollows" || command == "lf") {
         //list all users follows
         let follows = await db.getUserFollows(message.author.id)
-        console.log(follows)
-        if (follows.length == 0) return message.channel.send("You are not following any maps.").then(msg => msg.react("👍"))
+        // console.log(follows)
+        if (follows.length == 0) return message.channel.send("You are not following any maps.")
         let list = "";
         for (let i in follows) {
             list += follows[i].map_name + "\n"
