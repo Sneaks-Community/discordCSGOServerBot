@@ -495,7 +495,12 @@ bot.on('message', async message => {//public commands
         if (follows.length == 0) return message.channel.send("You are not following any maps.")
         let list = "";
         for (let i in follows) {
-            list += follows[i].map_name + "\n"
+            let stats = getStatsPage(follows[i].map_name)
+            if (stats) {
+                list += `[${follows[i].map_name}](${stats})` + "\n"
+            } else {
+                list += follows[i].map_name + "\n"
+            }
         }
         let embed = new Discord.MessageEmbed()
             .setTitle(`List of maps you are following:`)
@@ -561,7 +566,15 @@ bot.on('message', async message => {//dev commands
         if (!follows) return message.channel.send("There are no users following any maps.")
         let list = "";
         for (let i in follows) {
-            list += "<@" + follows[i].discord_id + ">" + ": " + follows[i].map_name + "\n"
+            let stats = getStatsPage(follows[i].map_name)
+            // list += "<@" + follows[i].discord_id + ">" + ": " + `[${follows[i].map_name}](${getStatsPage(follows[i].map_name)})` + "\n"
+            if (stats) {
+                // list += `[${follows[i].map_name}](${stats})` + "\n"
+                // "<@" + follows[i].discord_id + ">" + ": " + `[${follows[i].map_name}](${getStatsPage(follows[i].map_name)})` + "\n"
+                list += "<@" + follows[i].discord_id + ">" + ": " + `[${follows[i].map_name}](${stats})` + "\n"
+            } else {
+                list += "<@" + follows[i].discord_id + ">" + ": " + follows[i].map_name + "\n";
+            }
         }
         let embed = new Discord.MessageEmbed()
             .setTitle(`List of all followed maps:`)
