@@ -341,7 +341,17 @@ bot.on('message', async message => {//public commands
         } else {//if returns valid server obj
             let embed = await playerListEmbed(server);
 
-            message.channel.send({ embed: embed })
+            message.channel.send({ embed: embed }).then(msg => {
+                //react a trash can and if the member reacts it delete the message
+                msg.react("🗑️").then(() => {
+                    const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === message.author.id;
+                    const collector = msg.createReactionCollector(filter, { time: 60000 });
+                    collector.on('collect', r => {
+                        msg.delete();
+                        message.delete();
+                    });
+                });
+            });
         }
 
 
@@ -372,7 +382,17 @@ bot.on('message', async message => {//public commands
 
             let embed;
             embed = makeMapEmbed(args[0])
-            message.channel.send({ embed: embed })
+            message.channel.send({ embed: embed }).then(msg => {
+                //react a trash can and if the member reacts it delete the message
+                msg.react("🗑️").then(() => {
+                    const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === message.author.id;
+                    const collector = msg.createReactionCollector(filter, { time: 60000 });
+                    collector.on('collect', r => {
+                        msg.delete();
+                        message.delete();
+                    });
+                });
+            });
 
         } else {
 
@@ -393,7 +413,17 @@ bot.on('message', async message => {//public commands
 
             }
 
-            message.channel.send({ embed: embed })
+            message.channel.send({ embed: embed }).then(msg => {
+                //react a trash can and if the member reacts it delete the message
+                msg.react("🗑️").then(() => {
+                    const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === message.author.id;
+                    const collector = msg.createReactionCollector(filter, { time: 60000 });
+                    collector.on('collect', r => {
+                        msg.delete();
+                        message.delete();
+                    });
+                });
+            });
 
         }
 
