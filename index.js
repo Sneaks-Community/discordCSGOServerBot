@@ -476,7 +476,21 @@ bot.on('message', async message => {//public commands
 
         db.followMap(message.author.id, map)
         message.react("👍")
-        message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.")
+        message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(msg => {
+            //react undo sign
+            msg.react("↩️").then(() => {
+                const filter = (reaction, user) => reaction.emoji.name === '↩️' && user.id === message.author.id;
+                const collector = msg.createReactionCollector(filter, { time: 60000 });
+                collector.on('collect', r => {
+                    db.unfollowMap(message.author.id, map)
+                    msg.delete();
+                    message.delete();
+                    
+                    message.channel.send("You are no longer following " + map + ".")
+                });
+            });
+
+        })
         console.log(message.author.tag + " followed map " + map)
 
         let logEmbed = new Discord.MessageEmbed()
