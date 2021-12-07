@@ -755,3 +755,9 @@ bot.setInterval(async function () {
     }
     // console.log(oldData)
 }, 91000);
+
+//if a member leaves delete all their follows in db
+bot.on("guildMemberRemove", async member => {
+    db.unfollowAll(member.id)
+});
+
