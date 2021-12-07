@@ -711,7 +711,7 @@ let notifyUsers = async function (map, server, ip) {
             if (getMapImage(map)) dmEmbed.setImage(getMapImage(map))
             u.send({
                 embed: dmEmbed,
-                content: `steam://connect/${ip}`
+                content: `${map} is now on ${server}!\nsteam://connect/${ip}`
             }).catch(e => {
                 let embed = new Discord.MessageEmbed()
                     .setTitle(`${map} is now on ${server}!`)
@@ -720,7 +720,7 @@ let notifyUsers = async function (map, server, ip) {
                     .setTimestamp(Date.now())
                 if (stats) embed.setURL(stats)
                 if (getMapImage(map)) embed.setImage(getMapImage(map))
-                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send({ embed: embed, content: `${u}\nsteam://connect/${ip}` })
+                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send({ embed: embed, content: `${u}\n${map} is now on ${server}!\nsteam://connect/${ip}` })
             })
             //make embed for logging channel
             let logEmbed = new Discord.MessageEmbed()
