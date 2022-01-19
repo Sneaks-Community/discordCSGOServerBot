@@ -304,9 +304,9 @@ function makeMapEmbed(mapName, server) {
 
 bot.on('message', async message => {//public commands
 
-    const args = message.content.slice(prefix.length).split(/ +/)
+    const args = message.content.slice(message.content.startsWith("—") ? 1 : prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
-    if (!message.content.startsWith(prefix)) return;
+    if (!message.content.startsWith(prefix) && !message.content.startsWith("—")) return;
     if (message.author.bot) return;
 
     if (command == "players" || command == "p") {
@@ -485,7 +485,7 @@ bot.on('message', async message => {//public commands
                     db.unfollowMap(message.author.id, map)
                     msg.delete();
                     message.delete();
-                    
+
                     message.channel.send("You are no longer following " + map + ".")
                 });
             });
