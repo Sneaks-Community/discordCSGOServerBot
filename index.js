@@ -463,9 +463,9 @@ bot.on('message', async message => {//public commands
         message.react("👍")
         message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(msg => {
             //react undo sign
-            msg.react("↩️").then(() => {
+            msg.react("↩️").then(reaction => {
                 const filter = (reaction, user) => reaction.emoji.name === '↩️' && user.id === message.author.id;
-                const collector = msg.createReactionCollector(filter, { time: 60000 });
+                const collector = msg.createReactionCollector(filter, { time: 30000 });
                 collector.on('collect', r => {
                     db.unfollowMap(message.author.id, map)
                     msg.delete();
@@ -473,6 +473,9 @@ bot.on('message', async message => {//public commands
 
                     message.channel.send("You are no longer following " + map + ".")
                 });
+                collector.on("end", () => {
+                    reaction.remove();
+                })
             });
 
         })
