@@ -491,7 +491,7 @@ bot.on('messageCreate', async message => {//public commands
             .setTitle("User Followed Map")
             .setColor(7980240)
             .setTimestamp(Date.now())
-            .addField("User", message.author)
+            .addField("User", message.author.toString())
             .addField("Map", map)
             .setThumbnail(message.author.displayAvatarURL())
             .setAuthor({name: message.author.tag, iconURL: message.author.displayAvatarURL()})
@@ -519,7 +519,7 @@ bot.on('messageCreate', async message => {//public commands
             .setTitle("User Unfollowed Map")
             .setColor(7980240)
             .setTimestamp(Date.now())
-            .addField("User", message.author)
+            .addField("User", message.author.toString())
             .addField("Map", map)
             .setThumbnail(message.author.displayAvatarURL())
             .setAuthor({name: message.author.tag, iconURL: message.author.displayAvatarURL()})
@@ -619,7 +619,7 @@ bot.on('messageCreate', async message => {//dev commands
             .setColor(7980240)
             .setTimestamp(Date.now())
             .setDescription(list)
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
+        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg, message));
     }
     else if (command == "testnotify") {
         let map = args.join(" ").toLowerCase();
