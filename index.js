@@ -319,7 +319,7 @@ function addTrash(msg){
     });
 }
 
-bot.on('message', async message => {//public commands
+bot.on('messageCreate', async message => {//public commands
 
     const args = message.content.slice(message.content.startsWith("—") ? 1 : prefix.length).split(/ +/)
     const command = args.shift().toLowerCase()
@@ -332,7 +332,7 @@ bot.on('message', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send({ embed: await makeServerList() }).then(msg => addTrash(msg));
+            return message.channel.send({ embeds: [await makeServerList()] }).then(msg => addTrash(msg));
         }
 
         if (args[0].toLowerCase() == "frumpy") {//easteregg
@@ -348,7 +348,7 @@ bot.on('message', async message => {//public commands
                 .setAuthor("( ͡° ͜ʖ ͡°)", "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676", "https://mrdoob.com/#/157/spin_painter")
 
 
-            return message.channel.send({ embed: egg })
+            return message.channel.send({ embeds: [egg] })
         }
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
@@ -358,7 +358,7 @@ bot.on('message', async message => {//public commands
         } else {//if returns valid server obj
             let embed = await playerListEmbed(server);
 
-            message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
         }
 
 
@@ -370,7 +370,7 @@ bot.on('message', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send({ embed: await makeServerList() }).then(msg => addTrash(msg));
+            return message.channel.send({ embeds: [await makeServerList()] }).then(msg => addTrash(msg));
         }
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
@@ -389,7 +389,7 @@ bot.on('message', async message => {//public commands
 
             let embed;
             embed = makeMapEmbed(args[0])
-            message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
 
         } else {
 
@@ -410,7 +410,7 @@ bot.on('message', async message => {//public commands
 
             }
 
-            message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
 
         }
 
@@ -428,7 +428,7 @@ bot.on('message', async message => {//public commands
             .addField("--unfollow/--uf", "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server.")
             .addField("--listfollows/--lf", "`--listfollows`\nThis command will return a list of all maps you are following.")
 
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
     }
 
     else if (command == "keywords" || command == "keys") {
@@ -492,7 +492,7 @@ bot.on('message', async message => {//public commands
             .setThumbnail(message.author.displayAvatarURL())
             .setAuthor(message.author.tag, message.author.displayAvatarURL())
 
-        logChannel.send({ embed: logEmbed })
+        logChannel.send({ embeds: [logEmbed] })
     }
     else if (command == "unfollow" || command == "uf") {
         let map = args.join(" ").toLowerCase();
@@ -520,7 +520,7 @@ bot.on('message', async message => {//public commands
             .setThumbnail(message.author.displayAvatarURL())
             .setAuthor(message.author.tag, message.author.displayAvatarURL())
 
-        logChannel.send({ embed: logEmbed })
+        logChannel.send({ embeds: [logEmbed] })
     }
     else if (command == "listfollows" || command == "lf") {
         //list all users follows
@@ -541,14 +541,14 @@ bot.on('message', async message => {//public commands
             .setColor(7980240)
             .setTimestamp(Date.now())
             .setDescription(list)
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
 
     }
 
 })
 
 
-bot.on('message', async message => {//dev commands
+bot.on('messageCreate', async message => {//dev commands
 
     if (!allowedDevs.includes(message.author.id)) return;//if not frumpy or sneak no commands will run
 
@@ -586,7 +586,7 @@ bot.on('message', async message => {//dev commands
 
         if (!embed) return message.channel.send("The server is unavailable.")
 
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
     }
     else if (command == "listallfollows" || command == "laf") {
         let follows = await db.getAllFollows()
@@ -721,7 +721,7 @@ let notifyUsers = async function (map, server, ip) {
             if (stats) dmEmbed.setURL(stats)
             if (getMapImage(map)) dmEmbed.setImage(getMapImage(map))
             u.send({
-                embed: dmEmbed,
+                embeds: [dmEmbed],
                 content: `${map} is now on ${server}!\nsteam://connect/${ip}`
             }).catch(e => {
                 let embed = new Discord.MessageEmbed()
@@ -731,7 +731,7 @@ let notifyUsers = async function (map, server, ip) {
                     .setTimestamp(Date.now())
                 if (stats) embed.setURL(stats)
                 if (getMapImage(map)) embed.setImage(getMapImage(map))
-                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send({ embed: embed, content: `${u}\n${map} is now on ${server}!\nsteam://connect/${ip}` })
+                bot.guilds.cache.get("253812864786235402").channels.cache.get("269171320732778496").send({ embeds: [embed], content: `${u}\n${map} is now on ${server}!\nsteam://connect/${ip}` })
             })
             //make embed for logging channel
             let logEmbed = new Discord.MessageEmbed()
@@ -741,7 +741,7 @@ let notifyUsers = async function (map, server, ip) {
                 .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
                 .setAuthor(u.tag, u.displayAvatarURL())
                 .setThumbnail(u.displayAvatarURL())
-            logChannel.send({ embed: logEmbed })
+            logChannel.send({ embeds: [logEmbed] })
             console.log(`Sent notification to ${u.tag} about ${map}`)
 
         })
