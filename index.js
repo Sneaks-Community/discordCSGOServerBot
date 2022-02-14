@@ -117,7 +117,7 @@ function makeEmbed() {
         .setTitle("Server List")
         .setDescription("This list is updated every 1.5 minutes.")
         .setColor(7980240)
-        .setFooter("Last Updated", frumpyAvatarLink)
+        .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
         .setTimestamp(Date.now())
 
     for (let s in gData) {//makes field for ever server 
@@ -205,7 +205,7 @@ function playerListEmbed(server) {//makes embed with list of players
         embed = new Discord.MessageEmbed()
             .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/\_/g, "\\_"))
             .setColor(7980240)
-            .setFooter("Last Updated", frumpyAvatarLink)
+            .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
             .setTimestamp(Date.now())
 
         let list = "";
@@ -229,7 +229,7 @@ function playerListEmbed(server) {//makes embed with list of players
         embed = new Discord.MessageEmbed()
             .setTitle(`${server.name} is currently unavailable.`)
             .setColor(7980240)
-            .setFooter("Last Updated", frumpyAvatarLink)
+            .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
             .setTimestamp(Date.now())
             .setImage("https://i.imgur.com/WnS0Biz.png")
     }
@@ -240,7 +240,7 @@ function makeServerList() {//make server list embed for public commands
     let embed = new Discord.MessageEmbed()
         .setTitle("Please specify what sever you want to check.")
         .setColor(7980240)
-        .setFooter("Last Updated", frumpyAvatarLink)
+        .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
         .setTimestamp(Date.now())
 
     let list = "";
@@ -293,7 +293,7 @@ function makeMapEmbed(mapName, server) {
     let embed = new Discord.MessageEmbed()
         //.setTitle(`${server.name} is currently on ${mapName}`.replace(/\_/g, "\\_"))
         .setColor(7980240)
-        .setFooter("Last Updated", frumpyAvatarLink)
+        .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
         .setTimestamp(Date.now())
     if (stats) embed.setURL(stats)
     if (image) embed.setImage(image)
@@ -304,11 +304,11 @@ function makeMapEmbed(mapName, server) {
 
 }
 
-function addTrash(msg){
+function addTrash(msg, message){
     //react a trash can and if the member reacts it delete the message
     msg.react("🗑️").then(reaction => {
         const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === message.author.id;
-        const collector = msg.createReactionCollector(filter, { time: 30000 });//60000
+        const collector = msg.createReactionCollector({filter , time: 30000 });//60000
         collector.on('collect', r => {
             msg.delete();
             message.delete();
@@ -332,7 +332,7 @@ bot.on('messageCreate', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send({ embeds: [await makeServerList()] }).then(msg => addTrash(msg));
+            return message.channel.send({ embeds: [await makeServerList()] }).then(msg => addTrash(msg, message));
         }
 
         if (args[0].toLowerCase() == "frumpy") {//easteregg
@@ -341,11 +341,11 @@ bot.on('messageCreate', async message => {//public commands
                 .setTitle(`listen here`)
                 .setURL("https://www.youtube.com/watch?v=lPGipwoJiOM")
                 .setColor("#26bf7a")
-                .setDescription(require("fs").readFileSync("./meme.txt"))
-                .setFooter("ｆｒｕｍｐｙ７", frumpyAvatarLink)
+                .setDescription(require("fs").readFileSync("./meme.txt").toString())
+                .setFooter({text: "ｆｒｕｍｐｙ７", iconURL: frumpyAvatarLink})
                 .setTimestamp(Date.parse("Sat Mar 15 4207 04:20:07 GMT-0456"))
                 .setImage("https://i.imgur.com/FHTK2WB.gif")
-                .setAuthor("( ͡° ͜ʖ ͡°)", "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676", "https://mrdoob.com/#/157/spin_painter")
+                .setAuthor({name: "( ͡° ͜ʖ ͡°)", iconURL: "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676", url: "https://mrdoob.com/#/157/spin_painter"})
 
 
             return message.channel.send({ embeds: [egg] })
@@ -358,7 +358,7 @@ bot.on('messageCreate', async message => {//public commands
         } else {//if returns valid server obj
             let embed = await playerListEmbed(server);
 
-            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
+            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg, message));
         }
 
 
@@ -370,7 +370,7 @@ bot.on('messageCreate', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send({ embeds: [await makeServerList()] }).then(msg => addTrash(msg));
+            return message.channel.send({ embeds: [await makeServerList()] }).then(msg => addTrash(msg, message));
         }
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
@@ -389,7 +389,7 @@ bot.on('messageCreate', async message => {//public commands
 
             let embed;
             embed = makeMapEmbed(args[0])
-            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
+            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg, message));
 
         } else {
 
@@ -404,13 +404,13 @@ bot.on('messageCreate', async message => {//public commands
                 embed = new Discord.MessageEmbed()
                     .setTitle(`${server.name} is currently unavailable.`)
                     .setColor(7980240)
-                    .setFooter("Last Updated", frumpyAvatarLink)
+                    .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
                     .setTimestamp(Date.now())
                     .setImage("https://i.imgur.com/WnS0Biz.png")
 
             }
 
-            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
+            message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg, message));
 
         }
 
@@ -428,7 +428,7 @@ bot.on('messageCreate', async message => {//public commands
             .addField("--unfollow/--uf", "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server.")
             .addField("--listfollows/--lf", "`--listfollows`\nThis command will return a list of all maps you are following.")
 
-        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
+        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg, message));
     }
 
     else if (command == "keywords" || command == "keys") {
@@ -443,7 +443,7 @@ bot.on('messageCreate', async message => {//public commands
             list += "\n"
         }
 
-        message.channel.send(list).then(msg => addTrash(msg));
+        message.channel.send(list).then(msg => addTrash(msg, message));
     }
 
     else if (command == "ping") {
@@ -490,7 +490,7 @@ bot.on('messageCreate', async message => {//public commands
             .addField("User", message.author)
             .addField("Map", map)
             .setThumbnail(message.author.displayAvatarURL())
-            .setAuthor(message.author.tag, message.author.displayAvatarURL())
+            .setAuthor({name: message.author.tag, iconURL: message.author.displayAvatarURL()})
 
         logChannel.send({ embeds: [logEmbed] })
     }
@@ -518,7 +518,7 @@ bot.on('messageCreate', async message => {//public commands
             .addField("User", message.author)
             .addField("Map", map)
             .setThumbnail(message.author.displayAvatarURL())
-            .setAuthor(message.author.tag, message.author.displayAvatarURL())
+            .setAuthor({name: message.author.tag, iconURL: message.author.displayAvatarURL()})
 
         logChannel.send({ embeds: [logEmbed] })
     }
@@ -541,7 +541,7 @@ bot.on('messageCreate', async message => {//public commands
             .setColor(7980240)
             .setTimestamp(Date.now())
             .setDescription(list)
-        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
+        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg, message));
 
     }
 
@@ -586,7 +586,7 @@ bot.on('messageCreate', async message => {//dev commands
 
         if (!embed) return message.channel.send("The server is unavailable.")
 
-        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg));
+        message.channel.send({ embeds: [embed] }).then(msg => addTrash(msg, message));
     }
     else if (command == "listallfollows" || command == "laf") {
         let follows = await db.getAllFollows()
@@ -615,7 +615,7 @@ bot.on('messageCreate', async message => {//dev commands
             .setColor(7980240)
             .setTimestamp(Date.now())
             .setDescription(list)
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+        message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
     }
     else if (command == "testnotify") {
         let map = args.join(" ").toLowerCase();
@@ -673,7 +673,7 @@ async function checkIP(ip) {
     let embed = new Discord.MessageEmbed()
         .setTitle(`${data.numPlayers} (${data.numBots}) / ${data.maxPlayers} players connected to ${data.name} on ${data.map}`.replace(/\_/g, "\\_"))
         .setColor(7980240)
-        .setFooter("Last Updated", frumpyAvatarLink)
+        .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
         .setTimestamp(Date.now())
     if (image) embed.setImage(image);
 
@@ -716,7 +716,7 @@ let notifyUsers = async function (map, server, ip) {
             let dmEmbed = new Discord.MessageEmbed()
                 .setTitle(`${map} is now on ${server}!`)
                 .setColor(7980240)
-                .setFooter("Last Updated", frumpyAvatarLink)
+                .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
                 .setTimestamp(Date.now())
             if (stats) dmEmbed.setURL(stats)
             if (getMapImage(map)) dmEmbed.setImage(getMapImage(map))
@@ -727,7 +727,7 @@ let notifyUsers = async function (map, server, ip) {
                 let embed = new Discord.MessageEmbed()
                     .setTitle(`${map} is now on ${server}!`)
                     .setColor(7980240)
-                    .setFooter("Last Updated", frumpyAvatarLink)
+                    .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
                     .setTimestamp(Date.now())
                 if (stats) embed.setURL(stats)
                 if (getMapImage(map)) embed.setImage(getMapImage(map))
@@ -739,7 +739,7 @@ let notifyUsers = async function (map, server, ip) {
                 .setColor(7980240)
                 .setTimestamp(Date.now())
                 .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
-                .setAuthor(u.tag, u.displayAvatarURL())
+                .setAuthor({name: u.tag, iconURL: u.displayAvatarURL()})
                 .setThumbnail(u.displayAvatarURL())
             logChannel.send({ embeds: [logEmbed] })
             console.log(`Sent notification to ${u.tag} about ${map}`)
