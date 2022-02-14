@@ -624,6 +624,13 @@ bot.on('message', async message => {//dev commands
         message.react("👍")
         notifyUsers(map)
     }
+
+    else if(command == "removeuser"){
+        let userID = args[0];
+        if(!userID) return message.channel.send("Please enter a valid user ID.")
+        db.unfollowAll(userID);
+        message.channel.send("Removed all maps from user <@" + userID + ">.");
+    }
 })
 
 async function checkIP(ip) {
