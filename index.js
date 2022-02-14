@@ -36,7 +36,7 @@ async function intervalFunction() {
 
         let channel = await bot.channels.fetch(e.channelID);
         let message = await channel.messages.fetch(e.messageID)
-        message.edit("‎", { embed: embed })
+        message.edit({content: "‎", embeds: [embed] })
 
     })
 
