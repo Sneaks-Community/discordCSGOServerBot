@@ -315,9 +315,12 @@ function addTrash(msg, om){
             collector.stop("trash");
         });
         collector.on("end", () => {
-            // reaction?.remove();
             if(collector.endReason !== "trash"){
-                reaction.remove();
+                reaction.remove().catch(e => {
+                    //trihard
+                }) 
+            } else {
+                return;
             }
         })
     });
