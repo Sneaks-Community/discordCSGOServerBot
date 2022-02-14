@@ -6,7 +6,9 @@ const fetch = require("node-fetch");
 const config = require("./config.json")
 const db = require("./db.js")
 
-const bot = new Discord.Client();
+const {Intents} = Discord;
+
+const bot = new Discord.Client({intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS]});
 bot.login(config.token);
 
 const serverObject = require("./servers.json");
@@ -156,7 +158,7 @@ bot.on("ready", async () => {
 
     intervalFunction();
 
-    bot.setInterval(intervalFunction, config.intervalMS)//starts embed update loop
+    setInterval(intervalFunction, config.intervalMS)//starts embed update loop
 
 })
 
@@ -752,7 +754,7 @@ for (server in Object.keys(serverObject)) {
 }
 
 
-bot.setInterval(async function () {
+setInterval(async function () {
     for (server in Object.keys(oldData)) {
         if (oldData == 0) oldData[Object.keys(oldData)[server]] = gData[Object.keys(gData)[server]].map;
         else {
