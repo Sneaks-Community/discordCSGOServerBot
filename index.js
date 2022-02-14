@@ -304,17 +304,21 @@ function makeMapEmbed(mapName, server) {
 
 }
 
-function addTrash(msg, message){
+function addTrash(msg, om){
     //react a trash can and if the member reacts it delete the message
     msg.react("🗑️").then(reaction => {
-        const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === message.author.id;
+        const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === om.author.id;
         const collector = msg.createReactionCollector({filter , time: 30000 });//60000
         collector.on('collect', r => {
             msg.delete();
-            message.delete();
+            om.delete();
+            collector.stop("trash");
         });
         collector.on("end", () => {
-            reaction.remove();
+            // reaction?.remove();
+            if(collector.endReason !== "trash"){
+                reaction.remove();
+            }
         })
     });
 }
