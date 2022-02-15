@@ -6,9 +6,9 @@ const fetch = require("node-fetch");
 const config = require("./config.json")
 const db = require("./db.js")
 
-const {Intents} = Discord;
+const { Intents } = Discord;
 
-const bot = new Discord.Client({intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS]});
+const bot = new Discord.Client({ intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS] });
 bot.login(config.token);
 
 const serverObject = require("./servers.json");
@@ -36,7 +36,7 @@ async function intervalFunction() {
 
         let channel = await bot.channels.fetch(e.channelID);
         let message = await channel.messages.fetch(e.messageID)
-        message.edit({content: "‎", embeds: [embed] })
+        message.edit({ content: "‎", embeds: [embed] })
 
     })
 
@@ -117,7 +117,7 @@ function makeEmbed() {
         .setTitle("Server List")
         .setDescription("This list is updated every 1.5 minutes.")
         .setColor(7980240)
-        .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+        .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
         .setTimestamp(Date.now())
 
     for (let s in gData) {//makes field for ever server 
@@ -205,7 +205,7 @@ function playerListEmbed(server) {//makes embed with list of players
         embed = new Discord.MessageEmbed()
             .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/\_/g, "\\_"))
             .setColor(7980240)
-            .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+            .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
             .setTimestamp(Date.now())
 
         let list = "";
@@ -229,7 +229,7 @@ function playerListEmbed(server) {//makes embed with list of players
         embed = new Discord.MessageEmbed()
             .setTitle(`${server.name} is currently unavailable.`)
             .setColor(7980240)
-            .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+            .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
             .setTimestamp(Date.now())
             .setImage("https://i.imgur.com/WnS0Biz.png")
     }
@@ -240,7 +240,7 @@ function makeServerList() {//make server list embed for public commands
     let embed = new Discord.MessageEmbed()
         .setTitle("Please specify what sever you want to check.")
         .setColor(7980240)
-        .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+        .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
         .setTimestamp(Date.now())
 
     let list = "";
@@ -293,7 +293,7 @@ function makeMapEmbed(mapName, server) {
     let embed = new Discord.MessageEmbed()
         //.setTitle(`${server.name} is currently on ${mapName}`.replace(/\_/g, "\\_"))
         .setColor(7980240)
-        .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+        .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
         .setTimestamp(Date.now())
     if (stats) embed.setURL(stats)
     if (image) embed.setImage(image)
@@ -304,21 +304,21 @@ function makeMapEmbed(mapName, server) {
 
 }
 
-function addTrash(msg, om){
+function addTrash(msg, om) {
     //react a trash can and if the member reacts it delete the message
     msg.react("🗑️").then(reaction => {
         const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === om.author.id;
-        const collector = msg.createReactionCollector({filter , time: 30000 });//60000
+        const collector = msg.createReactionCollector({ filter, time: 30000 });//60000
         collector.on('collect', r => {
             msg.delete();
             om.delete();
             collector.stop("trash");
         });
         collector.on("end", () => {
-            if(collector.endReason !== "trash"){
+            if (collector.endReason !== "trash") {
                 reaction.remove().catch(e => {
                     //trihard
-                }) 
+                })
             } else {
                 return;
             }
@@ -349,10 +349,10 @@ bot.on('messageCreate', async message => {//public commands
                 .setURL("https://www.youtube.com/watch?v=lPGipwoJiOM")
                 .setColor("#26bf7a")
                 .setDescription(require("fs").readFileSync("./meme.txt").toString())
-                .setFooter({text: "ｆｒｕｍｐｙ７", iconURL: frumpyAvatarLink})
+                .setFooter({ text: "ｆｒｕｍｐｙ７", iconURL: frumpyAvatarLink })
                 .setTimestamp(Date.parse("Sat Mar 15 4207 04:20:07 GMT-0456"))
                 .setImage("https://i.imgur.com/FHTK2WB.gif")
-                .setAuthor({name: "( ͡° ͜ʖ ͡°)", iconURL: "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676", url: "https://mrdoob.com/#/157/spin_painter"})
+                .setAuthor({ name: "( ͡° ͜ʖ ͡°)", iconURL: "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676", url: "https://mrdoob.com/#/157/spin_painter" })
 
 
             return message.channel.send({ embeds: [egg] })
@@ -411,7 +411,7 @@ bot.on('messageCreate', async message => {//public commands
                 embed = new Discord.MessageEmbed()
                     .setTitle(`${server.name} is currently unavailable.`)
                     .setColor(7980240)
-                    .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+                    .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
                     .setTimestamp(Date.now())
                     .setImage("https://i.imgur.com/WnS0Biz.png")
 
@@ -479,11 +479,17 @@ bot.on('messageCreate', async message => {//public commands
                     db.unfollowMap(message.author.id, map)
                     msg.delete();
                     message.delete();
-
                     message.channel.send("You are no longer following " + map + ".")
+                    collector.stop("click")
                 });
                 collector.on("end", () => {
-                    reaction.remove();
+                    if (collector.endReason !== "click") {
+                        reaction.remove().catch(e => {
+                            //trihard
+                        })
+                    }else{
+                        return;
+                    }
                 })
             });
 
@@ -497,7 +503,7 @@ bot.on('messageCreate', async message => {//public commands
             .addField("User", message.author.toString())
             .addField("Map", map)
             .setThumbnail(message.author.displayAvatarURL())
-            .setAuthor({name: message.author.tag, iconURL: message.author.displayAvatarURL()})
+            .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
 
         logChannel.send({ embeds: [logEmbed] })
     }
@@ -512,7 +518,7 @@ bot.on('messageCreate', async message => {//public commands
             console.log(message.author.tag + " unfollowed all maps")
         } else {
             //if user isnt following the map
-            if (!await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map.")
+            if (!await db.isFollowingMap(message.author.id, map)) return message.channel.send("You are not following this map. Use `"+ prefix + "listfollows` to see a list of maps you are following.")
             db.unfollowMap(message.author.id, map)
             message.react("👍")
             message.channel.send("You are no longer following " + map + ".")
@@ -525,7 +531,7 @@ bot.on('messageCreate', async message => {//public commands
             .addField("User", message.author.toString())
             .addField("Map", map)
             .setThumbnail(message.author.displayAvatarURL())
-            .setAuthor({name: message.author.tag, iconURL: message.author.displayAvatarURL()})
+            .setAuthor({ name: message.author.tag, iconURL: message.author.displayAvatarURL() })
 
         logChannel.send({ embeds: [logEmbed] })
     }
@@ -634,9 +640,9 @@ bot.on('messageCreate', async message => {//dev commands
         notifyUsers(map)
     }
 
-    else if(command == "removeuser"){
+    else if (command == "removeuser") {
         let userID = args[0];
-        if(!userID) return message.channel.send("Please enter a valid user ID.")
+        if (!userID) return message.channel.send("Please enter a valid user ID.")
         db.unfollowAll(userID);
         message.channel.send("Removed all maps from user <@" + userID + ">.");
     }
@@ -680,7 +686,7 @@ async function checkIP(ip) {
     let embed = new Discord.MessageEmbed()
         .setTitle(`${data.numPlayers} (${data.numBots}) / ${data.maxPlayers} players connected to ${data.name} on ${data.map}`.replace(/\_/g, "\\_"))
         .setColor(7980240)
-        .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+        .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
         .setTimestamp(Date.now())
     if (image) embed.setImage(image);
 
@@ -723,7 +729,7 @@ let notifyUsers = async function (map, server, ip) {
             let dmEmbed = new Discord.MessageEmbed()
                 .setTitle(`${map} is now on ${server}!`)
                 .setColor(7980240)
-                .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+                .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
                 .setTimestamp(Date.now())
             if (stats) dmEmbed.setURL(stats)
             if (getMapImage(map)) dmEmbed.setImage(getMapImage(map))
@@ -734,7 +740,7 @@ let notifyUsers = async function (map, server, ip) {
                 let embed = new Discord.MessageEmbed()
                     .setTitle(`${map} is now on ${server}!`)
                     .setColor(7980240)
-                    .setFooter({text: "Last Updated", iconURL: frumpyAvatarLink})
+                    .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
                     .setTimestamp(Date.now())
                 if (stats) embed.setURL(stats)
                 if (getMapImage(map)) embed.setImage(getMapImage(map))
@@ -746,7 +752,7 @@ let notifyUsers = async function (map, server, ip) {
                 .setColor(7980240)
                 .setTimestamp(Date.now())
                 .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
-                .setAuthor({name: u.tag, iconURL: u.displayAvatarURL()})
+                .setAuthor({ name: u.tag, iconURL: u.displayAvatarURL() })
                 .setThumbnail(u.displayAvatarURL())
             logChannel.send({ embeds: [logEmbed] })
             console.log(`Sent notification to ${u.tag} about ${map}`)
