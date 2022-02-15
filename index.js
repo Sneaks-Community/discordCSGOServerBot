@@ -302,17 +302,17 @@ function makeMapEmbed(mapName, server) {
 
 }
 
-function addTrash(msg){
+async function addTrash(msg, om){
     //react a trash can and if the member reacts it delete the message
-    msg.react("🗑️").then(reaction => {
-        const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === message.author.id;
+    await msg.react("🗑️").then(reaction => {
+        const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === om.author.id;
         const collector = msg.createReactionCollector(filter, { time: 30000 });//60000
         collector.on('collect', r => {
             msg.delete();
-            message.delete();
+            om.delete();
         });
         collector.on("end", () => {
-            reaction.remove();
+            reaction.remove().catch(() => {})
         })
     });
 }
@@ -330,7 +330,7 @@ bot.on('message', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send({ embed: await makeServerList() }).then(msg => addTrash(msg));
+            return message.channel.send({ embed: await makeServerList() }).then(msg => addTrash(msg, message));
         }
 
         if (args[0].toLowerCase() == "frumpy") {//easteregg
@@ -356,7 +356,7 @@ bot.on('message', async message => {//public commands
         } else {//if returns valid server obj
             let embed = await playerListEmbed(server);
 
-            message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+            message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
         }
 
 
@@ -368,7 +368,7 @@ bot.on('message', async message => {//public commands
         }
 
         if (args.length == 0) {
-            return message.channel.send({ embed: await makeServerList() }).then(msg => addTrash(msg));
+            return message.channel.send({ embed: await makeServerList() }).then(msg => addTrash(msg, message));
         }
 
         let server = await keywordToServer(args.join(" ").toLowerCase());
@@ -387,7 +387,7 @@ bot.on('message', async message => {//public commands
 
             let embed;
             embed = makeMapEmbed(args[0])
-            message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+            message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
 
         } else {
 
@@ -408,7 +408,7 @@ bot.on('message', async message => {//public commands
 
             }
 
-            message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+            message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
 
         }
 
@@ -426,7 +426,7 @@ bot.on('message', async message => {//public commands
             .addField("--unfollow/--uf", "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server.")
             .addField("--listfollows/--lf", "`--listfollows`\nThis command will return a list of all maps you are following.")
 
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+        message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
     }
 
     else if (command == "keywords" || command == "keys") {
@@ -441,7 +441,7 @@ bot.on('message', async message => {//public commands
             list += "\n"
         }
 
-        message.channel.send(list).then(msg => addTrash(msg));
+        message.channel.send(list).then(msg => addTrash(msg, message));
     }
 
     else if (command == "ping") {
@@ -539,7 +539,7 @@ bot.on('message', async message => {//public commands
             .setColor(7980240)
             .setTimestamp(Date.now())
             .setDescription(list)
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+        message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
 
     }
 
@@ -584,7 +584,7 @@ bot.on('message', async message => {//dev commands
 
         if (!embed) return message.channel.send("The server is unavailable.")
 
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+        message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
     }
     else if (command == "listallfollows" || command == "laf") {
         let follows = await db.getAllFollows()
@@ -613,7 +613,7 @@ bot.on('message', async message => {//dev commands
             .setColor(7980240)
             .setTimestamp(Date.now())
             .setDescription(list)
-        message.channel.send({ embed: embed }).then(msg => addTrash(msg));
+        message.channel.send({ embed: embed }).then(msg => addTrash(msg, message));
     }
     else if (command == "testnotify") {
         let map = args.join(" ").toLowerCase();
