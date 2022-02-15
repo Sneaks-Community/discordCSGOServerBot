@@ -308,14 +308,14 @@ async function addTrash(msg, om) {
     //react a trash can and if the member reacts it delete the message
     await msg.react("🗑️").then(reaction => {
         const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === om.author.id;
-        const collector = msg.createReactionCollector({ filter, time: 30000 });//60000
+        const collector = msg.createReactionCollector({ filter, time: 30000, max: 1 });//60000
         collector.on('collect', r => {
             msg.delete();
             om.delete();
-            collector.stop("trash");
+            collector.stop();
         });
         collector.on("end", () => {
-            if (collector.endReason !== "trash") {
+            if (collector.endReason !== "limit") {
                 reaction.remove().catch(e => {
                     //trihard
                 })
@@ -474,16 +474,16 @@ bot.on('messageCreate', async message => {//public commands
             //react undo sign
             await msg.react("↩️").then(reaction => {
                 const filter = (reaction, user) => reaction.emoji.name === '↩️' && user.id === message.author.id;
-                const collector = msg.createReactionCollector(filter, { time: 30000 });
+                const collector = msg.createReactionCollector( {filter, time: 30000, max: 1 });
                 collector.on('collect', r => {
                     db.unfollowMap(message.author.id, map)
                     msg.delete();
                     message.delete();
                     message.channel.send("You are no longer following " + map + ".")
-                    collector.stop("click")
+                    collector.stop()
                 });
                 collector.on("end", () => {
-                    if (collector.endReason !== "click") {
+                    if (collector.endReason !== "limit") {
                         reaction.remove().catch(e => {
                             //trihard
                         })
