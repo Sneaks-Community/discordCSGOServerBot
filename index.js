@@ -304,9 +304,9 @@ function makeMapEmbed(mapName, server) {
 
 }
 
-function addTrash(msg, om) {
+async function addTrash(msg, om) {
     //react a trash can and if the member reacts it delete the message
-    msg.react("🗑️").then(reaction => {
+    await msg.react("🗑️").then(reaction => {
         const filter = (reaction, user) => reaction.emoji.name === '🗑️' && user.id === om.author.id;
         const collector = msg.createReactionCollector({ filter, time: 30000 });//60000
         collector.on('collect', r => {
@@ -470,9 +470,9 @@ bot.on('messageCreate', async message => {//public commands
 
         db.followMap(message.author.id, map)
         message.react("👍")
-        message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(msg => {
+        message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(async msg => {
             //react undo sign
-            msg.react("↩️").then(reaction => {
+            await msg.react("↩️").then(reaction => {
                 const filter = (reaction, user) => reaction.emoji.name === '↩️' && user.id === message.author.id;
                 const collector = msg.createReactionCollector(filter, { time: 30000 });
                 collector.on('collect', r => {
