@@ -337,6 +337,7 @@ function makeMapEmbed(mapName, server) {
   return embed;
 }
 
+
 async function addTrash(msg, om) {
   //react a trash can and if the member reacts it delete the message
   await msg.react("🗑️").then((reaction) => {
@@ -363,6 +364,7 @@ async function addTrash(msg, om) {
     });
   });
 }
+
 
 bot.on("messageCreate", async (message) => {
   //public commands
@@ -405,6 +407,7 @@ bot.on("messageCreate", async (message) => {
         });
 
       return message.channel.send({ embeds: [egg] });
+
     }
 
     let server = await keywordToServer(args.join(" ").toLowerCase());
@@ -415,6 +418,7 @@ bot.on("messageCreate", async (message) => {
       //if returns valid server obj
       let embed = await playerListEmbed(server);
 
+
       message.channel
         .send({ embeds: [embed] })
         .then((msg) => addTrash(msg, message));
@@ -424,10 +428,12 @@ bot.on("messageCreate", async (message) => {
       return message.channel.send("Please Wait. The bot is starting.");
     }
 
+
     if (args.length == 0) {
       return message.channel
         .send({ embeds: [await makeServerList()] })
         .then((msg) => addTrash(msg, message));
+
     }
 
     let server = await keywordToServer(args.join(" ").toLowerCase());
@@ -504,6 +510,7 @@ bot.on("messageCreate", async (message) => {
   } else if (command == "keywords" || command == "keys") {
     let list = "";
 
+
     for (let i in serverObject) {
       let server = serverObject[i];
       list += "**" + server.nick + ":**\n";
@@ -563,9 +570,11 @@ bot.on("messageCreate", async (message) => {
               reaction.remove().catch((e) => {
                 //trihard
               });
+
             } else {
               return;
             }
+
           });
         });
       });
@@ -639,6 +648,7 @@ bot.on("messageCreate", async (message) => {
       } else {
         list += follows[i].map_name + "\n";
       }
+
     }
     let embed = new Discord.MessageEmbed()
       .setTitle(`List of maps you are following:`)
