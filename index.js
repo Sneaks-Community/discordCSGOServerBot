@@ -534,7 +534,7 @@ bot.on("messageCreate", async (message) => {
       return message.channel.send("You are already following this map.");
 
     db.followMap(message.author.id, map);
-    message.react("👍");
+    
     message.channel
       .send(
         "You are now following " +
@@ -596,7 +596,7 @@ bot.on("messageCreate", async (message) => {
     //if the args is "all" unfollow all maps
     if (map == "all") {
       db.unfollowAll(message.author.id);
-      message.react("👍");
+      
       message.channel.send("You are no longer following any maps.");
       console.log(message.author.tag + " unfollowed all maps");
     } else {
@@ -608,7 +608,7 @@ bot.on("messageCreate", async (message) => {
             "listfollows` to see a list of maps you are following."
         );
       db.unfollowMap(message.author.id, map);
-      message.react("👍");
+      
       message.channel.send("You are no longer following " + map + ".");
       console.log(message.author.tag + " unfollowed map " + map);
     }
@@ -736,7 +736,7 @@ bot.on("messageCreate", async (message) => {
     if (!db.hasMap(map))
       return message.channel.send("No one is following this map.");
     //react a thumbs up to the message
-    message.react("👍");
+    
     notifyUsers(map);
   } else if (command == "removeuser") {
     let userID = args[0];
