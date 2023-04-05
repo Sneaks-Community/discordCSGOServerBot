@@ -364,9 +364,10 @@ bot.on("messageCreate", async (message) => {
   //public commands
 
   const args = message.content
-    .slice(message.content.startsWith("—") ? 1 : prefix.length)
-    .split(/ +/);
-  const command = args.shift().toLowerCase();
+  .slice(message.content.startsWith(prefix) ? prefix.length : 0)
+  .split(/ +/);
+const command = args.shift().toLowerCase();
+
   if (!message.content.startsWith(prefix) && !message.content.startsWith("—"))
     return;
   if (message.author.bot) return;
@@ -825,8 +826,8 @@ async function checkIP(ip) {
 
 
 const notifyUsers = async (map, serverObj) => {
-  const server = serverObj.nick;
-  const ip = serverObj.ip;
+  const server = serverObj ? serverObj.nick : 'unknown server';
+  const ip = serverObj ? serverObj.ip : 'unknown IP';
   const users = await db.getUsersFollowingMap(map);
 
   for (const user of users) {
@@ -835,7 +836,8 @@ const notifyUsers = async (map, serverObj) => {
 
       // Prepare the embed for the direct message
       const dmEmbed = new Discord.MessageEmbed()
-        .setTitle(`${map} is now on ${server} with ` + `**__Players:__** ${serverObj.numPlayers} (${serverObj.numBots}) / ${serverObj.maxPlayers})`)
+        .setTitle(`${map} is now on ${server}`)
+        .setDescription(`**__Players:__** ${serverObj?.numPlayers ?? 'unknown'} (${serverObj?.numBots ?? 'unknown'}) / ${serverObj?.maxPlayers ?? 'unknown'}`)
         .setColor(7980240)
         .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
         .setTimestamp(Date.now());
@@ -866,7 +868,8 @@ const notifyUsers = async (map, serverObj) => {
     } catch (e) {
       // Handle failed notifications
       const backupEmbed = new Discord.MessageEmbed()
-        .setTitle(`${map} is now on ${server} with ` + `**__Players:__** ${serverObj.numPlayers} (${serverObj.numBots}) / ${serverObj.maxPlayers})`)
+        .setTitle(`${map} is now on ${server}`)
+        .setDescription(`**__Players:__** ${serverObj?.numPlayers ?? 'unknown'} (${serverObj?.numBots ?? 'unknown'}) / ${serverObj?.maxPlayers ?? 'unknown'}`)
         .setColor(7980240)
         .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
         .setTimestamp(Date.now());
@@ -884,6 +887,7 @@ const notifyUsers = async (map, serverObj) => {
     }
   }
 };
+
 
 
 // Initialize oldData with server keys from serverObject and set values to 0
