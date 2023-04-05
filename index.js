@@ -116,20 +116,24 @@ function makeEmbed() {
 	for (const server of Object.values(gData)) {
 		if (!server.online) {
 			// If the server is offline, add a field indicating it's not available
-			embed.addField(server.name, "**Server is not available.**", true);
+			embed.addFields({
+				name: server.name,
+				value: "**Server is not available.**",
+				inline: true
+			});
 			continue;
 		}
 
 		if (!server.show) continue; // Skip servers that shouldn't be displayed
 
 		// Add a field for the online server with player, map, and IP details
-		embed.addField(
-			server.name,
-			`**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
-                **__Map:__** ${getWebsite(server.map)}
-                **__IP:__** ${server.fullIP}`,
-			true
-		);
+		embed.addFields({
+			name: server.name,
+			value: `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}\n**__Map:__** ${getWebsite(server.map)}\n**__IP:__** ${
+				server.fullIP
+			}`,
+			inline: true
+		});
 	}
 
 	return embed;
@@ -431,19 +435,32 @@ bot.on("messageCreate", async (message) => {
 			message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
 		}
 	} else if (command == "help" || command == "commands") {
-		let embed = new Discord.MessageEmbed()
-			.setTitle(`List of commands`)
-			.setColor(7980240)
-			.setTimestamp(Date.now())
-			.addField("--players/--p", "`--players <Server>`\nThis command will return a list of currently connected users to the specified server.")
-			.addField(
-				"--map/--m",
-				"`--map <Server/Map>`\nThis command return with what map a server is on, along with any other relevant information about the map."
-			)
-			.addField("--keywords/--keys", "`--keywords`\nThis command will show you a list of keywords you can use with the bot.")
-			.addField("--follow/--f", "`--follow <Map>`\nThis command will DM you whenever a map you follow is on a server.")
-			.addField("--unfollow/--uf", "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server.")
-			.addField("--listfollows/--lf", "`--listfollows`\nThis command will return a list of all maps you are following.");
+		let embed = new Discord.MessageEmbed().setTitle(`List of commands`).setColor(7980240).setTimestamp(Date.now()).addFields(
+			{
+				name: "--players/--p",
+				value: "`--players <Server>`\nThis command will return a list of currently connected users to the specified server."
+			},
+			{
+				name: "--map/--m",
+				value: "`--map <Server/Map>`\nThis command return with what map a server is on, along with any other relevant information about the map."
+			},
+			{
+				name: "--keywords/--keys",
+				value: "`--keywords`\nThis command will show you a list of keywords you can use with the bot."
+			},
+			{
+				name: "--follow/--f",
+				value: "`--follow <Map>`\nThis command will DM you whenever a map you follow is on a server."
+			},
+			{
+				name: "--unfollow/--uf",
+				value: "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server."
+			},
+			{
+				name: "--listfollows/--lf",
+				value: "`--listfollows`\nThis command will return a list of all maps you are following."
+			}
+		);
 
 		message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
 	} else if (command == "keywords" || command == "keys") {
@@ -518,8 +535,7 @@ bot.on("messageCreate", async (message) => {
 			.setTitle("User Followed Map")
 			.setColor(7980240)
 			.setTimestamp(Date.now())
-			.addField("User", message.author.toString())
-			.addField("Map", map)
+			.addFields({ name: "User", value: message.author.toString() }, { name: "Map", value: map })
 			.setThumbnail(message.author.displayAvatarURL())
 			.setAuthor({
 				name: message.author.tag,
@@ -562,8 +578,7 @@ bot.on("messageCreate", async (message) => {
 			.setTitle("User Unfollowed Map")
 			.setColor(7980240)
 			.setTimestamp(Date.now())
-			.addField("User", message.author.toString())
-			.addField("Map", map)
+			.addFields({ name: "User", value: message.author.toString() }, { name: "Map", value: map })
 			.setThumbnail(message.author.displayAvatarURL())
 			.setAuthor({
 				name: message.author.tag,
