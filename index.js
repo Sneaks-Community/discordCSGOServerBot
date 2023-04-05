@@ -61,16 +61,13 @@ async function refresh(servers) {
 }
 
 async function getInfo(server, index) {
-  //gets info for 1 server at a time
-
-  // console.time("server")
-
-  let ip = server.ip.split(":")[0];
-  let port = server.ip.split(":")[1];
+  // Get IP and port from the server object
+  const [ip, port] = server.ip.split(":");
 
   let valid = true;
 
-  let res = await Gamedig.query({
+  // Query the server using Gamedig
+  const res = await Gamedig.query({
     type: "csgo",
     host: ip,
     port: port,
@@ -82,21 +79,23 @@ async function getInfo(server, index) {
   let data;
 
   if (valid) {
+    // If the server is valid, populate the data object with server information
     data = {
       online: true,
-      name: server.nick, //Short nickname
-      fullIP: res.connect, //String with ip:port
-      map: res.map, //Current map
+      name: server.nick, // Short nickname
+      fullIP: res.connect, // String with ip:port
+      map: res.map, // Current map
       maxPlayers: res.maxplayers,
-      players: res.players, //Players array {name, score, time}
-      bots: res.bots, //Bots array {name, score, time}
-      numPlayers: res.raw.numplayers - res.raw.numbots, //int
-      numBots: res.raw.numbots, //int
-      show: server.show, //bool to print server in embed
-      keywords: server.keywords, //array of keywords for --players command
+      players: res.players, // Players array {name, score, time}
+      bots: res.bots, // Bots array {name, score, time}
+      numPlayers: res.raw.numplayers - res.raw.numbots, // int
+      numBots: res.raw.numbots, // int
+      show: server.show, // bool to print server in embed
+      keywords: server.keywords, // array of keywords for --players command
       index: index,
     };
   } else {
+    // If the server is not valid, populate the data object with minimal information
     data = {
       online: false,
       name: server.nick,
@@ -105,44 +104,42 @@ async function getInfo(server, index) {
     };
   }
 
-  // console.timeEnd("server")
-
   return data;
 }
 
+
 function makeEmbed() {
-  // console.time("embed")
-  let embed = new Discord.MessageEmbed()
+  // Create a new Discord embed with the title and other details
+  const embed = new Discord.MessageEmbed()
     .setTitle("Server List")
     .setDescription("This list is updated every 1.5 minutes.")
     .setColor(7980240)
     .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
     .setTimestamp(Date.now());
 
-  for (let s in gData) {
-    //makes field for ever server
-    let server = gData[s];
+  // Iterate through the servers in gData and add server details to the embed
+  for (const server of Object.values(gData)) {
+    if (!server.online) {
+      // If the server is offline, add a field indicating it's not available
+      embed.addField(server.name, "**Server is not available.**", true);
+      continue;
+    }
 
-    if (server.online) {
-      if (!server.show) continue;
+    if (!server.show) continue; // Skip servers that shouldn't be displayed
 
-      embed.addField(
-        server.name,
-        `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${
-          server.maxPlayers
-        }
+    // Add a field for the online server with player, map, and IP details
+    embed.addField(
+      server.name,
+      `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}
                 **__Map:__** ${getWebsite(server.map)}
                 **__IP:__** ${server.fullIP}`,
-        true
-      );
-    } else {
-      //checks if offline
-      embed.addField(server.name, "**Server is not available.**", true);
-    }
+      true
+    );
   }
-  // console.timeEnd("embed")
+
   return embed;
 }
+
 
 bot.on("ready", async () => {
   console.log("Started as " + bot.user.tag);
@@ -159,26 +156,28 @@ bot.on("ready", async () => {
 });
 
 function getWebsite(mapName) {
-  //returns stats website if available
-  //https://snksrv.com/surfstats/?view=map&name=x
-  //https://snksrv.com/kzstats/#/maps/x
+  // Determine the appropriate website URL based on the map prefix
+
+  // Check if the map is a surf map
   if (mapName.startsWith("surf_")) {
     return `[${mapName}](https://snksrv.com/surfstats/?view=map&name=${mapName})`;
-  } else if (
-    mapName.startsWith("bkz_") ||
-    mapName.startsWith("kz_") ||
-    mapName.startsWith("kzpro_") ||
-    mapName.startsWith("skz_") ||
-    mapName.startsWith("vnl_") ||
-    mapName.startsWith("xc_")
-  ) {
-    return `[${mapName}](https://snksrv.com/kzstats/#/maps/${mapName}/)`;
-  } else if (mapName.startsWith("bhop")) {
-    return `[${mapName}](https://snksrv.com/bhopstats/index.php?map=${mapName})`;
-  } else {
-    return mapName;
   }
+
+  // Check if the map is a kz map
+  const kzPrefixes = ["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"];
+  if (kzPrefixes.some(prefix => mapName.startsWith(prefix))) {
+    return `[${mapName}](https://snksrv.com/kzstats/#/maps/${mapName}/)`;
+  }
+
+  // Check if the map is a bhop map
+  if (mapName.startsWith("bhop")) {
+    return `[${mapName}](https://snksrv.com/bhopstats/index.php?map=${mapName})`;
+  }
+
+  // Return the map name if no matching prefix is found
+  return mapName;
 }
+
 
 function isEmpty(obj) {
   //checks if bot has started//if empty bot is starting
@@ -201,11 +200,10 @@ function keywordToServer(keyword) {
 }
 
 function playerListEmbed(server) {
-  //makes embed with list of players
-
   let embed;
 
   if (server.online) {
+    // Create an embed for the online server
     embed = new Discord.MessageEmbed()
       .setTitle(
         `${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(
@@ -217,29 +215,21 @@ function playerListEmbed(server) {
       .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
       .setTimestamp(Date.now());
 
-    let list = "";
+    // Generate a list of player names
+    let list = server.players.map(player => player.name).join('\n');
+    let botList = server.bots.map(bot => bot.name).join('\n');
+    list += botList;
 
-    for (let i in server.players) {
-      let player = server.players[i];
-
-      list += player.name + "\n";
-    }
-
-    for (let i in server.bots) {
-      let bot = server.bots[i];
-
-      list += bot.name += "\n";
-    }
-
+    // Escape special characters for Discord and remove connecting players
     list = list
       .replace(/\`/g, "'")
       .replace(/\*/g, "\\*")
       .replace(/\_/g, "\\_")
-      .replace(/undefined\n/g, ""); //removes back ticks for discord, and removes connecting players... i think
+      .replace(/undefined\n/g, "");
 
     embed.setDescription(list);
   } else {
-    //if offline
+    // Create an embed for the offline server
     embed = new Discord.MessageEmbed()
       .setTitle(`${server.name} is currently unavailable.`)
       .setColor(7980240)
@@ -247,47 +237,42 @@ function playerListEmbed(server) {
       .setTimestamp(Date.now())
       .setImage("https://i.imgur.com/WnS0Biz.png");
   }
+
   return embed;
 }
 
+
 function makeServerList() {
-  //make server list embed for public commands
+  // Create a server list embed for public commands
   let embed = new Discord.MessageEmbed()
-    .setTitle("Please specify what sever you want to check.")
+    .setTitle("Please specify what server you want to check.")
     .setColor(7980240)
     .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
     .setTimestamp(Date.now());
 
-  let list = "";
-
-  for (let i in gData) {
-    let server = gData[i];
-
-    if (server.online) {
-      list += `${server.index}: **__${server.name}__**: ${server.numPlayers} (${
-        server.numBots
-      }) / ${server.maxPlayers} on ${getWebsite(server.map)}\n`;
-    } else {
-      list += `${server.index}: **__${server.name}__**: is currently unavailable.\n`;
-    }
-  }
+  // Generate the server list
+  let list = Object.values(gData)
+    .map(server => {
+      if (server.online) {
+        return `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}`;
+      } else {
+        return `${server.index}: **__${server.name}__**: is currently unavailable.`;
+      }
+    })
+    .join('\n');
 
   embed.setDescription(list);
 
   return embed;
 }
 
+
+// Returns the map image URL for the given map name
 function getMapImage(mapName) {
-  //looks for map image
   if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
     return `https://snksrv.com/bans/images/maps/${mapName}.jpg`;
   } else if (
-    mapName.startsWith("bkz_") ||
-    mapName.startsWith("kz_") ||
-    mapName.startsWith("kzpro_") ||
-    mapName.startsWith("skz_") ||
-    mapName.startsWith("vnl_") ||
-    mapName.startsWith("xc_")
+    ["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"].some(prefix => mapName.startsWith(prefix))
   ) {
     return `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${mapName}.jpg`;
   } else {
@@ -295,17 +280,12 @@ function getMapImage(mapName) {
   }
 }
 
+// Returns the stats page URL for the given map name
 function getStatsPage(mapName) {
-  //looks for stats page
   if (mapName.startsWith("surf_")) {
     return `https://snksrv.com/surfstats/?view=map&name=${mapName}`;
   } else if (
-    mapName.startsWith("bkz_") ||
-    mapName.startsWith("kz_") ||
-    mapName.startsWith("kzpro_") ||
-    mapName.startsWith("skz_") ||
-    mapName.startsWith("vnl_") ||
-    mapName.startsWith("xc_")
+    ["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"].some(prefix => mapName.startsWith(prefix))
   ) {
     return `https://snksrv.com/kzstats/#/maps/${mapName}/`;
   } else if (mapName.startsWith("bhop")) {
@@ -315,27 +295,41 @@ function getStatsPage(mapName) {
   }
 }
 
+
+// Creates a map embed with optional server information
 function makeMapEmbed(mapName, server) {
-  server = server || false;
+  // Get the map image and stats page URLs
+  const image = getMapImage(mapName);
+  const stats = getStatsPage(mapName);
 
-  let image = getMapImage(mapName);
-  let stats = getStatsPage(mapName);
-
-  let embed = new Discord.MessageEmbed()
-    //.setTitle(`${server.name} is currently on ${mapName}`.replace(/\_/g, "\\_"))
+  // Create a new Discord MessageEmbed instance
+  const embed = new Discord.MessageEmbed()
     .setColor(7980240)
     .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
     .setTimestamp(Date.now());
-  if (stats) embed.setURL(stats);
-  if (image) embed.setImage(image);
-  if (server)
+
+  // Set the embed URL if a stats page is available
+  if (stats) {
+    embed.setURL(stats);
+  }
+
+  // Set the embed image if an image is available
+  if (image) {
+    embed.setImage(image);
+  }
+
+  // Set the embed title based on whether a server is provided
+  if (server) {
     embed.setTitle(
       `${server.name} is currently on ${mapName}`.replace(/\_/g, "\\_")
     );
-  if (!server) embed.setTitle(`${mapName} stats`.replace(/\_/g, "\\_"));
+  } else {
+    embed.setTitle(`${mapName} stats`.replace(/\_/g, "\\_"));
+  }
 
   return embed;
 }
+
 
 
 async function addTrash(msg, om) {
@@ -378,21 +372,23 @@ bot.on("messageCreate", async (message) => {
   if (message.author.bot) return;
 
   if (command == "players" || command == "p") {
+    // Check if gData is empty
     if (isEmpty(gData)) {
       return message.channel.send("Please Wait. The bot is starting.");
     }
 
+    // If no arguments are provided, send the server list embed
     if (args.length == 0) {
       return message.channel
         .send({ embeds: [await makeServerList()] })
         .then((msg) => addTrash(msg, message));
     }
 
+    // Easter egg for "frumpy" argument
     if (args[0].toLowerCase() == "frumpy") {
-      //easteregg
       message.delete();
-      let egg = new Discord.MessageEmbed()
-        .setTitle(`listen here`)
+      const egg = new Discord.MessageEmbed()
+        .setTitle("listen here")
         .setURL("https://www.youtube.com/watch?v=lPGipwoJiOM")
         .setColor("#26bf7a")
         .setDescription(require("fs").readFileSync("./meme.txt").toString())
@@ -407,58 +403,60 @@ bot.on("messageCreate", async (message) => {
         });
 
       return message.channel.send({ embeds: [egg] });
-
     }
 
-    let server = await keywordToServer(args.join(" ").toLowerCase());
+    // Search for the server using the provided keyword(s)
+    const server = await keywordToServer(args.join(" ").toLowerCase());
 
+    // If a valid server is found, send the player list embed
     if (!server) {
       return message.channel.send("Please enter a valid server.");
     } else {
-      //if returns valid server obj
-      let embed = await playerListEmbed(server);
-
-
+      const embed = await playerListEmbed(server);
       message.channel
         .send({ embeds: [embed] })
         .then((msg) => addTrash(msg, message));
     }
-  } else if (command == "map" || command == "m") {
+  }
+  else if (command == "map" || command == "m") {
+    // Check if gData is empty
     if (isEmpty(gData)) {
       return message.channel.send("Please Wait. The bot is starting.");
     }
 
-
+    // If no arguments are provided, send the server list embed
     if (args.length == 0) {
       return message.channel
         .send({ embeds: [await makeServerList()] })
         .then((msg) => addTrash(msg, message));
-
     }
 
-    let server = await keywordToServer(args.join(" ").toLowerCase());
+    // Search for the server using the provided keyword(s)
+    const server = await keywordToServer(args.join(" ").toLowerCase());
 
     if (!server) {
-      // return message.channel.send("Please choose a valid server.");
-      let isMap = getMapImage(args[0]);
-
+      // If no valid server is found, try searching for a map image
+      const isMap = getMapImage(args[0]);
       let res;
 
       if (isMap) {
         res = await fetch(isMap, { method: "HEAD" });
       }
 
-      if (!isMap || !res.ok)
+      // If no valid map image is found, return an error message
+      if (!isMap || !res.ok) {
         return message.channel.send("Please choose a valid server/map.");
+      }
 
-      let embed;
-      embed = makeMapEmbed(args[0]);
+      // If a valid map image is found, create and send the map embed
+      const embed = makeMapEmbed(args[0]);
       message.channel
         .send({ embeds: [embed] })
         .then((msg) => addTrash(msg, message));
     } else {
       let embed;
 
+      // If a valid server is found, create and send the map embed
       if (server.online) {
         embed = makeMapEmbed(server.map, server);
       } else {
@@ -474,7 +472,8 @@ bot.on("messageCreate", async (message) => {
         .send({ embeds: [embed] })
         .then((msg) => addTrash(msg, message));
     }
-  } else if (command == "help" || command == "commands") {
+  }
+  else if (command == "help" || command == "commands") {
     let embed = new Discord.MessageEmbed()
       .setTitle(`List of commands`)
       .setColor(7980240)
@@ -526,30 +525,35 @@ bot.on("messageCreate", async (message) => {
   } else if (command == "v" || command == "version") {
     message.channel.send(require("./package.json").version);
   } else if (command == "follow" || command == "f") {
-    let map = args.join(" ").toLowerCase();
-    //if no map or a mention is given return
-    //discord id regex
-    // console.log(map.match((Discord.MessageMentions.USERS_PATTERN)))
+    const map = args.join(" ").toLowerCase();
+    
+    // Check if no map or a mention is given, and return an error message if true
     if (
       !map ||
       map.match(Discord.MessageMentions.USERS_PATTERN) ||
       map.match(Discord.MessageMentions.ROLES_PATTERN) ||
       map.match(Discord.MessageMentions.EVERYONE_PATTERN)
-    )
+    ) {
       return message.channel.send("Please enter a valid map name.");
-    if (await db.isFollowingMap(message.author.id, map))
+    }
+  
+    // Check if the user is already following the map, and return a message if true
+    if (await db.isFollowingMap(message.author.id, map)) {
       return message.channel.send("You are already following this map.");
-
+    }
+  
+    // Follow the map
     db.followMap(message.author.id, map);
-    
+  
+    // Send a confirmation message and add a reaction for the user to undo the follow action
     message.channel
       .send(
         "You are now following " +
-          map +
-          ". You will be notified when the map comes on a server."
+        map +
+        ". You will be notified when the map comes on a server."
       )
       .then(async (msg) => {
-        //react undo sign
+        // Add a reaction for the user to undo the follow action
         await msg.react("↩️").then((reaction) => {
           const filter = (reaction, user) =>
             reaction.emoji.name === "↩️" && user.id === message.author.id;
@@ -567,20 +571,19 @@ bot.on("messageCreate", async (message) => {
           });
           collector.on("end", () => {
             if (collector.endReason !== "limit") {
-              reaction.remove().catch((e) => {
-                //trihard
-              });
-
+              reaction.remove().catch((e) => {});
+  
             } else {
               return;
             }
-
           });
         });
       });
+  
     console.log(message.author.tag + " followed map " + map);
-
-    let logEmbed = new Discord.MessageEmbed()
+  
+    // Log the map follow action in the log channel
+    const logEmbed = new Discord.MessageEmbed()
       .setTitle("User Followed Map")
       .setColor(7980240)
       .setTimestamp(Date.now())
@@ -591,37 +594,45 @@ bot.on("messageCreate", async (message) => {
         name: message.author.tag,
         iconURL: message.author.displayAvatarURL(),
       });
-
+  
     logChannel.send({ embeds: [logEmbed] });
-  } else if (command == "unfollow" || command == "uf") {
-    let map = args.join(" ").toLowerCase();
+  }
+  else if (command == "unfollow" || command == "uf") {
+    const map = args.join(" ").toLowerCase();
+    
+    // Check if no map or a mention is given, and return an error message if true
     if (
       !map ||
       map.match(Discord.MessageMentions.USERS_PATTERN) ||
       map.match(Discord.MessageMentions.ROLES_PATTERN) ||
       map.match(Discord.MessageMentions.EVERYONE_PATTERN)
-    )
+    ) {
       return message.channel.send("Please enter a valid map name.");
-    //if the args is "all" unfollow all maps
+    }
+  
+    // If the argument is "all", unfollow all maps
     if (map == "all") {
       db.unfollowAll(message.author.id);
-      
       message.channel.send("You are no longer following any maps.");
       console.log(message.author.tag + " unfollowed all maps");
     } else {
-      //if user isnt following the map
-      if (!(await db.isFollowingMap(message.author.id, map)))
+      // If the user is not following the map, return an error message
+      if (!(await db.isFollowingMap(message.author.id, map))) {
         return message.channel.send(
           "You are not following this map. Use `" +
-            prefix +
-            "listfollows` to see a list of maps you are following."
+          prefix +
+          "listfollows` to see a list of maps you are following."
         );
+      }
+  
+      // Unfollow the map
       db.unfollowMap(message.author.id, map);
-      
       message.channel.send("You are no longer following " + map + ".");
       console.log(message.author.tag + " unfollowed map " + map);
     }
-    let logEmbed = new Discord.MessageEmbed()
+  
+    // Log the map unfollow action in the log channel
+    const logEmbed = new Discord.MessageEmbed()
       .setTitle("User Unfollowed Map")
       .setColor(7980240)
       .setTimestamp(Date.now())
@@ -632,9 +643,10 @@ bot.on("messageCreate", async (message) => {
         name: message.author.tag,
         iconURL: message.author.displayAvatarURL(),
       });
-
+  
     logChannel.send({ embeds: [logEmbed] });
-  } else if (command == "listfollows" || command == "lf") {
+  }
+   else if (command == "listfollows" || command == "lf") {
     //list all users follows
     let follows = await db.getUserFollows(message.author.id);
     // console.log(follows)
@@ -697,56 +709,53 @@ bot.on("messageCreate", async (message) => {
       .send({ embeds: [embed] })
       .then((msg) => addTrash(msg, message));
   } else if (command == "listallfollows" || command == "laf") {
-    let follows = await db.getAllFollows();
-    //sort follows by discord id
+    // Retrieve all followed maps from the database
+    const follows = await db.getAllFollows();
+    
+    // Sort follows by discord ID
     follows.sort((a, b) => {
       if (a.discord_id < b.discord_id) return -1;
       if (a.discord_id > b.discord_id) return 1;
       return 0;
     });
-    // console.log(follows)
-    if (!follows)
+  
+    // If there are no users following any maps, return an error message
+    if (!follows) {
       return message.channel.send("There are no users following any maps.");
+    }
+  
+    // Create a list of all followed maps
     let list = "";
-    for (let i in follows) {
-      let stats = getStatsPage(follows[i].map_name);
-      // list += "<@" + follows[i].discord_id + ">" + ": " + `[${follows[i].map_name}](${getStatsPage(follows[i].map_name)})` + "\n"
+    for (const follow of follows) {
+      const stats = getStatsPage(follow.map_name);
+      
       if (stats) {
-        // list += `[${follows[i].map_name}](${stats})` + "\n"
-        // "<@" + follows[i].discord_id + ">" + ": " + `[${follows[i].map_name}](${getStatsPage(follows[i].map_name)})` + "\n"
-        list +=
-          "<@" +
-          follows[i].discord_id +
-          ">" +
-          ": " +
-          `[${follows[i].map_name}](${stats})` +
-          "\n";
+        list += `<@${follow.discord_id}>: [${follow.map_name}](${stats})\n`;
       } else {
-        list +=
-          "<@" +
-          follows[i].discord_id +
-          ">" +
-          ": " +
-          follows[i].map_name +
-          "\n";
+        list += `<@${follow.discord_id}>: ${follow.map_name}\n`;
       }
     }
-    let embed = new Discord.MessageEmbed()
-      .setTitle(`List of all followed maps:`)
+  
+    // Create an embed with the list of followed maps
+    const embed = new Discord.MessageEmbed()
+      .setTitle('List of all followed maps:')
       .setColor(7980240)
       .setTimestamp(Date.now())
       .setDescription(list);
+  
+    // Send the embed and add a trash reaction to it
     message.channel
       .send({ embeds: [embed] })
-      .then((msg) => addTrash(msg, message));
-  } else if (command == "testnotify") {
+      .then(msg => addTrash(msg, message));
+  }
+   else if (command == "testnotify") {
     let map = args.join(" ").toLowerCase();
     if (!map) return message.channel.send("Please enter a valid map name.");
     //if the map isnt in the database
     if (!db.hasMap(map))
       return message.channel.send("No one is following this map.");
     //react a thumbs up to the message
-    
+
     notifyUsers(map);
   } else if (command == "removeuser") {
     let userID = args[0];
@@ -826,83 +835,99 @@ async function checkIP(ip) {
   return embed;
 }
 
-let notifyUsers = async function (map, server, ip) {
-  let users = await db.getUsersFollowingMap(map);
-  for (let i in users) {
-    let user = users[i];
-    //console.log(user)
+const notifyUsers = async (map, serverObj) => {
+  const server = serverObj.nick;
+  const ip = serverObj.ip;
+  const users = await db.getUsersFollowingMap(map);
 
-    bot.users.fetch(user.discord_id).then((u) => {
-      // u.send(`${map} is now on ${server}!\nsteam://connect/${ip}`)
-      //make embed
-      let stats = getStatsPage(map);
-      let dmEmbed = new Discord.MessageEmbed()
-        .setTitle(`${map} is now on ${server}!`)
+  for (const user of users) {
+    try {
+      const u = await bot.users.fetch(user.discord_id);
+
+      // Prepare the embed for the direct message
+      const dmEmbed = new Discord.MessageEmbed()
+        .setTitle(`${map} is now on ${server} with ` + `**__Players:__** ${serverObj.numPlayers} (${serverObj.numBots}) / ${serverObj.maxPlayers})`)
         .setColor(7980240)
         .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
         .setTimestamp(Date.now());
+
+      const stats = getStatsPage(map);
       if (stats) dmEmbed.setURL(stats);
-      if (getMapImage(map)) dmEmbed.setImage(getMapImage(map));
-      u.send({
+
+      const mapImage = getMapImage(map);
+      if (mapImage) dmEmbed.setImage(mapImage);
+
+      // Send the direct message to the user
+      await u.send({
         embeds: [dmEmbed],
         content: `${map} is now on ${server}!\nsteam://connect/${ip}`,
-      }).catch((e) => {
-        let embed = new Discord.MessageEmbed()
-          .setTitle(`${map} is now on ${server}!`)
-          .setColor(7980240)
-          .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
-          .setTimestamp(Date.now());
-        if (stats) embed.setURL(stats);
-        if (getMapImage(map)) embed.setImage(getMapImage(map));
-        bot.guilds.cache
-          .get("253812864786235402")
-          .channels.cache.get("269171320732778496")
-          .send({
-            embeds: [embed],
-            content: `${u}\n${map} is now on ${server}!\nsteam://connect/${ip}`,
-          });
       });
-      //make embed for logging channel
-      let logEmbed = new Discord.MessageEmbed()
+
+      // Log the successful notification
+      const logEmbed = new Discord.MessageEmbed()
         .setTitle(`Notification has been sent.`)
         .setColor(7980240)
         .setTimestamp(Date.now())
         .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
         .setAuthor({ name: u.tag, iconURL: u.displayAvatarURL() })
         .setThumbnail(u.displayAvatarURL());
+
       logChannel.send({ embeds: [logEmbed] });
       console.log(`Sent notification to ${u.tag} about ${map}`);
-    });
+    } catch (e) {
+      // Handle failed notifications
+      const backupEmbed = new Discord.MessageEmbed()
+        .setTitle(`${map} is now on ${server} with ` + `**__Players:__** ${serverObj.numPlayers} (${serverObj.numBots}) / ${serverObj.maxPlayers})`)
+        .setColor(7980240)
+        .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+        .setTimestamp(Date.now());
+
+      if (stats) backupEmbed.setURL(stats);
+      if (mapImage) backupEmbed.setImage(mapImage);
+
+      bot.guilds.cache
+        .get("253812864786235402")
+        .channels.cache.get("269171320732778496")
+        .send({
+          embeds: [backupEmbed],
+          content: `${u}\n${map} is now on ${server}!\nsteam://connect/${ip}`,
+        });
+    }
   }
 };
 
-let oldData = {};
-for (server in Object.keys(serverObject)) {
-  oldData[Object.keys(serverObject)[server]] = 0;
+
+// Initialize oldData with server keys from serverObject and set values to 0
+const oldData = {};
+const serverObjectKeys = Object.keys(serverObject);
+
+for (const server of serverObjectKeys) {
+  oldData[server] = 0;
 }
 
-setInterval(async function () {
-  for (server in Object.keys(oldData)) {
-    if (oldData == 0)
-      oldData[Object.keys(oldData)[server]] =
-        gData[Object.keys(gData)[server]].map;
-    else {
-      if (
-        oldData[Object.keys(oldData)[server]] !=
-        gData[Object.keys(gData)[server]].map
-      ) {
-        notifyUsers(
-          gData[Object.keys(gData)[server]].map,
-          Object.values(serverObject)[server].nick,
-          Object.values(serverObject)[server].ip
-        );
-        oldData[Object.keys(oldData)[server]] =
-          gData[Object.keys(gData)[server]].map;
-      }
+// Function to update server data and notify users if there's a change in the .map property
+const updateServerData = async () => {
+  const oldDataKeys = Object.keys(oldData);
+  const gDataKeys = Object.keys(gData);
+
+  for (let i = 0; i < oldDataKeys.length; i++) {
+    const currentServer = oldDataKeys[i];
+    const currentServerObject = serverObject[currentServer];
+
+    if (oldData[currentServer] === 0) {
+      oldData[currentServer] = gData[gDataKeys[i]].map;
+    } else if (oldData[currentServer] !== gData[gDataKeys[i]].map) {
+      const newMap = gData[gDataKeys[i]].map;
+
+      notifyUsers(newMap, currentServerObject);
+      oldData[currentServer] = newMap;
     }
   }
-  // console.log(oldData)
-}, 91000);
+};
+
+// Run the updateServerData function every 91 seconds (91000 milliseconds)
+setInterval(updateServerData, 91000);
+
 
 //if a member leaves delete all their follows in db
 bot.on("guildMemberRemove", async (member) => {
