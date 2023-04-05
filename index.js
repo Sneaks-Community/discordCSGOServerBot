@@ -489,7 +489,7 @@ bot.on("messageCreate", async (message) => {
       )
       .addField(
         "--keywords/--keys",
-        "`--help`\nThis command will show you a list of keywords you can use with the bot."
+        "`--keywords`\nThis command will show you a list of keywords you can use with the bot."
       )
       .addField(
         "--follow/--f",
