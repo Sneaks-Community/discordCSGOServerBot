@@ -766,42 +766,33 @@ bot.on("messageCreate", async (message) => {
 });
 
 async function checkIP(ip) {
+  // Extract port from the IP address, if available
   let port = "27015";
-
   if (ip.includes(":")) {
-    port = ip.split(":")[1];
-    ip = ip.split(":")[0];
+    [ip, port] = ip.split(":");
   }
 
-  let valid = true;
-
-  let res = await Gamedig.query({
-    type: "csgo",
-    host: ip,
-    port: port,
-  }).catch((e) => {
-    valid = false;
-  });
-
-  if (!valid) return false;
-
-  let data = {
-    name: res.name, //Short nickname
-    fullIP: res.connect, //String with ip:port
-    map: res.map, //Current map
-    maxPlayers: res.maxplayers,
-    players: res.players, //Players array {name, score, time}
-    bots: res.bots, //Bots array {name, score, time}
-    numPlayers: res.raw.numplayers - res.raw.numbots, //int
-    numBots: res.raw.numbots, //int
+  // Create a server object with the necessary information for getInfo()
+  const server = {
+    ip: `${ip}:${port}`,
+    nick: "Custom Server",
+    show: true,
+    keywords: [],
   };
 
-  let image = getMapImage(data.map);
+  // Get server info using getInfo()
+  const serverInfo = await getInfo(server);
 
-  let embed = new Discord.MessageEmbed()
+  if (!serverInfo.online) return false;
+
+  // Get the map image
+  const image = getMapImage(serverInfo.map);
+
+  // Create the embed with the server data
+  const embed = new Discord.MessageEmbed()
     .setTitle(
-      `${data.numPlayers} (${data.numBots}) / ${data.maxPlayers} players connected to ${data.name} on ${data.map}`.replace(
-        /\_/g,
+      `${serverInfo.numPlayers} (${serverInfo.numBots}) / ${serverInfo.maxPlayers} players connected to ${serverInfo.name} on ${serverInfo.map}`.replace(
+        /_/g,
         "\\_"
       )
     )
@@ -810,30 +801,28 @@ async function checkIP(ip) {
     .setTimestamp(Date.now());
   if (image) embed.setImage(image);
 
+  // Create a list of players and bots
   let list = "";
-
-  for (let i in data.players) {
-    let player = data.players[i];
-
-    list += player.name + "\n";
+  for (const player of serverInfo.players) {
+    list += `${player.name}\n`;
+  }
+  for (const bot of serverInfo.bots) {
+    list += `${bot.name}\n`;
   }
 
-  for (let i in data.bots) {
-    let bot = data.bots[i];
-
-    list += bot.name += "\n";
-  }
-
+  // Sanitize the list for Discord and remove undefined entries
   list = list
-    .replace(/\`/g, "'")
+    .replace(/`/g, "'")
     .replace(/\*/g, "\\*")
-    .replace(/\_/g, "\\_")
-    .replace(/undefined\n/g, ""); //removes back ticks for discord, and removes connecting players... i think
+    .replace(/_/g, "\\_")
+    .replace(/undefined\n/g, "");
 
+  // Set the list as the embed description
   embed.setDescription(list);
 
   return embed;
 }
+
 
 const notifyUsers = async (map, serverObj) => {
   const server = serverObj.nick;
