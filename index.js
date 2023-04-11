@@ -827,12 +827,16 @@ const updateServerData = async () => {
 
 	for (let i = 0; i < oldDataKeys.length; i++) {
 		const currentServer = oldDataKeys[i];
-		const currentServerObject = serverObject[currentServer];
+		let currentServerObject = serverObject[currentServer];
 
 		if (oldData[currentServer] === 0) {
 			oldData[currentServer] = gData[gDataKeys[i]].map;
 		} else if (oldData[currentServer] !== gData[gDataKeys[i]].map) {
 			const newMap = gData[gDataKeys[i]].map;
+
+			currentServerObject["numPlayers"] = gData[gDataKeys[i]].numPlayers;
+			currentServerObject["numBots"] = gData[gDataKeys[i]].numBots;
+			currentServerObject["maxPlayers"] = gData[gDataKeys[i]].maxPlayers;
 
 			notifyUsers(newMap, currentServerObject);
 			oldData[currentServer] = newMap;
