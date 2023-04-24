@@ -260,7 +260,7 @@ function makeServerList() {
 // Returns the map image URL for the given map name
 function getMapImage(mapName) {
 	if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
-		return `https://snksrv.com/bans/images/maps/${mapName}.jpg`;
+		return `https://bans.snksrv.com/images/maps/${mapName}.jpg`;
 	} else if (["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"].some((prefix) => mapName.startsWith(prefix))) {
 		return `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${mapName}.jpg`;
 	} else {
