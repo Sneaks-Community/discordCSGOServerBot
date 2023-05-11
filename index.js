@@ -342,12 +342,13 @@ async function addTrash(msg, om) {
 
 bot.on("messageCreate", async (message) => {
 	//public commands
+	if (message.author.bot) return;
 
 	const args = message.content.slice(message.content.startsWith(prefix) ? prefix.length : 0).split(/ +/);
+	if(args.includes("ok")) message.react("🆗")
 	const command = args.shift().toLowerCase();
 
 	if (!message.content.startsWith(prefix) && !message.content.startsWith("—")) return;
-	if (message.author.bot) return;
 
 	if (command == "players" || command == "p") {
 		// Check if gData is empty
