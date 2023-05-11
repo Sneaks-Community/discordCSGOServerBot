@@ -8,7 +8,8 @@ const db = require("./db.js");
 const { Intents } = Discord;
 
 const bot = new Discord.Client({
-	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS]
+	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.DIRECT_MESSAGE_REACTIONS],
+	partials: ["CHANNEL", "MESSAGE", "REACTION", "USER"]
 });
 bot.login(config.token);
 
@@ -321,7 +322,9 @@ async function addTrash(msg, om) {
 		}); //60000
 		collector.on("collect", (r) => {
 			msg.delete();
-			om.delete();
+			if(msg.channel.type !== "DM") om.delete().catch((e) => {
+				//trihard
+			});
 			collector.stop();
 		});
 		collector.on("end", () => {
