@@ -6,6 +6,7 @@ const config = require("./config.json");
 const db = require("./db.js");
 
 const { Intents } = Discord;
+// console.log(Object.keys(Discord).filter((k) => k.startsWith("Client")))
 
 const bot = new Discord.Client({
 	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.DIRECT_MESSAGE_REACTIONS],
