@@ -1,9 +1,9 @@
-const Discord = require("discord.js");
-const Gamedig = require("gamedig");
-const fetch = require("node-fetch");
+import Discord from "discord.js";
+import Gamedig from "gamedig";
+import fetch from "node-fetch";
 
-const config = require("./config.json");
-const db = require("./db.js");
+import config from "./config.json" assert { type: "json" };
+import { initDB, followMap, unfollowMap, getFollowers, getAllFollows, getUserFollows, isFollowingMap, getUsersFollowingMap, hasMap, unfollowAll, totalFollows } from "./db.js";
 
 const { Intents } = Discord;
 // console.log(Object.keys(Discord).filter((k) => k.startsWith("Client")))
@@ -12,9 +12,13 @@ const bot = new Discord.Client({
 	intents: [Intents.FLAGS.GUILDS, Intents.FLAGS.GUILD_MESSAGES, Intents.FLAGS.GUILD_MESSAGE_REACTIONS, Intents.FLAGS.DIRECT_MESSAGES, Intents.FLAGS.DIRECT_MESSAGE_REACTIONS],
 	partials: ["CHANNEL", "MESSAGE", "REACTION", "USER"]
 });
+
+// Initialize database before logging in
+await initDB();
+
 bot.login(config.token);
 
-const serverObject = require("./servers.json");
+import serverObject from "./servers.json" assert { type: "json" };
 
 let gData = {};
 
@@ -498,12 +502,12 @@ bot.on("messageCreate", async (message) => {
 		}
 
 		// Check if the user is already following the map, and return a message if true
-		if (await db.isFollowingMap(message.author.id, map)) {
+		if (await isFollowingMap(message.author.id, map)) {
 			return message.channel.send("You are already following this map.");
 		}
 
 		// Follow the map
-		db.followMap(message.author.id, map);
+		await followMap(message.author.id, map);
 
 		// Send a confirmation message and add a reaction for the user to undo the follow action
 		message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(async (msg) => {
@@ -515,8 +519,8 @@ bot.on("messageCreate", async (message) => {
 					time: 30000,
 					max: 1
 				});
-				collector.on("collect", (r) => {
-					db.unfollowMap(message.author.id, map);
+				collector.on("collect", async (r) => {
+					await unfollowMap(message.author.id, map);
 					msg.delete();
 					message.delete();
 					message.channel.send("You are no longer following " + map + ".");
@@ -562,17 +566,17 @@ bot.on("messageCreate", async (message) => {
 
 		// If the argument is "all", unfollow all maps
 		if (map == "all") {
-			db.unfollowAll(message.author.id);
+			await unfollowAll(message.author.id);
 			message.channel.send("You are no longer following any maps.");
 			console.log(message.author.tag + " unfollowed all maps");
 		} else {
 			// If the user is not following the map, return an error message
-			if (!(await db.isFollowingMap(message.author.id, map))) {
+			if (!(await isFollowingMap(message.author.id, map))) {
 				return message.channel.send("You are not following this map. Use `" + prefix + "listfollows` to see a list of maps you are following.");
 			}
 
 			// Unfollow the map
-			db.unfollowMap(message.author.id, map);
+			await unfollowMap(message.author.id, map);
 			message.channel.send("You are no longer following " + map + ".");
 			console.log(message.author.tag + " unfollowed map " + map);
 		}
@@ -592,7 +596,7 @@ bot.on("messageCreate", async (message) => {
 		logChannel.send({ embeds: [logEmbed] });
 	} else if (command == "listfollows" || command == "lf") {
 		//list all users follows
-		let follows = await db.getUserFollows(message.author.id);
+		let follows = await getUserFollows(message.author.id);
 		// console.log(follows)
 		if (follows.length == 0) return message.channel.send("You are not following any maps.");
 		let list = "";
@@ -644,7 +648,7 @@ bot.on("messageCreate", async (message) => {
 		message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
 	} else if (command == "listallfollows" || command == "laf") {
 		// Retrieve all followed maps from the database
-		const follows = await db.getAllFollows();
+		const follows = await getAllFollows();
 
 		// Sort follows by discord ID
 		follows.sort((a, b) => {
@@ -679,14 +683,14 @@ bot.on("messageCreate", async (message) => {
 		let map = args.join(" ").toLowerCase();
 		if (!map) return message.channel.send("Please enter a valid map name.");
 		//if the map isnt in the database
-		if (!db.hasMap(map)) return message.channel.send("No one is following this map.");
+		if (!(await hasMap(map))) return message.channel.send("No one is following this map.");
 		//react a thumbs up to the message
 
 		notifyUsers(map);
 	} else if (command == "removeuser") {
 		let userID = args[0];
 		if (!userID) return message.channel.send("Please enter a valid user ID.");
-		db.unfollowAll(userID);
+		await unfollowAll(userID);
 		message.channel.send("Removed all maps from user <@" + userID + ">.");
 	}
 });
@@ -752,7 +756,7 @@ async function checkIP(ip) {
 const notifyUsers = async (map, serverObj) => {
 	const server = serverObj ? serverObj.nick : "unknown server";
 	const ip = serverObj ? serverObj.ip : "unknown IP";
-	const users = await db.getUsersFollowingMap(map);
+	const users = await getUsersFollowingMap(map);
 
 	for (const user of users) {
 		try {
@@ -853,5 +857,5 @@ setInterval(updateServerData, 91000);
 
 //if a member leaves delete all their follows in db
 bot.on("guildMemberRemove", async (member) => {
-	db.unfollowAll(member.id);
+	await unfollowAll(member.id);
 });
