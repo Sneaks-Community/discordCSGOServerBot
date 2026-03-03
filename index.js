@@ -1,5 +1,5 @@
 import Discord from "discord.js";
-import Gamedig from "gamedig";
+import { GameDig } from "gamedig";
 import fetch from "node-fetch";
 
 import config from "./config.json" assert { type: "json" };
@@ -69,11 +69,11 @@ async function getInfo(server, index) {
 	let valid = true;
 
 	// Query the server using Gamedig
-	const res = await Gamedig.query({
+	const res = await GameDig.query({
 		type: "csgo",
 		host: ip,
 		port: port,
-		maxAttempts: 4
+		maxRetries: 4
 	}).catch((e) => {
 		valid = false;
 	});
