@@ -37,11 +37,16 @@ async function intervalFunction() {
 	await refresh(serverObject);
 	let embed = await makeEmbed();
 
-	config.embeds.forEach(async (e) => {
-		let channel = await bot.channels.fetch(e.channelID);
-		let message = await channel.messages.fetch(e.messageID);
-		message.edit({ content: "‎", embeds: [embed] });
-	});
+	// Process embeds sequentially to prevent memory leaks from unhandled promises
+	for (const e of config.embeds) {
+		try {
+			const channel = await bot.channels.fetch(e.channelID);
+			const message = await channel.messages.fetch(e.messageID);
+			await message.edit({ content: "‎", embeds: [embed] });
+		} catch (error) {
+			console.error(`Failed to update embed in channel ${e.channelID}:`, error);
+		}
+	}
 
 	// console.timeEnd("all")
 }
@@ -318,30 +323,33 @@ function makeMapEmbed(mapName, server) {
 
 async function addTrash(msg, om) {
 	//react a trash can and if the member reacts it delete the message
-	await msg.react("🗑️").then((reaction) => {
+	try {
+		await msg.react("🗑️");
 		const filter = (reaction, user) => reaction.emoji.name === "🗑️" && user.id === om.author.id;
 		const collector = msg.createReactionCollector({
 			filter,
 			time: 30000,
 			max: 1
-		}); //60000
-		collector.on("collect", (r) => {
-			msg.delete();
-			if(msg.channel.type !== "DM") om.delete().catch((e) => {
-				//trihard
-			});
+		});
+		collector.on("collect", async (r) => {
+			try {
+				await r.message.delete();
+				if (r.message.channel.type !== "DM") {
+					await om.delete().catch(() => {});
+				}
+			} catch (e) {
+				// Message may already be deleted
+			}
 			collector.stop();
 		});
 		collector.on("end", () => {
-			if (collector.endReason !== "limit") {
-				reaction.remove().catch((e) => {
-					//trihard
-				});
-			} else {
-				return;
-			}
+			// Collector ended naturally (timeout) or by limit - no cleanup needed
+			// The collector is automatically cleaned up by discord.js
 		});
-	});
+	} catch (e) {
+		// Failed to add reaction or create collector
+		console.error("Failed to add trash reaction:", e);
+	}
 }
 
 bot.on("messageCreate", async (message) => {
@@ -510,31 +518,34 @@ bot.on("messageCreate", async (message) => {
 		await followMap(message.author.id, map);
 
 		// Send a confirmation message and add a reaction for the user to undo the follow action
-		message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.").then(async (msg) => {
+		try {
+			const confirmMsg = await message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.");
 			// Add a reaction for the user to undo the follow action
-			await msg.react("↩️").then((reaction) => {
-				const filter = (reaction, user) => reaction.emoji.name === "↩️" && user.id === message.author.id;
-				const collector = msg.createReactionCollector({
-					filter,
-					time: 30000,
-					max: 1
-				});
-				collector.on("collect", async (r) => {
-					await unfollowMap(message.author.id, map);
-					msg.delete();
-					message.delete();
-					message.channel.send("You are no longer following " + map + ".");
-					collector.stop();
-				});
-				collector.on("end", () => {
-					if (collector.endReason !== "limit") {
-						reaction.remove().catch((e) => {});
-					} else {
-						return;
-					}
-				});
+			await confirmMsg.react("↩️");
+			const filter = (reaction, user) => reaction.emoji.name === "↩️" && user.id === message.author.id;
+			const collector = confirmMsg.createReactionCollector({
+				filter,
+				time: 30000,
+				max: 1
 			});
-		});
+			collector.on("collect", async (r) => {
+				try {
+					await unfollowMap(message.author.id, map);
+					await r.message.delete();
+					await message.delete().catch(() => {});
+					await message.channel.send("You are no longer following " + map + ".");
+				} catch (e) {
+					// Message may already be deleted
+				}
+				collector.stop();
+			});
+			collector.on("end", () => {
+				// Collector ended naturally (timeout) or by limit - no cleanup needed
+				// The collector is automatically cleaned up by discord.js
+			});
+		} catch (e) {
+			console.error("Failed to set up follow confirmation:", e);
+		}
 
 		console.log(message.author.tag + " followed map " + map);
 
@@ -830,24 +841,31 @@ for (const server of serverObjectKeys) {
 
 // Function to update server data and notify users if there's a change in the .map property
 const updateServerData = async () => {
-	const oldDataKeys = Object.keys(oldData);
-	const gDataKeys = Object.keys(gData);
-
-	for (let i = 0; i < oldDataKeys.length; i++) {
-		const currentServer = oldDataKeys[i];
+	for (const currentServer of serverObjectKeys) {
 		let currentServerObject = serverObject[currentServer];
 
-		if (oldData[currentServer] === 0) {
-			oldData[currentServer] = gData[gDataKeys[i]].map;
-		} else if (oldData[currentServer] !== gData[gDataKeys[i]].map) {
-			const newMap = gData[gDataKeys[i]].map;
+		if (!(currentServer in oldData)) {
+			oldData[currentServer] = "";
+			continue;
+		}
 
-			currentServerObject["numPlayers"] = gData[gDataKeys[i]].numPlayers;
-			currentServerObject["numBots"] = gData[gDataKeys[i]].numBots;
-			currentServerObject["maxPlayers"] = gData[gDataKeys[i]].maxPlayers;
+		if (!gData[currentServer] || !gData[currentServer].online) {
+			continue;
+		}
 
-			notifyUsers(newMap, currentServerObject);
+		const currentMap = gData[currentServer].map;
+
+		if (oldData[currentServer] !== "" && oldData[currentServer] !== currentMap) {
+			const newMap = currentMap;
+
+			currentServerObject["numPlayers"] = gData[currentServer].numPlayers;
+			currentServerObject["numBots"] = gData[currentServer].numBots;
+			currentServerObject["maxPlayers"] = gData[currentServer].maxPlayers;
+
+			await notifyUsers(newMap, currentServerObject);
 			oldData[currentServer] = newMap;
+		} else if (oldData[currentServer] === "") {
+			oldData[currentServer] = currentMap;
 		}
 	}
 };
