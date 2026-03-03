@@ -759,6 +759,9 @@ const notifyUsers = async (map, serverObj) => {
 	const users = await getUsersFollowingMap(map);
 
 	for (const user of users) {
+		const stats = getStatsPage(map);
+		const mapImage = getMapImage(map);
+
 		try {
 			const u = await bot.users.fetch(user.discord_id);
 
@@ -772,10 +775,8 @@ const notifyUsers = async (map, serverObj) => {
 				.setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
 				.setTimestamp(Date.now());
 
-			const stats = getStatsPage(map);
 			if (stats) dmEmbed.setURL(stats);
 
-			const mapImage = getMapImage(map);
 			if (mapImage) dmEmbed.setImage(mapImage);
 
 			// Send the direct message to the user
