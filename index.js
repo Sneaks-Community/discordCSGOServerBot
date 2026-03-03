@@ -90,8 +90,8 @@ async function getInfo(server, index) {
 			maxPlayers: res.maxplayers,
 			players: res.players, // Players array {name, score, time}
 			bots: res.bots, // Bots array {name, score, time}
-			numPlayers: res.raw.numplayers - res.raw.numbots, // int
-			numBots: res.raw.numbots, // int
+			numPlayers: res.players.length, // int (gamedig v5.x API)
+			numBots: res.bots.length, // int (gamedig v5.x API)
 			show: server.show, // bool to print server in embed
 			keywords: server.keywords, // array of keywords for --players command
 			index: index
@@ -859,3 +859,4 @@ setInterval(updateServerData, 91000);
 bot.on("guildMemberRemove", async (member) => {
 	await unfollowAll(member.id);
 });
+
