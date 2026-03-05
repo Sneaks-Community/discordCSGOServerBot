@@ -22,6 +22,7 @@ async function followMap(discord_id, map_name) {
     return new Promise((resolve, reject) => {
         db.run("INSERT INTO players_follow VALUES (?, ?)", [discord_id, map_name], function (err) {
             if (err) {
+                console.error("Database error in followMap:", err);
                 reject(err);
                 return;
             }
@@ -34,6 +35,7 @@ async function unfollowMap(discord_id, map_name) {
     return new Promise((resolve, reject) => {
         db.run("DELETE FROM players_follow WHERE discord_id = ? AND map_name = ?", [discord_id, map_name], function (err) {
             if (err) {
+                console.error("Database error in unfollowMap:", err);
                 reject(err);
                 return;
             }
@@ -42,10 +44,11 @@ async function unfollowMap(discord_id, map_name) {
     });
 }
 
-async function getFollowers(map_name) {//returns array of discord_ids
+async function getFollowers(map_name) { // returns array of discord_ids
     return new Promise((resolve, reject) => {
         db.all("SELECT discord_id FROM players_follow WHERE map_name = ?", [map_name], function (err, rows) {
             if (err) {
+                console.error("Database error in getFollowers:", err);
                 reject(err);
                 return;
             }
@@ -54,10 +57,11 @@ async function getFollowers(map_name) {//returns array of discord_ids
     });
 }
 
-async function getAllFollows() {//returns all rows from players_follow
+async function getAllFollows() { // returns all rows from players_follow
     return new Promise((resolve, reject) => {
         db.all("SELECT * FROM players_follow", function (err, rows) {
             if (err) {
+                console.error("Database error in getAllFollows:", err);
                 reject(err);
                 return;
             }
@@ -66,10 +70,11 @@ async function getAllFollows() {//returns all rows from players_follow
     });
 }
 
-async function getUserFollows(discord_id) {//returns array of map_names
+async function getUserFollows(discord_id) { // returns array of map_names
     return new Promise((resolve, reject) => {
         db.all("SELECT map_name FROM players_follow WHERE discord_id = ?", [discord_id], function (err, rows) {
             if (err) {
+                console.error("Database error in getUserFollows:", err);
                 reject(err);
                 return;
             }
@@ -78,10 +83,11 @@ async function getUserFollows(discord_id) {//returns array of map_names
     });
 }
 
-async function isFollowingMap(discord_id, map_name) {//returns true if user is following map
+async function isFollowingMap(discord_id, map_name) { // returns true if user is following map
     return new Promise((resolve, reject) => {
         db.get("SELECT * FROM players_follow WHERE discord_id = ? AND map_name = ?", [discord_id, map_name], function (err, row) {
             if (err) {
+                console.error("Database error in isFollowingMap:", err);
                 reject(err);
                 return;
             }
@@ -90,10 +96,11 @@ async function isFollowingMap(discord_id, map_name) {//returns true if user is f
     });
 }
 
-async function getUsersFollowingMap(map_name) {//returns array of discord_ids
+async function getUsersFollowingMap(map_name) { // returns array of discord_ids
     return new Promise((resolve, reject) => {
         db.all("SELECT discord_id FROM players_follow WHERE map_name = ?", [map_name], function (err, rows) {
             if (err) {
+                console.error("Database error in getUsersFollowingMap:", err);
                 reject(err);
                 return;
             }
@@ -102,10 +109,11 @@ async function getUsersFollowingMap(map_name) {//returns array of discord_ids
     });
 }
 
-async function hasMap(map_name) {//returns true if map exists
+async function hasMap(map_name) { // returns true if map exists
     return new Promise((resolve, reject) => {
         db.get("SELECT * FROM players_follow WHERE map_name = ?", [map_name], function (err, row) {
             if (err) {
+                console.error("Database error in hasMap:", err);
                 reject(err);
                 return;
             }
@@ -114,10 +122,11 @@ async function hasMap(map_name) {//returns true if map exists
     });
 }
 
-async function unfollowAll(discord_id) {//unfollows all maps for user
+async function unfollowAll(discord_id) { // unfollows all maps for user
     return new Promise((resolve, reject) => {
         db.run("DELETE FROM players_follow WHERE discord_id = ?", [discord_id], function (err) {
             if (err) {
+                console.error("Database error in unfollowAll:", err);
                 reject(err);
                 return;
             }
@@ -126,10 +135,11 @@ async function unfollowAll(discord_id) {//unfollows all maps for user
     });
 }
 
-async function totalFollows() {//returns total number of follows
+async function totalFollows() { // returns total number of follows
     return new Promise((resolve, reject) => {
         db.get("SELECT COUNT(*) AS total FROM players_follow", function (err, row) {
             if (err) {
+                console.error("Database error in totalFollows:", err);
                 reject(err);
                 return;
             }

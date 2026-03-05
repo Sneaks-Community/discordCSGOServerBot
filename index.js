@@ -35,36 +35,42 @@ async function intervalFunction() {
 	// console.time("all")
 
 	await refresh(serverObject);
-	let embed = await makeEmbed();
+	const embed = await makeEmbed();
 
-	// Process embeds sequentially to prevent memory leaks from unhandled promises
-	for (const e of config.embeds) {
-		try {
-			const channel = await bot.channels.fetch(e.channelID);
-			const message = await channel.messages.fetch(e.messageID);
-			await message.edit({ content: "‎", embeds: [embed] });
-		} catch (error) {
-			console.error(`Failed to update embed in channel ${e.channelID}:`, error);
-		}
-	}
+	// Process embeds in parallel for faster updates
+	await Promise.all(
+		config.embeds.map(async (e) => {
+			try {
+				const channel = await bot.channels.fetch(e.channelID);
+				const message = await channel.messages.fetch(e.messageID);
+				await message.edit({ content: "‎", embeds: [embed] });
+			} catch (error) {
+				console.error(`Failed to update embed in channel ${e.channelID}:`, error);
+			}
+		})
+	);
 
 	// console.timeEnd("all")
 }
 
 async function refresh(servers) {
-	//refreshes all servers
+	// Refreshes all servers in parallel for better performance
 
-	let allData = {};
+	const serverEntries = Object.entries(servers);
+	const results = await Promise.all(
+		serverEntries.map(async ([name, server], index) => {
+			try {
+				const data = await getInfo(server, index + 1);
+				return [name, data];
+			} catch (error) {
+				console.error(`Failed to query ${name}:`, error);
+				// Return minimal data on error
+				return [name, { online: false, name: server.nick, keywords: server.keywords, index: index + 1 }];
+			}
+		})
+	);
 
-	let index = 1;
-
-	for (let s in servers) {
-		//loops thru servers
-		allData[s] = await getInfo(servers[s], index); //gets info from server
-		index++;
-	}
-
-	gData = allData; //overwrites Global data var
+	gData = Object.fromEntries(results); //overwrites Global data var
 }
 
 async function getInfo(server, index) {
@@ -155,54 +161,127 @@ bot.on("ready", async () => {
 	bot.user.setActivity("--follow <map> in #bot-commands");
 	let frumpy = await bot.users.fetch("134088598684303360");
 	frumpyAvatarLink = frumpy.avatarURL() || "https://i.imgur.com/cBiDnMi.png";
-	logChannel = bot.guilds.cache.get(config.logging.guildID).channels.cache.get(config.logging.channelID);
+
+	// Initialize logChannel with null check to prevent crashes
+	const guild = bot.guilds.cache.get(config.logging.guildID);
+	if (guild) {
+		logChannel = guild.channels.cache.get(config.logging.channelID);
+		if (!logChannel) {
+			console.warn(`Log channel ${config.logging.channelID} not found in guild ${config.logging.guildID}`);
+		}
+	} else {
+		console.warn(`Guild ${config.logging.guildID} not found`);
+	}
 
 	intervalFunction();
 
 	setInterval(intervalFunction, config.intervalMS); //starts embed update loop
 });
 
+// Validate map name input - ensures map names are safe and follow CS:GO conventions
+function validateMapName(mapName) {
+	// Check for empty or whitespace-only input
+	if (!mapName || mapName.trim().length === 0) {
+		return { valid: false, error: "Map name cannot be empty" };
+	}
+
+	// Check for mentions (users, roles, everyone)
+	if (
+		mapName.match(Discord.MessageMentions.USERS_PATTERN) ||
+		mapName.match(Discord.MessageMentions.ROLES_PATTERN) ||
+		mapName.match(Discord.MessageMentions.EVERYONE_PATTERN)
+	) {
+		return { valid: false, error: "Map name cannot contain mentions" };
+	}
+
+	// Validate map name format - CS:GO map names typically start with specific prefixes
+	// and contain only alphanumeric characters, underscores, and hyphens
+	const mapNameRegex = /^[a-zA-Z0-9_\-]+$/;
+	if (!mapNameRegex.test(mapName)) {
+		return { valid: false, error: "Map name contains invalid characters" };
+	}
+
+	// Ensure map name is not too long (CS:GO limit is typically 64 characters)
+	if (mapName.length > 64) {
+		return { valid: false, error: "Map name is too long (max 64 characters)" };
+	}
+
+	return { valid: true };
+}
+
+// Map type configuration for URL generation
+const MAP_CONFIG = {
+	surf: {
+		prefixes: ["surf_"],
+		statsUrl: (map) => `https://snksrv.com/surfstats/?view=map&name=${map}`,
+		imageUrl: (map) => `https://bans.snksrv.com/images/maps/${map}.jpg`,
+		displayFormat: (map) => `[${map}](https://snksrv.com/surfstats/?view=map&name=${map})`
+	},
+	kz: {
+		prefixes: ["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"],
+		statsUrl: (map) => `https://snksrv.com/kzstats/#/maps/${map}/`,
+		imageUrl: (map) => `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${map}.jpg`,
+		displayFormat: (map) => `[${map}](https://snksrv.com/kzstats/#/maps/${map}/)`
+	},
+	bhop: {
+		prefixes: ["bhop"],
+		statsUrl: (map) => `https://snksrv.com/bhopstats/index.php?map=${map}`,
+		imageUrl: (map) => `https://bans.snksrv.com/images/maps/${map}.jpg`,
+		displayFormat: (map) => `[${map}](https://snksrv.com/bhopstats/index.php?map=${map})`
+	}
+};
+
+function getMapType(mapName) {
+	// Determine the map type based on prefix
+	for (const [type, config] of Object.entries(MAP_CONFIG)) {
+		if (config.prefixes.some((prefix) => mapName.startsWith(prefix))) {
+			return type;
+		}
+	}
+	return null;
+}
+
 function getWebsite(mapName) {
 	// Determine the appropriate website URL based on the map prefix
-
-	// Check if the map is a surf map
-	if (mapName.startsWith("surf_")) {
-		return `[${mapName}](https://snksrv.com/surfstats/?view=map&name=${mapName})`;
+	const mapType = getMapType(mapName);
+	if (mapType && MAP_CONFIG[mapType].displayFormat) {
+		return MAP_CONFIG[mapType].displayFormat(mapName);
 	}
-
-	// Check if the map is a kz map
-	const kzPrefixes = ["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"];
-	if (kzPrefixes.some((prefix) => mapName.startsWith(prefix))) {
-		return `[${mapName}](https://snksrv.com/kzstats/#/maps/${mapName}/)`;
-	}
-
-	// Check if the map is a bhop map
-	if (mapName.startsWith("bhop")) {
-		return `[${mapName}](https://snksrv.com/bhopstats/index.php?map=${mapName})`;
-	}
-
 	// Return the map name if no matching prefix is found
 	return mapName;
 }
 
-function isEmpty(obj) {
-	//checks if bot has started//if empty bot is starting
-	for (var key in obj) {
-		if (obj.hasOwnProperty(key)) return false;
-	}
-	return true;
-}
-
-function keywordToServer(keyword) {
-	//takes keywords and returns server obj
-	for (let s in gData) {
-		let server = gData[s];
-
-		if (server.keywords.includes(keyword) || server.index == keyword) {
-			return gData[s];
-		}
+function getStatsPage(mapName) {
+	// Returns the stats page URL for the given map name
+	const mapType = getMapType(mapName);
+	if (mapType && MAP_CONFIG[mapType].statsUrl) {
+		return MAP_CONFIG[mapType].statsUrl(mapName);
 	}
 	return false;
+}
+
+function getMapImage(mapName) {
+	// Returns the map image URL for the given map name
+	const mapType = getMapType(mapName);
+	if (mapType && MAP_CONFIG[mapType].imageUrl) {
+		return MAP_CONFIG[mapType].imageUrl(mapName);
+	}
+	return false;
+}
+
+function isEmpty(obj) {
+	// Checks if bot has started - if empty, bot is still starting
+	return Object.keys(obj).length === 0;
+}
+
+async function keywordToServer(keyword) {
+	// Takes keywords and returns server obj
+	for (const [name, server] of Object.entries(gData)) {
+		if (server.keywords.includes(keyword) || String(server.index) === keyword) {
+			return server;
+		}
+	}
+	return null;
 }
 
 function playerListEmbed(server) {
@@ -268,30 +347,6 @@ function makeServerList() {
 	return embed;
 }
 
-// Returns the map image URL for the given map name
-function getMapImage(mapName) {
-	if (mapName.startsWith("surf_") || mapName.startsWith("bhop_")) {
-		return `https://bans.snksrv.com/images/maps/${mapName}.jpg`;
-	} else if (["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"].some((prefix) => mapName.startsWith(prefix))) {
-		return `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${mapName}.jpg`;
-	} else {
-		return false;
-	}
-}
-
-// Returns the stats page URL for the given map name
-function getStatsPage(mapName) {
-	if (mapName.startsWith("surf_")) {
-		return `https://snksrv.com/surfstats/?view=map&name=${mapName}`;
-	} else if (["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"].some((prefix) => mapName.startsWith(prefix))) {
-		return `https://snksrv.com/kzstats/#/maps/${mapName}/`;
-	} else if (mapName.startsWith("bhop")) {
-		return `https://snksrv.com/bhopstats/index.php?map=${mapName}`;
-	} else {
-		return false;
-	}
-}
-
 // Creates a map embed with optional server information
 function makeMapEmbed(mapName, server) {
 	// Get the map image and stats page URLs
@@ -331,6 +386,7 @@ async function addTrash(msg, om) {
 			time: 30000,
 			max: 1
 		});
+
 		collector.on("collect", async (r) => {
 			try {
 				await r.message.delete();
@@ -339,12 +395,20 @@ async function addTrash(msg, om) {
 				}
 			} catch (e) {
 				// Message may already be deleted
+				console.debug("Message already deleted in addTrash collector");
+			} finally {
+				collector.stop();
 			}
-			collector.stop();
 		});
+
 		collector.on("end", () => {
-			// Collector ended naturally (timeout) or by limit - no cleanup needed
+			// Collector ended naturally (timeout) or by limit
 			// The collector is automatically cleaned up by discord.js
+		});
+
+		collector.on("error", (err) => {
+			// Handle collector errors to prevent memory leaks
+			console.error("Reaction collector error in addTrash:", err);
 		});
 	} catch (e) {
 		// Failed to add reaction or create collector
@@ -353,14 +417,22 @@ async function addTrash(msg, om) {
 }
 
 bot.on("messageCreate", async (message) => {
-	//public commands
+	// Exit early for bot messages and non-command messages
+	if (message.author.bot) return;
+	if (!message.content.startsWith(prefix) && !message.content.startsWith("—")) return;
 
 	const args = message.content.slice(message.content.startsWith(prefix) ? prefix.length : 0).split(/ +/);
 	const command = args.shift().toLowerCase();
 
-	if (!message.content.startsWith(prefix) && !message.content.startsWith("—")) return;
-	if (message.author.bot) return;
+	// Route to public or dev commands based on user ID
+	if (allowedDevs.includes(message.author.id)) {
+		await handleDevCommand(message, args, command);
+	} else {
+		await handlePublicCommand(message, args, command);
+	}
+});
 
+async function handlePublicCommand(message, args, command) {
 	if (command == "players" || command == "p") {
 		// Check if gData is empty
 		if (isEmpty(gData)) {
@@ -368,12 +440,12 @@ bot.on("messageCreate", async (message) => {
 		}
 
 		// If no arguments are provided, send the server list embed
-		if (args.length == 0) {
+		if (args.length === 0) {
 			return message.channel.send({ embeds: [await makeServerList()] }).then((msg) => addTrash(msg, message));
 		}
 
 		// Easter egg for "frumpy" argument
-		if (args[0].toLowerCase() == "frumpy") {
+		if (args[0].toLowerCase() === "frumpy") {
 			message.delete();
 			const egg = new Discord.MessageEmbed()
 				.setTitle("listen here")
@@ -409,7 +481,7 @@ bot.on("messageCreate", async (message) => {
 		}
 
 		// If no arguments are provided, send the server list embed
-		if (args.length == 0) {
+		if (args.length === 0) {
 			return message.channel.send({ embeds: [await makeServerList()] }).then((msg) => addTrash(msg, message));
 		}
 
@@ -426,7 +498,7 @@ bot.on("messageCreate", async (message) => {
 			}
 
 			// If no valid map image is found, return an error message
-			if (!isMap || !res.ok) {
+			if (!isMap || !res?.ok) {
 				return message.channel.send("Please choose a valid server/map.");
 			}
 
@@ -450,63 +522,62 @@ bot.on("messageCreate", async (message) => {
 
 			message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
 		}
-	} else if (command == "help" || command == "commands") {
-		let embed = new Discord.MessageEmbed().setTitle(`List of commands`).setColor(7980240).setTimestamp(Date.now()).addFields(
-			{
-				name: "--players/--p",
-				value: "`--players <Server>`\nThis command will return a list of currently connected users to the specified server."
-			},
-			{
-				name: "--map/--m",
-				value: "`--map <Server/Map>`\nThis command return with what map a server is on, along with any other relevant information about the map."
-			},
-			{
-				name: "--keywords/--keys",
-				value: "`--keywords`\nThis command will show you a list of keywords you can use with the bot."
-			},
-			{
-				name: "--follow/--f",
-				value: "`--follow <Map>`\nThis command will DM you whenever a map you follow is on a server."
-			},
-			{
-				name: "--unfollow/--uf",
-				value: "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server."
-			},
-			{
-				name: "--listfollows/--lf",
-				value: "`--listfollows`\nThis command will return a list of all maps you are following."
-			}
-		);
+	} else if (command === "help" || command === "commands") {
+		const embed = new Discord.MessageEmbed()
+			.setTitle("List of commands")
+			.setColor(7980240)
+			.setTimestamp(Date.now())
+			.addFields(
+				{
+					name: "--players/--p",
+					value: "`--players <Server>`\nThis command will return a list of currently connected users to the specified server."
+				},
+				{
+					name: "--map/--m",
+					value: "`--map <Server/Map>`\nThis command return with what map a server is on, along with any other relevant information about the map."
+				},
+				{
+					name: "--keywords/--keys",
+					value: "`--keywords`\nThis command will show you a list of keywords you can use with the bot."
+				},
+				{
+					name: "--follow/--f",
+					value: "`--follow <Map>`\nThis command will DM you whenever a map you follow is on a server."
+				},
+				{
+					name: "--unfollow/--uf",
+					value: "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server."
+				},
+				{
+					name: "--listfollows/--lf",
+					value: "`--listfollows`\nThis command will return a list of all maps you are following."
+				}
+			);
 
 		message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
-	} else if (command == "keywords" || command == "keys") {
+	} else if (command === "keywords" || command === "keys") {
 		let list = "";
 
-		for (let i in serverObject) {
-			let server = serverObject[i];
-			list += "**" + server.nick + ":**\n";
-			for (let k of server.keywords) {
-				list += "\t" + k;
+		for (const server of Object.values(serverObject)) {
+			list += `**${server.nick}:**\n`;
+			for (const k of server.keywords) {
+				list += `\t${k}`;
 			}
 			list += "\n";
 		}
 
 		message.channel.send(list).then((msg) => addTrash(msg, message));
-	} else if (command == "ping") {
+	} else if (command === "ping") {
 		message.react("🏓");
-	} else if (command == "v" || command == "version") {
+	} else if (command === "v" || command === "version") {
 		message.channel.send(require("./package.json").version);
-	} else if (command == "follow" || command == "f") {
+	} else if (command === "follow" || command === "f") {
 		const map = args.join(" ").toLowerCase();
 
-		// Check if no map or a mention is given, and return an error message if true
-		if (
-			!map ||
-			map.match(Discord.MessageMentions.USERS_PATTERN) ||
-			map.match(Discord.MessageMentions.ROLES_PATTERN) ||
-			map.match(Discord.MessageMentions.EVERYONE_PATTERN)
-		) {
-			return message.channel.send("Please enter a valid map name.");
+		// Validate map name input
+		const validation = validateMapName(map);
+		if (!validation.valid) {
+			return message.channel.send(validation.error);
 		}
 
 		// Check if the user is already following the map, and return a message if true
@@ -519,7 +590,7 @@ bot.on("messageCreate", async (message) => {
 
 		// Send a confirmation message and add a reaction for the user to undo the follow action
 		try {
-			const confirmMsg = await message.channel.send("You are now following " + map + ". You will be notified when the map comes on a server.");
+			const confirmMsg = await message.channel.send(`You are now following ${map}. You will be notified when the map comes on a server.`);
 			// Add a reaction for the user to undo the follow action
 			await confirmMsg.react("↩️");
 			const filter = (reaction, user) => reaction.emoji.name === "↩️" && user.id === message.author.id;
@@ -528,26 +599,35 @@ bot.on("messageCreate", async (message) => {
 				time: 30000,
 				max: 1
 			});
+
 			collector.on("collect", async (r) => {
 				try {
 					await unfollowMap(message.author.id, map);
 					await r.message.delete();
 					await message.delete().catch(() => {});
-					await message.channel.send("You are no longer following " + map + ".");
+					await message.channel.send(`You are no longer following ${map}.`);
 				} catch (e) {
 					// Message may already be deleted
+					console.debug("Message already deleted in follow confirmation collector");
+				} finally {
+					collector.stop();
 				}
-				collector.stop();
 			});
+
 			collector.on("end", () => {
-				// Collector ended naturally (timeout) or by limit - no cleanup needed
+				// Collector ended naturally (timeout) or by limit
 				// The collector is automatically cleaned up by discord.js
+			});
+
+			collector.on("error", (err) => {
+				// Handle collector errors to prevent memory leaks
+				console.error("Reaction collector error in follow confirmation:", err);
 			});
 		} catch (e) {
 			console.error("Failed to set up follow confirmation:", e);
 		}
 
-		console.log(message.author.tag + " followed map " + map);
+		console.log(`${message.author.tag} followed map ${map}`);
 
 		// Log the map follow action in the log channel
 		const logEmbed = new Discord.MessageEmbed()
@@ -561,35 +641,33 @@ bot.on("messageCreate", async (message) => {
 				iconURL: message.author.displayAvatarURL()
 			});
 
-		logChannel.send({ embeds: [logEmbed] });
-	} else if (command == "unfollow" || command == "uf") {
+		if (logChannel) {
+			logChannel.send({ embeds: [logEmbed] });
+		}
+	} else if (command === "unfollow" || command === "uf") {
 		const map = args.join(" ").toLowerCase();
 
-		// Check if no map or a mention is given, and return an error message if true
-		if (
-			!map ||
-			map.match(Discord.MessageMentions.USERS_PATTERN) ||
-			map.match(Discord.MessageMentions.ROLES_PATTERN) ||
-			map.match(Discord.MessageMentions.EVERYONE_PATTERN)
-		) {
-			return message.channel.send("Please enter a valid map name.");
+		// Validate map name input
+		const validation = validateMapName(map);
+		if (!validation.valid) {
+			return message.channel.send(validation.error);
 		}
 
 		// If the argument is "all", unfollow all maps
-		if (map == "all") {
+		if (map === "all") {
 			await unfollowAll(message.author.id);
 			message.channel.send("You are no longer following any maps.");
-			console.log(message.author.tag + " unfollowed all maps");
+			console.log(`${message.author.tag} unfollowed all maps`);
 		} else {
 			// If the user is not following the map, return an error message
 			if (!(await isFollowingMap(message.author.id, map))) {
-				return message.channel.send("You are not following this map. Use `" + prefix + "listfollows` to see a list of maps you are following.");
+				return message.channel.send(`You are not following this map. Use \`${prefix}listfollows\` to see a list of maps you are following.`);
 			}
 
 			// Unfollow the map
 			await unfollowMap(message.author.id, map);
-			message.channel.send("You are no longer following " + map + ".");
-			console.log(message.author.tag + " unfollowed map " + map);
+			message.channel.send(`You are no longer following ${map}.`);
+			console.log(`${message.author.tag} unfollowed map ${map}`);
 		}
 
 		// Log the map unfollow action in the log channel
@@ -604,60 +682,57 @@ bot.on("messageCreate", async (message) => {
 				iconURL: message.author.displayAvatarURL()
 			});
 
-		logChannel.send({ embeds: [logEmbed] });
-	} else if (command == "listfollows" || command == "lf") {
-		//list all users follows
-		let follows = await getUserFollows(message.author.id);
+		if (logChannel) {
+			logChannel.send({ embeds: [logEmbed] });
+		}
+	} else if (command === "listfollows" || command === "lf") {
+		// List all user follows
+		const follows = await getUserFollows(message.author.id);
 		// console.log(follows)
-		if (follows.length == 0) return message.channel.send("You are not following any maps.");
+		if (follows.length === 0) return message.channel.send("You are not following any maps.");
 		let list = "";
-		for (let i in follows) {
-			let stats = getStatsPage(follows[i].map_name);
+		for (const follow of follows) {
+			const stats = getStatsPage(follow.map_name);
 			if (stats) {
-				list += `[${follows[i].map_name}](${stats})` + "\n";
+				list += `[${follow.map_name}](${stats})\n`;
 			} else {
-				list += follows[i].map_name + "\n";
+				list += `${follow.map_name}\n`;
 			}
 		}
-		let embed = new Discord.MessageEmbed().setTitle(`List of maps you are following:`).setColor(7980240).setTimestamp(Date.now()).setDescription(list);
+		const embed = new Discord.MessageEmbed()
+			.setTitle("List of maps you are following:")
+			.setColor(7980240)
+			.setTimestamp(Date.now())
+			.setDescription(list);
 		message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
 	}
-});
+}
 
-bot.on("messageCreate", async (message) => {
-	//dev commands
-
-	if (!allowedDevs.includes(message.author.id)) return; //if not frumpy or sneak no commands will run
-
-	const args = message.content.slice(prefix.length).split(/ +/);
-	const command = args.shift().toLowerCase();
-	if (!message.content.startsWith(prefix)) return;
-	if (message.author.bot) return;
-
-	if (command == "id") {
+async function handleDevCommand(message, args, command) {
+	if (command === "id") {
 		message.channel.send("does sneak gay?").then((m) => {
 			m.edit(m.id);
 		});
-	} else if (command == "mem") {
-		let used = process.memoryUsage();
+	} else if (command === "mem") {
+		const used = process.memoryUsage();
 		let out = "```";
-		for (let key in used) {
+		for (const key in used) {
 			out += `${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB\n`;
 		}
 		out += "```";
 
 		message.channel.send(out);
-	} else if (command == "check") {
-		let ip = args[0];
+	} else if (command === "check") {
+		const ip = args[0];
 
-		if (!args[0]) return message.channel.send("Please enter an ip.");
+		if (!ip) return message.channel.send("Please enter an ip.");
 
-		let embed = await checkIP(ip);
+		const embed = await checkIP(ip);
 
 		if (!embed) return message.channel.send("The server is unavailable.");
 
 		message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
-	} else if (command == "listallfollows" || command == "laf") {
+	} else if (command === "listallfollows" || command === "laf") {
 		// Retrieve all followed maps from the database
 		const follows = await getAllFollows();
 
@@ -669,7 +744,7 @@ bot.on("messageCreate", async (message) => {
 		});
 
 		// If there are no users following any maps, return an error message
-		if (!follows) {
+		if (!follows || follows.length === 0) {
 			return message.channel.send("There are no users following any maps.");
 		}
 
@@ -686,25 +761,29 @@ bot.on("messageCreate", async (message) => {
 		}
 
 		// Create an embed with the list of followed maps
-		const embed = new Discord.MessageEmbed().setTitle("List of all followed maps:").setColor(7980240).setTimestamp(Date.now()).setDescription(list);
+		const embed = new Discord.MessageEmbed()
+			.setTitle("List of all followed maps:")
+			.setColor(7980240)
+			.setTimestamp(Date.now())
+			.setDescription(list);
 
 		// Send the embed and add a trash reaction to it
 		message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
-	} else if (command == "testnotify") {
+	} else if (command === "testnotify") {
 		let map = args.join(" ").toLowerCase();
 		if (!map) return message.channel.send("Please enter a valid map name.");
-		//if the map isnt in the database
+		// If the map isn't in the database
 		if (!(await hasMap(map))) return message.channel.send("No one is following this map.");
-		//react a thumbs up to the message
+		// React a thumbs up to the message
 
 		notifyUsers(map);
-	} else if (command == "removeuser") {
-		let userID = args[0];
+	} else if (command === "removeuser") {
+		const userID = args[0];
 		if (!userID) return message.channel.send("Please enter a valid user ID.");
 		await unfollowAll(userID);
-		message.channel.send("Removed all maps from user <@" + userID + ">.");
+		message.channel.send(`Removed all maps from user <@${userID}>.`);
 	}
-});
+}
 
 async function checkIP(ip) {
 	// Extract port from the IP address, if available
@@ -765,16 +844,53 @@ async function checkIP(ip) {
 }
 
 const notifyUsers = async (map, serverObj) => {
-	const server = serverObj ? serverObj.nick : "unknown server";
-	const ip = serverObj ? serverObj.ip : "unknown IP";
+	const server = serverObj?.nick ?? "unknown server";
+	const ip = serverObj?.ip ?? "unknown IP";
 	const users = await getUsersFollowingMap(map);
 
 	for (const user of users) {
 		const stats = getStatsPage(map);
 		const mapImage = getMapImage(map);
 
+		// Fetch user first to ensure we have a valid reference
+		let u;
 		try {
-			const u = await bot.users.fetch(user.discord_id);
+			u = await bot.users.fetch(user.discord_id);
+		} catch (fetchError) {
+			console.warn(`Failed to fetch user ${user.discord_id}:`, fetchError.message);
+			u = null;
+		}
+
+		try {
+			if (!u) {
+				// User fetch failed, send fallback notification to log channel
+				const backupEmbed = new Discord.MessageEmbed()
+					.setTitle(`${map} is now on ${server}`)
+					.setDescription(
+						`**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
+					)
+					.setColor(7980240)
+					.setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+					.setTimestamp(Date.now());
+
+				if (stats) backupEmbed.setURL(stats);
+				if (mapImage) backupEmbed.setImage(mapImage);
+
+				const fallbackContent = `${map} is now on ${server}!\nsteam://connect/${ip}`;
+
+				try {
+					bot.guilds.cache
+						.get("253812864786235402")
+						.channels.cache.get("269171320732778496")
+						.send({
+							embeds: [backupEmbed],
+							content: fallbackContent
+						});
+				} catch (fallbackError) {
+					console.error(`Failed to send fallback notification for ${map}:`, fallbackError);
+				}
+				continue;
+			}
 
 			// Prepare the embed for the direct message
 			const dmEmbed = new Discord.MessageEmbed()
@@ -805,10 +921,15 @@ const notifyUsers = async (map, serverObj) => {
 				.setAuthor({ name: u.tag, iconURL: u.displayAvatarURL() })
 				.setThumbnail(u.displayAvatarURL());
 
-			logChannel.send({ embeds: [logEmbed] });
+			if (logChannel) {
+				logChannel.send({ embeds: [logEmbed] });
+			}
 			console.log(`Sent notification to ${u.tag} about ${map}`);
 		} catch (e) {
-			// Handle failed notifications
+			// Handle failed DM (user may have DMs disabled)
+			console.warn(`Failed to send DM to ${u?.tag || "unknown user"} about ${map}:`, e.message);
+
+			// Send fallback notification to log channel
 			const backupEmbed = new Discord.MessageEmbed()
 				.setTitle(`${map} is now on ${server}`)
 				.setDescription(
@@ -821,13 +942,19 @@ const notifyUsers = async (map, serverObj) => {
 			if (stats) backupEmbed.setURL(stats);
 			if (mapImage) backupEmbed.setImage(mapImage);
 
-			bot.guilds.cache
-				.get("253812864786235402")
-				.channels.cache.get("269171320732778496")
-				.send({
-					embeds: [backupEmbed],
-					content: `${u}\n${map} is now on ${server}!\nsteam://connect/${ip}`
-				});
+			const fallbackContent = u ? `${u}\n${map} is now on ${server}!\nsteam://connect/${ip}` : `${map} is now on ${server}!\nsteam://connect/${ip}`;
+
+			try {
+				bot.guilds.cache
+					.get("253812864786235402")
+					.channels.cache.get("269171320732778496")
+					.send({
+						embeds: [backupEmbed],
+						content: fallbackContent
+					});
+			} catch (fallbackError) {
+				console.error(`Failed to send fallback notification for ${map}:`, fallbackError);
+			}
 		}
 	}
 };
