@@ -772,9 +772,9 @@ const notifyUsers = async (map, serverObj) => {
 	for (const user of users) {
 		const stats = getStatsPage(map);
 		const mapImage = getMapImage(map);
+		const u = await bot.users.fetch(user.discord_id);
 
 		try {
-			const u = await bot.users.fetch(user.discord_id);
 
 			// Prepare the embed for the direct message
 			const dmEmbed = new Discord.MessageEmbed()
