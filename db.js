@@ -1,151 +1,179 @@
-// ES module version with dynamic import for sqlite3
+// ES module version using better-sqlite3
+import Database from "better-sqlite3";
+
 let db = null;
 
+/**
+ * Initialize the database and create tables if they don't exist
+ */
 async function initDB() {
-    const sqlite3Module = await import('sqlite3');
-    const sqlite3 = sqlite3Module.default || sqlite3Module;
-    const Database = sqlite3.verbose().Database;
     db = new Database('db.sqlite');
-    //create table called players_follow with columns int discord_id, string map_name, and a unique index on conflict replace
-    return new Promise((resolve, reject) => {
-        db.run("CREATE TABLE IF NOT EXISTS players_follow (discord_id TEXT, map_name TEXT, UNIQUE(discord_id, map_name) ON CONFLICT REPLACE)", function (err) {
-            if (err) {
-                reject(err);
-                return;
-            }
-            resolve();
-        });
-    });
+    // Create table called players_follow with columns for discord_id, map_name, and a unique index on conflict replace
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS players_follow (
+            discord_id TEXT,
+            map_name TEXT,
+            UNIQUE(discord_id, map_name) ON CONFLICT REPLACE
+        )
+    `);
 }
 
-async function followMap(discord_id, map_name) {
-    return new Promise((resolve, reject) => {
-        db.run("INSERT INTO players_follow VALUES (?, ?)", [discord_id, map_name], function (err) {
-            if (err) {
-                console.error("Database error in followMap:", err);
-                reject(err);
-                return;
-            }
-            resolve();
-        });
-    });
+/**
+ * Follow a map for a user
+ * @param {string} discord_id - The Discord user ID
+ * @param {string} map_name - The map name to follow
+ */
+function followMap(discord_id, map_name) {
+    const stmt = db.prepare("INSERT INTO players_follow VALUES (?, ?)");
+    try {
+        stmt.run(discord_id, map_name);
+    } catch (err) {
+        console.error("Database error in followMap:", err);
+        throw err;
+    }
 }
 
-async function unfollowMap(discord_id, map_name) {
-    return new Promise((resolve, reject) => {
-        db.run("DELETE FROM players_follow WHERE discord_id = ? AND map_name = ?", [discord_id, map_name], function (err) {
-            if (err) {
-                console.error("Database error in unfollowMap:", err);
-                reject(err);
-                return;
-            }
-            resolve();
-        });
-    });
+/**
+ * Unfollow a map for a user
+ * @param {string} discord_id - The Discord user ID
+ * @param {string} map_name - The map name to unfollow
+ */
+function unfollowMap(discord_id, map_name) {
+    const stmt = db.prepare("DELETE FROM players_follow WHERE discord_id = ? AND map_name = ?");
+    try {
+        stmt.run(discord_id, map_name);
+    } catch (err) {
+        console.error("Database error in unfollowMap:", err);
+        throw err;
+    }
 }
 
-async function getFollowers(map_name) { // returns array of discord_ids
-    return new Promise((resolve, reject) => {
-        db.all("SELECT discord_id FROM players_follow WHERE map_name = ?", [map_name], function (err, rows) {
-            if (err) {
-                console.error("Database error in getFollowers:", err);
-                reject(err);
-                return;
-            }
-            resolve(rows);
-        });
-    });
+/**
+ * Get followers of a map
+ * @param {string} map_name - The map name
+ * @returns {Array} - Array of objects with discord_id property
+ */
+function getFollowers(map_name) {
+    const stmt = db.prepare("SELECT discord_id FROM players_follow WHERE map_name = ?");
+    try {
+        return stmt.all(map_name);
+    } catch (err) {
+        console.error("Database error in getFollowers:", err);
+        throw err;
+    }
 }
 
-async function getAllFollows() { // returns all rows from players_follow
-    return new Promise((resolve, reject) => {
-        db.all("SELECT * FROM players_follow", function (err, rows) {
-            if (err) {
-                console.error("Database error in getAllFollows:", err);
-                reject(err);
-                return;
-            }
-            resolve(rows);
-        });
-    });
+/**
+ * Get all follows from the database
+ * @returns {Array} - Array of all rows from players_follow
+ */
+function getAllFollows() {
+    const stmt = db.prepare("SELECT * FROM players_follow");
+    try {
+        return stmt.all();
+    } catch (err) {
+        console.error("Database error in getAllFollows:", err);
+        throw err;
+    }
 }
 
-async function getUserFollows(discord_id) { // returns array of map_names
-    return new Promise((resolve, reject) => {
-        db.all("SELECT map_name FROM players_follow WHERE discord_id = ?", [discord_id], function (err, rows) {
-            if (err) {
-                console.error("Database error in getUserFollows:", err);
-                reject(err);
-                return;
-            }
-            resolve(rows);
-        });
-    });
+/**
+ * Get maps followed by a user
+ * @param {string} discord_id - The Discord user ID
+ * @returns {Array} - Array of objects with map_name property
+ */
+function getUserFollows(discord_id) {
+    const stmt = db.prepare("SELECT map_name FROM players_follow WHERE discord_id = ?");
+    try {
+        return stmt.all(discord_id);
+    } catch (err) {
+        console.error("Database error in getUserFollows:", err);
+        throw err;
+    }
 }
 
-async function isFollowingMap(discord_id, map_name) { // returns true if user is following map
-    return new Promise((resolve, reject) => {
-        db.get("SELECT * FROM players_follow WHERE discord_id = ? AND map_name = ?", [discord_id, map_name], function (err, row) {
-            if (err) {
-                console.error("Database error in isFollowingMap:", err);
-                reject(err);
-                return;
-            }
-            resolve(row);
-        });
-    });
+/**
+ * Check if a user is following a specific map
+ * @param {string} discord_id - The Discord user ID
+ * @param {string} map_name - The map name
+ * @returns {Object|null} - Row object if following, null otherwise
+ */
+function isFollowingMap(discord_id, map_name) {
+    const stmt = db.prepare("SELECT * FROM players_follow WHERE discord_id = ? AND map_name = ?");
+    try {
+        return stmt.get(discord_id, map_name);
+    } catch (err) {
+        console.error("Database error in isFollowingMap:", err);
+        throw err;
+    }
 }
 
-async function getUsersFollowingMap(map_name) { // returns array of discord_ids
-    return new Promise((resolve, reject) => {
-        db.all("SELECT discord_id FROM players_follow WHERE map_name = ?", [map_name], function (err, rows) {
-            if (err) {
-                console.error("Database error in getUsersFollowingMap:", err);
-                reject(err);
-                return;
-            }
-            resolve(rows);
-        });
-    });
+/**
+ * Get users following a specific map
+ * @param {string} map_name - The map name
+ * @returns {Array} - Array of objects with discord_id property
+ */
+function getUsersFollowingMap(map_name) {
+    const stmt = db.prepare("SELECT discord_id FROM players_follow WHERE map_name = ?");
+    try {
+        return stmt.all(map_name);
+    } catch (err) {
+        console.error("Database error in getUsersFollowingMap:", err);
+        throw err;
+    }
 }
 
-async function hasMap(map_name) { // returns true if map exists
-    return new Promise((resolve, reject) => {
-        db.get("SELECT * FROM players_follow WHERE map_name = ?", [map_name], function (err, row) {
-            if (err) {
-                console.error("Database error in hasMap:", err);
-                reject(err);
-                return;
-            }
-            resolve(row);
-        });
-    });
+/**
+ * Check if any user is following a specific map
+ * @param {string} map_name - The map name
+ * @returns {Object|null} - Row object if exists, null otherwise
+ */
+function hasMap(map_name) {
+    const stmt = db.prepare("SELECT * FROM players_follow WHERE map_name = ?");
+    try {
+        return stmt.get(map_name);
+    } catch (err) {
+        console.error("Database error in hasMap:", err);
+        throw err;
+    }
 }
 
-async function unfollowAll(discord_id) { // unfollows all maps for user
-    return new Promise((resolve, reject) => {
-        db.run("DELETE FROM players_follow WHERE discord_id = ?", [discord_id], function (err) {
-            if (err) {
-                console.error("Database error in unfollowAll:", err);
-                reject(err);
-                return;
-            }
-            resolve();
-        });
-    });
+/**
+ * Unfollow all maps for a user
+ * @param {string} discord_id - The Discord user ID
+ */
+function unfollowAll(discord_id) {
+    const stmt = db.prepare("DELETE FROM players_follow WHERE discord_id = ?");
+    try {
+        stmt.run(discord_id);
+    } catch (err) {
+        console.error("Database error in unfollowAll:", err);
+        throw err;
+    }
 }
 
-async function totalFollows() { // returns total number of follows
-    return new Promise((resolve, reject) => {
-        db.get("SELECT COUNT(*) AS total FROM players_follow", function (err, row) {
-            if (err) {
-                console.error("Database error in totalFollows:", err);
-                reject(err);
-                return;
-            }
-            resolve(row);
-        });
-    });
+/**
+ * Get total number of follows in the database
+ * @returns {Object} - Object with total count
+ */
+function totalFollows() {
+    const stmt = db.prepare("SELECT COUNT(*) AS total FROM players_follow");
+    try {
+        return stmt.get();
+    } catch (err) {
+        console.error("Database error in totalFollows:", err);
+        throw err;
+    }
+}
+
+/**
+ * Close the database connection
+ */
+function closeDB() {
+    if (db) {
+        db.close();
+        db = null;
+    }
 }
 
 export {
@@ -159,5 +187,6 @@ export {
     getUsersFollowingMap,
     hasMap,
     unfollowAll,
-    totalFollows
+    totalFollows,
+    closeDB
 };
