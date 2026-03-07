@@ -24,11 +24,140 @@ const CONFIG_VALUES = {
   GAMEDIG_MAX_RETRIES: config.gamedig?.defaultMaxRetries || 4,
   EMBED_COLOR: config.embedsConfig?.color || 7980240,
   FALLBACK_AVATAR: config.images?.fallbackAvatar || "https://i.imgur.com/cBiDnMi.png",
-  OFFLINE_SERVER_IMAGE: config.images?.offlineServer || "https://i.imgur.com/WnS0Biz.png"
+  OFFLINE_SERVER_IMAGE: config.images?.offlineServer || "https://i.imgur.com/WnS0Biz.png",
+  // Rate limiting configuration
+  FOLLOW_RATE_LIMIT_PER_MINUTE: config.rateLimit?.followPerMinute || 5,
+  UNFOLLOW_RATE_LIMIT_PER_MINUTE: config.rateLimit?.unfollowPerMinute || 5,
+  IP_CHECK_RATE_LIMIT_PER_MINUTE: config.rateLimit?.ipCheckPerMinute || 10
 };
 
+// Rate limiting tracking - stores timestamp arrays per user/command
+const userActionRateLimits = new Map();
+
+/**
+ * Check if a user has exceeded their rate limit for a specific action
+ * @param {string} userId - The Discord user ID
+ * @param {string} action - The action type (follow, unfollow, ipCheck, etc.)
+ * @param {number} limit - Maximum actions allowed per minute
+ * @returns {Object} - { allowed: boolean, retryAfter: number }
+ */
+function checkRateLimit(userId, action, limit) {
+    const now = Date.now();
+    const oneMinuteAgo = now - 60000;
+    
+    // Initialize or get existing action history for user
+    if (!userActionRateLimits.has(userId)) {
+        userActionRateLimits.set(userId, {});
+    }
+    
+    const userActions = userActionRateLimits.get(userId);
+    
+    if (!userActions[action]) {
+        userActions[action] = [];
+    }
+    
+    // Filter out actions older than 1 minute
+    userActions[action] = userActions[action].filter(timestamp => timestamp > oneMinuteAgo);
+    
+    // Check if limit exceeded
+    if (userActions[action].length >= limit) {
+        const oldestAction = userActions[action][0];
+        const retryAfter = Math.ceil((oldestAction + 60000 - now) / 1000);
+        return { allowed: false, retryAfter };
+    }
+    
+    // Record this action
+    userActions[action].push(now);
+    return { allowed: true, retryAfter: 0 };
+}
+
+/**
+ * Validate IPv4 address format
+ * @param {string} ip - The IP address to validate
+ * @returns {Object} - { valid: boolean, error?: string, isPrivate?: boolean }
+ */
+function validateIPv4(ip) {
+    // IPv4 regex pattern
+    const ipv4Regex = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
+    const match = ip.match(ipv4Regex);
+    
+    if (!match) {
+        return { valid: false, error: "Invalid IPv4 address format" };
+    }
+    
+    // Check each octet is in valid range (0-255)
+    const octets = match.slice(1).map(Number);
+    for (const octet of octets) {
+        if (octet < 0 || octet > 255) {
+            return { valid: false, error: "Invalid IPv4 address: octets must be 0-255" };
+        }
+    }
+    
+    // Check for private/reserved IP ranges
+    const isPrivate =
+        octets[0] === 10 || // 10.0.0.0/8
+        (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) || // 172.16.0.0/12
+        (octets[0] === 192 && octets[1] === 168) || // 192.168.0.0/16
+        (octets[0] === 127) || // 127.0.0.0/8 (loopback)
+        (octets[0] === 0) || // 0.0.0.0/8
+        (octets[0] === 100 && octets[1] >= 64 && octets[1] <= 127) || // 100.64.0.0/10 (CGNAT)
+        (octets[0] === 169 && octets[1] === 254) || // 169.254.0.0/16 (link-local)
+        (octets[0] === 198 && octets[1] >= 18 && octets[1] <= 19); // 198.18.0.0/15 (benchmark)
+    
+    return { valid: true, isPrivate };
+}
+
+/**
+ * Validate IPv6 address format
+ * @param {string} ip - The IPv6 address to validate
+ * @returns {Object} - { valid: boolean, error?: string, isPrivate?: boolean }
+ */
+function validateIPv6(ip) {
+    // Simplified IPv6 validation (allows common formats)
+    const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
+    
+    if (!ipv6Regex.test(ip)) {
+        // Try expanded format with ::
+        const ipv6ExpandedRegex = /^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$/;
+        if (!ipv6ExpandedRegex.test(ip)) {
+            return { valid: false, error: "Invalid IPv6 address format" };
+        }
+    }
+    
+    // Check for private IPv6 ranges (simplified check)
+    const isPrivate = ip.toLowerCase().startsWith('fc') || ip.toLowerCase().startsWith('fd'); // Unique local addresses
+    
+    return { valid: true, isPrivate };
+}
+
+/**
+ * Validate IP address (IPv4 or IPv6)
+ * @param {string} ip - The IP address to validate
+ * @returns {Object} - { valid: boolean, error?: string, isPrivate?: boolean }
+ */
+function validateIP(ip) {
+    if (!ip || typeof ip !== 'string') {
+        return { valid: false, error: "Invalid IP: must be a non-empty string" };
+    }
+    
+    const trimmedIp = ip.trim();
+    
+    // Try IPv4 first
+    const ipv4Result = validateIPv4(trimmedIp);
+    if (ipv4Result.valid) {
+        return ipv4Result;
+    }
+    
+    // Try IPv6
+    const ipv6Result = validateIPv6(trimmedIp);
+    if (ipv6Result.valid) {
+        return ipv6Result;
+    }
+    
+    return { valid: false, error: "Invalid IP address format" };
+}
+
 // Discord v14 imports
-const { GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType } = Discord;
 
 // Create bot client with v14 intents
 const bot = new Discord.Client({
@@ -320,6 +449,9 @@ async function addTrash(msg, om) {
       max: 1
     });
 
+    // Track collector for cleanup
+    let collectorStopped = false;
+
     collector.on("collect", async (r) => {
       try {
         await r.message.delete();
@@ -330,18 +462,36 @@ async function addTrash(msg, om) {
         // Message may already be deleted
         console.debug("Message already deleted in addTrash collector");
       } finally {
-        collector.stop();
+        if (!collectorStopped) {
+          collectorStopped = true;
+          collector.stop();
+        }
       }
     });
 
     collector.on("end", () => {
       // Collector ended naturally (timeout) or by limit
-      // The collector is automatically cleaned up by discord.js
+      // Ensure cleanup happens even if collector was already stopped
+      if (!collectorStopped) {
+        collectorStopped = true;
+      }
     });
 
     collector.on("error", (err) => {
       // Handle collector errors to prevent memory leaks
       console.error("Reaction collector error in addTrash:", err);
+      if (!collectorStopped) {
+        collectorStopped = true;
+        collector.stop();
+      }
+    });
+
+    // Ensure collector is cleaned up if message is deleted externally
+    msg.delete().catch(() => {}).finally(() => {
+      if (!collectorStopped) {
+        collectorStopped = true;
+        collector.stop();
+      }
     });
   } catch (e) {
     // Failed to add reaction or create collector
@@ -671,6 +821,12 @@ async function handlePublicCommand(message, args, command) {
   } else if (command === "v" || command === "version") {
     message.channel.send(require("./package.json").version);
   } else if (command === "follow" || command === "f") {
+    // Check rate limit for follow actions
+    const rateLimitResult = checkRateLimit(message.author.id, "follow", CONFIG_VALUES.FOLLOW_RATE_LIMIT_PER_MINUTE);
+    if (!rateLimitResult.allowed) {
+      return message.channel.send(`Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before following another map.`);
+    }
+
     const map = args.join(" ").toLowerCase();
 
     // Validate map name input
@@ -695,9 +851,12 @@ async function handlePublicCommand(message, args, command) {
       const filter = (reaction, user) => reaction.emoji.name === "↩️" && user.id === message.author.id;
       const collector = confirmMsg.createReactionCollector({
         filter,
-        time: CONSTANTS.MAP_FOLLOW_TIMEOUT_MS,
+        time: CONFIG_VALUES.MAP_FOLLOW_TIMEOUT_MS,
         max: 1
       });
+
+      // Track collector state for proper cleanup
+      let collectorStopped = false;
 
       collector.on("collect", async (r) => {
         try {
@@ -709,18 +868,36 @@ async function handlePublicCommand(message, args, command) {
           // Message may already be deleted
           console.debug("Message already deleted in follow confirmation collector");
         } finally {
-          collector.stop();
+          if (!collectorStopped) {
+            collectorStopped = true;
+            collector.stop();
+          }
         }
       });
 
       collector.on("end", () => {
         // Collector ended naturally (timeout) or by limit
-        // The collector is automatically cleaned up by discord.js
+        // Ensure cleanup happens even if collector was already stopped
+        if (!collectorStopped) {
+          collectorStopped = true;
+        }
       });
 
       collector.on("error", (err) => {
         // Handle collector errors to prevent memory leaks
         console.error("Reaction collector error in follow confirmation:", err);
+        if (!collectorStopped) {
+          collectorStopped = true;
+          collector.stop();
+        }
+      });
+
+      // Ensure collector is cleaned up if message is deleted externally
+      confirmMsg.delete().catch(() => {}).finally(() => {
+        if (!collectorStopped) {
+          collectorStopped = true;
+          collector.stop();
+        }
       });
     } catch (e) {
       console.error("Failed to set up follow confirmation:", e);
@@ -744,6 +921,12 @@ async function handlePublicCommand(message, args, command) {
       logChannel.send({ embeds: [logEmbed] });
     }
   } else if (command === "unfollow" || command === "uf") {
+    // Check rate limit for unfollow actions
+    const rateLimitResult = checkRateLimit(message.author.id, "unfollow", CONFIG_VALUES.UNFOLLOW_RATE_LIMIT_PER_MINUTE);
+    if (!rateLimitResult.allowed) {
+      return message.channel.send(`Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before unfollowing another map.`);
+    }
+
     const map = args.join(" ").toLowerCase();
 
     // Validate map name input
@@ -822,9 +1005,25 @@ async function handleDevCommand(message, args, command) {
 
     message.channel.send(out);
   } else if (command === "check") {
+    // Check rate limit for IP check actions
+    const rateLimitResult = checkRateLimit(message.author.id, "ipCheck", CONFIG_VALUES.IP_CHECK_RATE_LIMIT_PER_MINUTE);
+    if (!rateLimitResult.allowed) {
+      return message.channel.send(`Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before checking another IP.`);
+    }
+
     const ip = args[0];
 
     if (!ip) return message.channel.send("Please enter an ip.");
+
+    // Validate IP address to prevent command injection and internal network scanning
+    const ipValidation = validateIP(ip);
+    if (!ipValidation.valid) {
+      return message.channel.send(`Invalid IP address: ${ipValidation.error}`);
+    }
+
+    if (ipValidation.isPrivate) {
+      return message.channel.send("Private IP addresses are not allowed for security reasons.");
+    }
 
     const embed = await checkIP(ip);
 
@@ -947,6 +1146,11 @@ const notifyUsers = async (map, serverObj) => {
   const ip = serverObj?.ip ?? "unknown IP";
   const users = await getUsersFollowingMap(map);
 
+  // Track notification rate to prevent spam
+  const notificationRateLimit = new Map();
+  const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute window
+  const MAX_NOTIFICATIONS_PER_USER = 1; // Max 1 notification per user per minute
+
   for (const user of users) {
     const stats = getStatsPage(map);
     const mapImage = getMapImage(map);
@@ -993,6 +1197,25 @@ const notifyUsers = async (map, serverObj) => {
         continue;
       }
 
+      // Rate limiting: Check if user has received too many notifications recently
+      const now = Date.now();
+      if (!notificationRateLimit.has(user.discord_id)) {
+        notificationRateLimit.set(user.discord_id, []);
+      }
+      const userNotifications = notificationRateLimit.get(user.discord_id);
+      
+      // Filter out notifications older than the rate limit window
+      const recentNotifications = userNotifications.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW_MS);
+      
+      if (recentNotifications.length >= MAX_NOTIFICATIONS_PER_USER) {
+        // Skip notification to prevent spam
+        continue;
+      }
+      
+      // Record this notification
+      recentNotifications.push(now);
+      notificationRateLimit.set(user.discord_id, recentNotifications);
+
       // Prepare the embed for the direct message
       const dmEmbed = new EmbedBuilder()
         .setTitle(`${map} is now on ${server}`)
@@ -1007,18 +1230,18 @@ const notifyUsers = async (map, serverObj) => {
 
       if (mapImage) dmEmbed.setImage(mapImage);
 
-      // Send the direct message to the user
+      // Send the direct message to the user with proper error handling
       await u.send({
         embeds: [dmEmbed],
         content: `${map} is now on ${server}!\nsteam://connect/${ip}`
       });
 
-      // Log the successful notification
+      // Log the successful notification (without exposing user's full identity)
       const logEmbed = new EmbedBuilder()
-        .setTitle(`Notification has been sent.`)
+        .setTitle(`Notification sent`)
         .setColor(CONFIG_VALUES.EMBED_COLOR)
         .setTimestamp(Date.now())
-        .setDescription(`${u} was sent a notification for ${map} on ${server}!`)
+        .setDescription(`Notification sent to user <@${user.discord_id}> for map ${map}`)
         .setAuthor({ name: u.tag, iconURL: u.displayAvatarURL() })
         .setThumbnail(u.displayAvatarURL());
 
@@ -1027,10 +1250,12 @@ const notifyUsers = async (map, serverObj) => {
       }
       console.log(`Sent notification to ${u.tag} about ${map}`);
     } catch (e) {
-      // Handle failed DM (user may have DMs disabled)
-      console.warn(`Failed to send DM to ${u?.tag || "unknown user"} about ${map}:`, e.message);
+      // Handle failed DM (user may have DMs disabled or other issues)
+      // Only log the error without exposing sensitive user information
+      const userId = u?.id || user.discord_id;
+      console.warn(`Failed to send DM to user <@${userId}> about ${map}:`, e.message);
 
-      // Send fallback notification to log channel
+      // Send fallback notification to log channel (without user mention)
       const backupEmbed = new EmbedBuilder()
         .setTitle(`${map} is now on ${server}`)
         .setDescription(
@@ -1043,7 +1268,7 @@ const notifyUsers = async (map, serverObj) => {
       if (stats) backupEmbed.setURL(stats);
       if (mapImage) backupEmbed.setImage(mapImage);
 
-      const fallbackContent = u ? `${u}\n${map} is now on ${server}!\nsteam://connect/${ip}` : `${map} is now on ${server}!\nsteam://connect/${ip}`;
+      const fallbackContent = `${map} is now on ${server}!\nsteam://connect/${ip}`;
 
       try {
         await withRetry(async () => {
