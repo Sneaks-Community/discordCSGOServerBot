@@ -356,7 +356,7 @@ function playerListEmbed(server) {
         `${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/\_/g, "\\_")
       )
       .setColor(CONFIG_VALUES.EMBED_COLOR)
-      .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+      .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
       .setTimestamp(Date.now());
 
     // Generate a list of player names
@@ -377,7 +377,7 @@ function playerListEmbed(server) {
     embed = new EmbedBuilder()
       .setTitle(`${server.name} is currently unavailable.`)
       .setColor(CONFIG_VALUES.EMBED_COLOR)
-      .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+      .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
       .setTimestamp(Date.now())
       .setImage(CONFIG_VALUES.OFFLINE_SERVER_IMAGE);
   }
@@ -390,7 +390,7 @@ function makeServerList() {
   let embed = new EmbedBuilder()
     .setTitle("Please specify what server you want to check.")
     .setColor(CONFIG_VALUES.EMBED_COLOR)
-    .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+    .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
     .setTimestamp(Date.now());
 
   // Generate the server list
@@ -416,7 +416,7 @@ function makeMapEmbed(mapName, server) {
   const stats = getStatsPage(mapName);
 
   // Create a new Discord EmbedBuilder instance
-  const embed = new EmbedBuilder().setColor(CONFIG_VALUES.EMBED_COLOR).setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink }).setTimestamp(Date.now());
+  const embed = new EmbedBuilder().setColor(CONFIG_VALUES.EMBED_COLOR).setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR }).setTimestamp(Date.now());
 
   // Set the embed URL if a stats page is available
   if (stats) {
@@ -501,13 +501,10 @@ async function addTrash(msg, om) {
 
 // Initialize logChannel with config values
 let logChannel = null;
-let frumpyAvatarLink;
 
 bot.on("ready", async () => {
   console.log("Started as " + bot.user.tag);
   bot.user.setActivity("--follow <map> in #bot-commands");
-  let frumpy = await bot.users.fetch("134088598684303360");
-  frumpyAvatarLink = frumpy.avatarURL() || CONFIG_VALUES.FALLBACK_AVATAR;
 
   // Initialize logChannel with config values
   const guild = bot.guilds.cache.get(config.logging.guildID);
@@ -635,7 +632,7 @@ function makeEmbed() {
     .setTitle("Server List")
     .setDescription("This list is updated every 1.5 minutes.")
     .setColor(CONFIG_VALUES.EMBED_COLOR)
-    .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+    .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
     .setTimestamp(Date.now());
 
   // Iterate through the servers in gData and add server details to the embed
@@ -693,25 +690,6 @@ async function handlePublicCommand(message, args, command) {
       return message.channel.send({ embeds: [await makeServerList()] }).then((msg) => addTrash(msg, message));
     }
 
-    // Easter egg for "frumpy" argument
-    if (args[0].toLowerCase() === "frumpy") {
-      message.delete();
-      const egg = new EmbedBuilder()
-        .setTitle("listen here")
-        .setURL("https://www.youtube.com/watch?v=lPGipwoJiOM")
-        .setColor("#26bf7a")
-        .setDescription(require("fs").readFileSync("./meme.txt").toString())
-        .setFooter({ text: "ｆｒｕｍｐｙ７", iconURL: frumpyAvatarLink })
-        .setTimestamp(Date.parse("Sat Mar 15 4207 04:20:07 GMT-0456"))
-        .setImage("https://i.imgur.com/FHTK2WB.gif")
-        .setAuthor({
-          name: "( ͡° ͜ʖ ͡°)",
-          iconURL: "https://media.discordapp.net/attachments/717611782813909083/724409223911440424/borger.jpg?width=676&height=676",
-          url: "https://mrdoob.com/#/157/spin_painter"
-        });
-
-      return message.channel.send({ embeds: [egg] });
-    }
 
     // Search for the server using the provided keyword(s)
     const server = await keywordToServer(args.join(" ").toLowerCase());
@@ -764,7 +742,7 @@ async function handlePublicCommand(message, args, command) {
         embed = new EmbedBuilder()
           .setTitle(`${server.name} is currently unavailable.`)
           .setColor(7980240)
-          .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+          .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
           .setTimestamp(Date.now())
           .setImage("https://i.imgur.com/WnS0Biz.png");
       }
@@ -1115,7 +1093,7 @@ async function checkIP(ip) {
       )
     )
     .setColor(CONFIG_VALUES.EMBED_COLOR)
-    .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+    .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
     .setTimestamp(Date.now());
   if (image) embed.setImage(image);
 
@@ -1173,7 +1151,7 @@ const notifyUsers = async (map, serverObj) => {
             `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
           )
           .setColor(CONFIG_VALUES.EMBED_COLOR)
-          .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+          .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
           .setTimestamp(Date.now());
 
         if (stats) backupEmbed.setURL(stats);
@@ -1223,7 +1201,7 @@ const notifyUsers = async (map, serverObj) => {
           `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
         )
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
         .setTimestamp(Date.now());
 
       if (stats) dmEmbed.setURL(stats);
@@ -1262,7 +1240,7 @@ const notifyUsers = async (map, serverObj) => {
           `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
         )
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: frumpyAvatarLink })
+        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
         .setTimestamp(Date.now());
 
       if (stats) backupEmbed.setURL(stats);
