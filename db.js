@@ -57,6 +57,8 @@ function validateMapNameInput(mapName) {
  */
 async function initDB() {
     db = new Database('db.sqlite');
+    // Enable WAL mode for better concurrency
+    db.pragma('journal_mode = WAL');
     // Create table called players_follow with columns for discord_id, map_name, and a unique index on conflict replace
     db.exec(`
         CREATE TABLE IF NOT EXISTS players_follow (
@@ -65,6 +67,8 @@ async function initDB() {
             UNIQUE(discord_id, map_name) ON CONFLICT REPLACE
         )
     `);
+    // Add index on map_name for faster getFollowers queries
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_map_name ON players_follow(map_name)`);
 }
 
 /**

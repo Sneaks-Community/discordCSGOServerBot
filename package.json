@@ -22,7 +22,6 @@
     "better-sqlite3": "^12.6.2",
     "discord.js": "^14.25.1",
     "gamedig": "^5.3.2",
-    "node-fetch": "^3.3.2",
     "p-limit": "^7.3.0"
   }
 }

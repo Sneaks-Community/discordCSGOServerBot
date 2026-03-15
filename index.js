@@ -1,9 +1,9 @@
-import Discord from "discord.js";
+import Discord, { GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } from "discord.js";
 import { GameDig } from "gamedig";
-import fetch from "node-fetch";
 import pLimit from "p-limit";
 
 import config from "./config.json" with { type: "json" };
+import serverObject from "./servers.json" with { type: "json" };
 import { initDB, followMap, unfollowMap, getFollowers, getAllFollows, getUserFollows, isFollowingMap, getUsersFollowingMap, hasMap, unfollowAll, totalFollows, closeDB } from "./db.js";
 
 // Helper function to convert seconds to milliseconds
@@ -170,6 +170,112 @@ const bot = new Discord.Client({
   ]
 });
 
+// Slash command definitions
+const slashCommands = [
+  new SlashCommandBuilder()
+    .setName('players')
+    .setDescription('Show players on a server')
+    .addStringOption(option =>
+      option.setName('server')
+        .setDescription('Server keyword or name')
+        .setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('map')
+    .setDescription('Show current map on a server or map stats')
+    .addStringOption(option =>
+      option.setName('server')
+        .setDescription('Server keyword or map name')
+        .setRequired(false)),
+  new SlashCommandBuilder()
+    .setName('keywords')
+    .setDescription('List all available server keywords'),
+  new SlashCommandBuilder()
+    .setName('follow')
+    .setDescription('Follow a map to receive DM notifications')
+    .addStringOption(option =>
+      option.setName('map')
+        .setDescription('Map name to follow')
+        .setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('unfollow')
+    .setDescription('Stop following a map')
+    .addStringOption(option =>
+      option.setName('map')
+        .setDescription('Map name to unfollow (or "all" for all maps)')
+        .setRequired(true)),
+  new SlashCommandBuilder()
+    .setName('listfollows')
+    .setDescription('List all maps you are following'),
+  new SlashCommandBuilder()
+    .setName('help')
+    .setDescription('Show list of available commands'),
+  new SlashCommandBuilder()
+    .setName('ping')
+    .setDescription('Check bot latency'),
+  new SlashCommandBuilder()
+    .setName('version')
+    .setDescription('Show bot version'),
+  // Admin commands
+  new SlashCommandBuilder()
+    .setName('check')
+    .setDescription('Check server status by IP (Admin only)')
+    .addStringOption(option =>
+      option.setName('ip')
+        .setDescription('Server IP address')
+        .setRequired(true))
+    .setDefaultMemberPermissions(0), // Admin only
+  new SlashCommandBuilder()
+    .setName('listallfollows')
+    .setDescription('List all users and their followed maps (Admin only)')
+    .setDefaultMemberPermissions(0),
+  new SlashCommandBuilder()
+    .setName('testnotify')
+    .setDescription('Test map notification system (Admin only)')
+    .addStringOption(option =>
+      option.setName('map')
+        .setDescription('Map name to test')
+        .setRequired(true))
+    .setDefaultMemberPermissions(0),
+  new SlashCommandBuilder()
+    .setName('removeuser')
+    .setDescription('Remove all follows for a user (Admin only)')
+    .addStringOption(option =>
+      option.setName('userid')
+        .setDescription('Discord user ID')
+        .setRequired(true))
+    .setDefaultMemberPermissions(0),
+  new SlashCommandBuilder()
+    .setName('mem')
+    .setDescription('Show memory usage (Admin only)')
+    .setDefaultMemberPermissions(0)
+].map(command => command.toJSON());
+
+// Function to register slash commands
+async function registerSlashCommands() {
+  try {
+    const rest = new REST({ version: '10' }).setToken(config.discord.token);
+    
+    // Register commands globally (or for specific guild)
+    if (config.discord?.guildID) {
+      // Guild commands update instantly (good for development)
+      await rest.put(
+        Routes.applicationGuildCommands(bot.application.id, config.discord.guildID),
+        { body: slashCommands }
+      );
+      console.log(`Successfully registered ${slashCommands.length} guild slash commands`);
+    } else {
+      // Global commands take up to an hour to update
+      await rest.put(
+        Routes.applicationCommands(bot.application.id),
+        { body: slashCommands }
+      );
+      console.log(`Successfully registered ${slashCommands.length} global slash commands`);
+    }
+  } catch (error) {
+    console.error('Error registering slash commands:', error);
+  }
+}
+
 // Configuration validation
 function validateConfig(config) {
   const errors = [];
@@ -326,7 +432,7 @@ async function getCachedUser(userId) {
   return user;
 }
 
-// Clear cache periodically
+// Clear cache periodically (run every 5 minutes regardless of TTL)
 setInterval(() => {
   const now = Date.now();
   for (const [key, value] of userCache.entries()) {
@@ -334,7 +440,26 @@ setInterval(() => {
       userCache.delete(key);
     }
   }
-}, CONFIG_VALUES.USER_CACHE_TTL);
+}, 300000); // 5 minutes
+
+// Clear rate limit map periodically to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, actions] of userActionRateLimits.entries()) {
+    let hasValidActions = false;
+    for (const action of Object.keys(actions)) {
+      actions[action] = actions[action].filter(ts => now - ts < 60000);
+      if (actions[action].length === 0) {
+        delete actions[action];
+      } else {
+        hasValidActions = true;
+      }
+    }
+    if (!hasValidActions) {
+      userActionRateLimits.delete(userId);
+    }
+  }
+}, 300000); // Clean every 5 minutes
 
 async function keywordToServer(keyword) {
   // Takes keywords and returns server obj
@@ -504,7 +629,7 @@ let logChannel = null;
 
 bot.on("ready", async () => {
   console.log("Started as " + bot.user.tag);
-  bot.user.setActivity("--follow <map> in #bot-commands");
+  bot.user.setActivity("/follow <map> in #bot-commands");
 
   // Initialize logChannel with config values
   const guild = bot.guilds.cache.get(config.logging.guildID);
@@ -517,6 +642,9 @@ bot.on("ready", async () => {
     console.warn(`Guild ${config.logging.guildID} not found`);
   }
 
+  // Register slash commands
+  await registerSlashCommands();
+
   // Start the interval function
   intervalFunction();
 
@@ -526,16 +654,22 @@ bot.on("ready", async () => {
 // Initialize database before logging in
 await initDB();
 
-bot.login(config.discord.token);
-
-import serverObject from "./servers.json" with { type: "json" };
+bot.login(config.discord.token).catch(err => {
+  console.error("Failed to login to Discord:", err.message);
+  process.exit(1);
+});
 
 let gData = {};
 
 const allowedDevs = config.security.adminUserIds;
 
 async function intervalFunction() {
-  await refresh(serverObject);
+  try {
+    await refresh(serverObject);
+  } catch (error) {
+    console.error("Failed to refresh server data:", error);
+    return; // Skip embed update if refresh fails
+  }
   const embed = await makeEmbed();
 
   // Process embeds in parallel with retry logic for faster updates
@@ -662,6 +796,362 @@ function makeEmbed() {
   return embed;
 }
 
+// Handle slash command interactions
+bot.on("interactionCreate", async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const { commandName } = interaction;
+  const isAdmin = allowedDevs.includes(interaction.user.id);
+
+  try {
+    // Handle public commands
+    if (commandName === 'players') {
+      await handleSlashPlayers(interaction);
+    } else if (commandName === 'map') {
+      await handleSlashMap(interaction);
+    } else if (commandName === 'keywords') {
+      await handleSlashKeywords(interaction);
+    } else if (commandName === 'follow') {
+      await handleSlashFollow(interaction);
+    } else if (commandName === 'unfollow') {
+      await handleSlashUnfollow(interaction);
+    } else if (commandName === 'listfollows') {
+      await handleSlashListfollows(interaction);
+    } else if (commandName === 'help') {
+      await handleSlashHelp(interaction);
+    } else if (commandName === 'ping') {
+      await interaction.reply({ content: '🏓 Pong!', ephemeral: true });
+    } else if (commandName === 'version') {
+      await interaction.reply({ content: require("./package.json").version, ephemeral: true });
+    }
+    // Handle admin commands
+    else if (commandName === 'check' && isAdmin) {
+      await handleSlashCheck(interaction);
+    } else if (commandName === 'listallfollows' && isAdmin) {
+      await handleSlashListallfollows(interaction);
+    } else if (commandName === 'testnotify' && isAdmin) {
+      await handleSlashTestnotify(interaction);
+    } else if (commandName === 'removeuser' && isAdmin) {
+      await handleSlashRemoveuser(interaction);
+    } else if (commandName === 'mem' && isAdmin) {
+      await handleSlashMem(interaction);
+    } else {
+      await interaction.reply({ content: 'You do not have permission to use this command.', ephemeral: true });
+    }
+  } catch (error) {
+    console.error(`Error handling slash command ${commandName}:`, error);
+    const replyMethod = interaction.replied || interaction.deferred ? 'editReply' : 'reply';
+    await interaction[replyMethod]({ content: 'An error occurred while processing your command.', ephemeral: true }).catch(() => {});
+  }
+});
+
+// Slash command handlers
+async function handleSlashPlayers(interaction) {
+  if (isEmpty(gData)) {
+    return interaction.reply({ content: "Please Wait. The bot is starting.", ephemeral: true });
+  }
+
+  const serverInput = interaction.options.getString('server');
+  
+  if (!serverInput) {
+    const embed = await makeServerList();
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  const server = await keywordToServer(serverInput.toLowerCase());
+  
+  if (!server) {
+    return interaction.reply({ content: "Please enter a valid server.", ephemeral: true });
+  }
+
+  const embed = await playerListEmbed(server);
+  await interaction.reply({ embeds: [embed] });
+}
+
+async function handleSlashMap(interaction) {
+  if (isEmpty(gData)) {
+    return interaction.reply({ content: "Please Wait. The bot is starting.", ephemeral: true });
+  }
+
+  const serverInput = interaction.options.getString('server');
+  
+  if (!serverInput) {
+    const embed = await makeServerList();
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  const server = await keywordToServer(serverInput.toLowerCase());
+  
+  if (!server) {
+    const isMap = getMapImage(serverInput);
+    let res;
+    
+    if (isMap) {
+      res = await fetch(isMap, { method: "HEAD" });
+    }
+    
+    if (!isMap || !res?.ok) {
+      return interaction.reply({ content: "Please choose a valid server/map.", ephemeral: true });
+    }
+    
+    const embed = makeMapEmbed(serverInput);
+    return interaction.reply({ embeds: [embed] });
+  }
+
+  let embed;
+  if (server.online) {
+    embed = makeMapEmbed(server.map, server);
+  } else {
+    embed = new EmbedBuilder()
+      .setTitle(`${server.name} is currently unavailable.`)
+      .setColor(CONFIG_VALUES.EMBED_COLOR)
+      .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+      .setTimestamp(Date.now())
+      .setImage(CONFIG_VALUES.OFFLINE_SERVER_IMAGE);
+  }
+
+  await interaction.reply({ embeds: [embed] });
+}
+
+async function handleSlashKeywords(interaction) {
+  let list = "";
+  for (const server of Object.values(serverObject)) {
+    list += `**${server.nick}:**\n`;
+    for (const k of server.keywords) {
+      list += `\t${k}`;
+    }
+    list += "\n";
+  }
+  await interaction.reply({ content: list });
+}
+
+async function handleSlashFollow(interaction) {
+  const map = interaction.options.getString('map').toLowerCase();
+
+  const rateLimitResult = checkRateLimit(interaction.user.id, "follow", CONFIG_VALUES.FOLLOW_RATE_LIMIT_PER_MINUTE);
+  if (!rateLimitResult.allowed) {
+    return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before following another map.`, ephemeral: true });
+  }
+
+  const validation = validateMapName(map);
+  if (!validation.valid) {
+    return interaction.reply({ content: validation.error, ephemeral: true });
+  }
+
+  if (await isFollowingMap(interaction.user.id, map)) {
+    return interaction.reply({ content: "You are already following this map.", ephemeral: true });
+  }
+
+  await followMap(interaction.user.id, map);
+
+  await interaction.reply({ content: `You are now following ${map}. You will be notified when the map comes on a server.`, ephemeral: true });
+
+  console.log(`${interaction.user.tag} followed map ${map}`);
+
+  const logEmbed = new EmbedBuilder()
+    .setTitle("User Followed Map")
+    .setColor(CONFIG_VALUES.EMBED_COLOR)
+    .setTimestamp(Date.now())
+    .addFields({ name: "User", value: interaction.user.toString() }, { name: "Map", value: map })
+    .setThumbnail(interaction.user.displayAvatarURL())
+    .setAuthor({
+      name: interaction.user.tag,
+      iconURL: interaction.user.displayAvatarURL()
+    });
+
+  if (logChannel) {
+    logChannel.send({ embeds: [logEmbed] });
+  }
+}
+
+async function handleSlashUnfollow(interaction) {
+  const map = interaction.options.getString('map').toLowerCase();
+
+  const rateLimitResult = checkRateLimit(interaction.user.id, "unfollow", CONFIG_VALUES.UNFOLLOW_RATE_LIMIT_PER_MINUTE);
+  if (!rateLimitResult.allowed) {
+    return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before unfollowing another map.`, ephemeral: true });
+  }
+
+  const validation = validateMapName(map);
+  if (!validation.valid) {
+    return interaction.reply({ content: validation.error, ephemeral: true });
+  }
+
+  if (map === "all") {
+    await unfollowAll(interaction.user.id);
+    await interaction.reply({ content: "You are no longer following any maps.", ephemeral: true });
+    console.log(`${interaction.user.tag} unfollowed all maps`);
+  } else {
+    if (!(await isFollowingMap(interaction.user.id, map))) {
+      return interaction.reply({ content: `You are not following this map. Use \`/listfollows\` to see a list of maps you are following.`, ephemeral: true });
+    }
+
+    await unfollowMap(interaction.user.id, map);
+    await interaction.reply({ content: `You are no longer following ${map}.`, ephemeral: true });
+    console.log(`${interaction.user.tag} unfollowed map ${map}`);
+  }
+
+  const logEmbed = new EmbedBuilder()
+    .setTitle("User Unfollowed Map")
+    .setColor(CONFIG_VALUES.EMBED_COLOR)
+    .setTimestamp(Date.now())
+    .addFields({ name: "User", value: interaction.user.toString() }, { name: "Map", value: map })
+    .setThumbnail(interaction.user.displayAvatarURL())
+    .setAuthor({
+      name: interaction.user.tag,
+      iconURL: interaction.user.displayAvatarURL()
+    });
+
+  if (logChannel) {
+    logChannel.send({ embeds: [logEmbed] });
+  }
+}
+
+async function handleSlashListfollows(interaction) {
+  const follows = await getUserFollows(interaction.user.id);
+  
+  if (follows.length === 0) {
+    return interaction.reply({ content: "You are not following any maps.", ephemeral: true });
+  }
+
+  let list = "";
+  for (const follow of follows) {
+    const stats = getStatsPage(follow.map_name);
+    if (stats) {
+      list += `[${follow.map_name}](${stats})\n`;
+    } else {
+      list += `${follow.map_name}\n`;
+    }
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle("List of maps you are following:")
+    .setColor(CONFIG_VALUES.EMBED_COLOR)
+    .setTimestamp(Date.now())
+    .setDescription(list);
+
+  await interaction.reply({ embeds: [embed] });
+}
+
+async function handleSlashHelp(interaction) {
+  const embed = new EmbedBuilder()
+    .setTitle("List of commands")
+    .setColor(CONFIG_VALUES.EMBED_COLOR)
+    .setTimestamp(Date.now())
+    .addFields(
+      { name: "/players [server]", value: "Show players on a server" },
+      { name: "/map [server]", value: "Show current map on a server or map stats" },
+      { name: "/keywords", value: "List all available server keywords" },
+      { name: "/follow <map>", value: "Follow a map to receive DM notifications" },
+      { name: "/unfollow <map|all>", value: "Stop following a map or all maps" },
+      { name: "/listfollows", value: "List all maps you are following" },
+      { name: "/ping", value: "Check bot latency" },
+      { name: "/version", value: "Show bot version" }
+    );
+
+  await interaction.reply({ embeds: [embed] });
+}
+
+async function handleSlashCheck(interaction) {
+  const ip = interaction.options.getString('ip');
+
+  const rateLimitResult = checkRateLimit(interaction.user.id, "ipCheck", CONFIG_VALUES.IP_CHECK_RATE_LIMIT_PER_MINUTE);
+  if (!rateLimitResult.allowed) {
+    return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before checking another IP.`, ephemeral: true });
+  }
+
+  if (!ip) {
+    return interaction.reply({ content: "Please enter an IP address.", ephemeral: true });
+  }
+
+  const ipValidation = validateIP(ip);
+  if (!ipValidation.valid) {
+    return interaction.reply({ content: `Invalid IP address: ${ipValidation.error}`, ephemeral: true });
+  }
+
+  if (ipValidation.isPrivate) {
+    return interaction.reply({ content: "Private IP addresses are not allowed for security reasons.", ephemeral: true });
+  }
+
+  const embed = await checkIP(ip);
+
+  if (!embed) {
+    return interaction.reply({ content: "The server is unavailable.", ephemeral: true });
+  }
+
+  await interaction.reply({ embeds: [embed] });
+}
+
+async function handleSlashListallfollows(interaction) {
+  const follows = await getAllFollows();
+
+  follows.sort((a, b) => {
+    if (a.discord_id < b.discord_id) return -1;
+    if (a.discord_id > b.discord_id) return 1;
+    return 0;
+  });
+
+  if (!follows || follows.length === 0) {
+    return interaction.reply({ content: "There are no users following any maps.", ephemeral: true });
+  }
+
+  let list = "";
+  for (const follow of follows) {
+    const stats = getStatsPage(follow.map_name);
+    if (stats) {
+      list += `<@${follow.discord_id}>: [${follow.map_name}](${stats})\n`;
+    } else {
+      list += `<@${follow.discord_id}>: ${follow.map_name}\n`;
+    }
+  }
+
+  const embed = new EmbedBuilder()
+    .setTitle("List of all followed maps:")
+    .setColor(CONFIG_VALUES.EMBED_COLOR)
+    .setTimestamp(Date.now())
+    .setDescription(list);
+
+  await interaction.reply({ embeds: [embed] });
+}
+
+async function handleSlashTestnotify(interaction) {
+  const map = interaction.options.getString('map').toLowerCase();
+  
+  if (!map) {
+    return interaction.reply({ content: "Please enter a valid map name.", ephemeral: true });
+  }
+
+  if (!(await hasMap(map))) {
+    return interaction.reply({ content: "No one is following this map.", ephemeral: true });
+  }
+
+  await notifyUsers(map);
+  await interaction.reply({ content: `Notification sent for map: ${map}`, ephemeral: true });
+}
+
+async function handleSlashRemoveuser(interaction) {
+  const userID = interaction.options.getString('userid');
+  
+  if (!userID) {
+    return interaction.reply({ content: "Please enter a valid user ID.", ephemeral: true });
+  }
+
+  await unfollowAll(userID);
+  await interaction.reply({ content: `Removed all maps from user <@${userID}>.`, ephemeral: true });
+}
+
+async function handleSlashMem(interaction) {
+  const used = process.memoryUsage();
+  let out = "```";
+  for (const key in used) {
+    out += `${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB\n`;
+  }
+  out += "```";
+
+  await interaction.reply({ content: out, ephemeral: true });
+}
+
+// Keep message commands for backwards compatibility
 bot.on("messageCreate", async (message) => {
   // Exit early for bot messages and non-command messages
   if (message.author.bot) return;
@@ -741,10 +1231,10 @@ async function handlePublicCommand(message, args, command) {
       } else {
         embed = new EmbedBuilder()
           .setTitle(`${server.name} is currently unavailable.`)
-          .setColor(7980240)
+          .setColor(CONFIG_VALUES.EMBED_COLOR)
           .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
           .setTimestamp(Date.now())
-          .setImage("https://i.imgur.com/WnS0Biz.png");
+          .setImage(CONFIG_VALUES.OFFLINE_SERVER_IMAGE);
       }
 
       message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
@@ -752,32 +1242,40 @@ async function handlePublicCommand(message, args, command) {
   } else if (command === "help" || command === "commands") {
     const embed = new EmbedBuilder()
       .setTitle("List of commands")
-      .setColor(7980240)
+      .setColor(CONFIG_VALUES.EMBED_COLOR)
       .setTimestamp(Date.now())
       .addFields(
         {
-          name: "--players/--p",
-          value: "`--players <Server>`\nThis command will return a list of currently connected users to the specified server."
+          name: "/players",
+          value: "`/players [server]`\nShows players on a server. Legacy: `--players/--p <server>`"
         },
         {
-          name: "--map/--m",
-          value: "`--map <Server/Map>`\nThis command return with what map a server is on, along with any other relevant information about the map."
+          name: "/map",
+          value: "`/map [server]`\nShows current map on a server or map stats. Legacy: `--map/--m <server/map>`"
         },
         {
-          name: "--keywords/--keys",
-          value: "`--keywords`\nThis command will show you a list of keywords you can use with the bot."
+          name: "/keywords",
+          value: "`/keywords`\nLists all available server keywords. Legacy: `--keywords/--keys`"
         },
         {
-          name: "--follow/--f",
-          value: "`--follow <Map>`\nThis command will DM you whenever a map you follow is on a server."
+          name: "/follow",
+          value: "`/follow <map>`\nFollow a map to receive DM notifications. Legacy: `--follow/--f <map>`"
         },
         {
-          name: "--unfollow/--uf",
-          value: "`--unfollow <Map>/all`\nThis command will stop you from being DM'd whenever a map you follow is on a server."
+          name: "/unfollow",
+          value: "`/unfollow <map|all>`\nStop following a map or all maps. Legacy: `--unfollow/--uf <map>/all`"
         },
         {
-          name: "--listfollows/--lf",
-          value: "`--listfollows`\nThis command will return a list of all maps you are following."
+          name: "/listfollows",
+          value: "`/listfollows`\nList all maps you are following. Legacy: `--listfollows/--lf`"
+        },
+        {
+          name: "/ping",
+          value: "`/ping`\nCheck bot latency. Legacy: `--ping`"
+        },
+        {
+          name: "/version",
+          value: "`/version`\nShow bot version. Legacy: `--v/--version`"
         }
       );
 
@@ -886,7 +1384,7 @@ async function handlePublicCommand(message, args, command) {
     // Log the map follow action in the log channel
     const logEmbed = new EmbedBuilder()
       .setTitle("User Followed Map")
-      .setColor(7980240)
+      .setColor(CONFIG_VALUES.EMBED_COLOR)
       .setTimestamp(Date.now())
       .addFields({ name: "User", value: message.author.toString() }, { name: "Map", value: map })
       .setThumbnail(message.author.displayAvatarURL())
@@ -921,7 +1419,7 @@ async function handlePublicCommand(message, args, command) {
     } else {
       // If the user is not following the map, return an error message
       if (!(await isFollowingMap(message.author.id, map))) {
-        return message.channel.send(`You are not following this map. Use \`${config.discord.prefix}listfollows\` to see a list of maps you are following.`);
+        return message.channel.send(`You are not following this map. Use \`/listfollows\` or \`${config.discord.prefix}listfollows\` to see a list of maps you are following.`);
       }
 
       // Unfollow the map
@@ -933,7 +1431,7 @@ async function handlePublicCommand(message, args, command) {
     // Log the map unfollow action in the log channel
     const logEmbed = new EmbedBuilder()
       .setTitle("User Unfollowed Map")
-      .setColor(7980240)
+      .setColor(CONFIG_VALUES.EMBED_COLOR)
       .setTimestamp(Date.now())
       .addFields({ name: "User", value: message.author.toString() }, { name: "Map", value: map })
       .setThumbnail(message.author.displayAvatarURL())
@@ -961,7 +1459,7 @@ async function handlePublicCommand(message, args, command) {
     }
     const embed = new EmbedBuilder()
       .setTitle("List of maps you are following:")
-      .setColor(7980240)
+      .setColor(CONFIG_VALUES.EMBED_COLOR)
       .setTimestamp(Date.now())
       .setDescription(list);
     message.channel.send({ embeds: [embed] }).then((msg) => addTrash(msg, message));
@@ -970,7 +1468,7 @@ async function handlePublicCommand(message, args, command) {
 
 async function handleDevCommand(message, args, command) {
   if (command === "id") {
-    message.channel.send("does sneak gay?").then((m) => {
+    message.channel.send("Loading message ID...").then((m) => {
       m.edit(m.id);
     });
   } else if (command === "mem") {
@@ -1039,7 +1537,7 @@ async function handleDevCommand(message, args, command) {
     // Create an embed with the list of followed maps
     const embed = new EmbedBuilder()
       .setTitle("List of all followed maps:")
-      .setColor(7980240)
+      .setColor(CONFIG_VALUES.EMBED_COLOR)
       .setTimestamp(Date.now())
       .setDescription(list);
 
@@ -1052,7 +1550,7 @@ async function handleDevCommand(message, args, command) {
     if (!(await hasMap(map))) return message.channel.send("No one is following this map.");
     // React a thumbs up to the message
 
-    notifyUsers(map);
+    await notifyUsers(map);
   } else if (command === "removeuser") {
     const userID = args[0];
     if (!userID) return message.channel.send("Please enter a valid user ID.");
@@ -1161,13 +1659,18 @@ const notifyUsers = async (map, serverObj) => {
 
         try {
           await withRetry(async () => {
-            bot.guilds.cache
-              .get(config.fallback.guildID)
-              .channels.cache.get(config.fallback.channelID)
-              .send({
-                embeds: [backupEmbed],
-                content: fallbackContent
-              });
+            const guild = bot.guilds.cache.get(config.fallback.guildID);
+            if (!guild) {
+              throw new Error(`Fallback guild ${config.fallback.guildID} not found`);
+            }
+            const channel = guild.channels.cache.get(config.fallback.channelID);
+            if (!channel) {
+              throw new Error(`Fallback channel ${config.fallback.channelID} not found`);
+            }
+            channel.send({
+              embeds: [backupEmbed],
+              content: fallbackContent
+            });
           });
         } catch (fallbackError) {
           console.error(`Failed to send fallback notification for ${map}:`, fallbackError);
@@ -1305,7 +1808,7 @@ const updateServerData = async () => {
 };
 
 // Run the updateServerData function every 91 seconds (91000 milliseconds)
-setInterval(updateServerData, CONSTANTS.MAP_CHECK_INTERVAL_MS);
+setInterval(updateServerData, CONFIG_VALUES.MAP_CHECK_INTERVAL_MS);
 
 //if a member leaves delete all their follows in db
 bot.on("guildMemberRemove", async (member) => {
