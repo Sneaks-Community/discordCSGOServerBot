@@ -9,7 +9,7 @@ let db = null;
  * @returns {Object} - Validation result with valid boolean and error message
  */
 function validateDiscordId(discordId) {
-    if (!discordId || typeof discordId !== 'string') {
+    if (!discordId || typeof discordId !== "string") {
         return { valid: false, error: "Invalid Discord ID: must be a non-empty string" };
     }
     
@@ -28,7 +28,7 @@ function validateDiscordId(discordId) {
  * @returns {Object} - Validation result with valid boolean and error message
  */
 function validateMapNameInput(mapName) {
-    if (!mapName || typeof mapName !== 'string') {
+    if (!mapName || typeof mapName !== "string") {
         return { valid: false, error: "Invalid map name: must be a non-empty string" };
     }
     
@@ -56,9 +56,9 @@ function validateMapNameInput(mapName) {
  * Initialize the database and create tables if they don't exist
  */
 async function initDB() {
-    db = new Database('db.sqlite');
+    db = new Database("db.sqlite");
     // Enable WAL mode for better concurrency
-    db.pragma('journal_mode = WAL');
+    db.pragma("journal_mode = WAL");
     // Create table called players_follow with columns for discord_id, map_name, and a unique index on conflict replace
     db.exec(`
         CREATE TABLE IF NOT EXISTS players_follow (
@@ -68,7 +68,7 @@ async function initDB() {
         )
     `);
     // Add index on map_name for faster getFollowers queries
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_map_name ON players_follow(map_name)`);
+    db.exec("CREATE INDEX IF NOT EXISTS idx_map_name ON players_follow(map_name)");
 }
 
 /**
