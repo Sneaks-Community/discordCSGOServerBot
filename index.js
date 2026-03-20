@@ -478,7 +478,7 @@ function playerListEmbed(server) {
     // Create an embed for the online server using EmbedBuilder
         embed = new EmbedBuilder()
             .setTitle(
-                `${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/\_/g, "\\_")
+                `${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/_/g, "\\_")
             )
             .setColor(CONFIG_VALUES.EMBED_COLOR)
             .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
@@ -491,9 +491,9 @@ function playerListEmbed(server) {
 
         // Escape special characters for Discord and remove connecting players
         list = list
-            .replace(/\`/g, "'")
+            .replace(/`/g, "'")
             .replace(/\*/g, "\\*")
-            .replace(/\_/g, "\\_")
+            .replace(/_/g, "\\_")
             .replace(/undefined\n/g, "");
 
         embed.setDescription(list);
@@ -555,9 +555,9 @@ function makeMapEmbed(mapName, server) {
 
     // Set the embed title based on whether a server is provided
     if (server) {
-        embed.setTitle(`${server.name} is currently on ${mapName}`.replace(/\_/g, "\\_"));
+        embed.setTitle(`${server.name} is currently on ${mapName}`.replace(/_/g, "\\_"));
     } else {
-        embed.setTitle(`${mapName} stats`.replace(/\_/g, "\\_"));
+        embed.setTitle(`${mapName} stats`.replace(/_/g, "\\_"));
     }
 
     return embed;
