@@ -39,7 +39,7 @@ function validateMapNameInput(mapName) {
     }
     
     // Map names should only contain alphanumeric characters, underscores, and hyphens
-    const mapNameRegex = /^[a-zA-Z0-9_\-]+$/;
+    const mapNameRegex = /^[a-zA-Z0-9_-]+$/;
     if (!mapNameRegex.test(trimmedMapName)) {
         return { valid: false, error: "Invalid map name: contains invalid characters (only alphanumeric, underscores, and hyphens allowed)" };
     }

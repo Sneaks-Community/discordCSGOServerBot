@@ -328,7 +328,7 @@ function validateMapName(mapName) {
 
     // Validate map name format - CS:GO map names typically start with specific prefixes
     // and contain only alphanumeric characters, underscores, and hyphens
-    const mapNameRegex = /^[a-zA-Z0-9_\-]+$/;
+    const mapNameRegex = /^[a-zA-Z0-9_-]+$/;
     if (!mapNameRegex.test(mapName)) {
         return { valid: false, error: "Map name contains invalid characters" };
     }
