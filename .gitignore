@@ -4,3 +4,4 @@ notes.txt
 .vscode
 db.sqlite
 plans/
+*.backup

@@ -1,92 +1,19 @@
-// ES module version using better-sqlite3
-import Database from "better-sqlite3";
-
-let db = null;
-
 /**
- * Validate Discord user ID format (numeric string, typically 17-19 characters)
- * @param {string} discordId - The Discord user ID to validate
- * @returns {Object} - Validation result with valid boolean and error message
+ * Database follow operations
+ * Handles all follow/unfollow database operations
  */
-function validateDiscordId(discordId) {
-    if (!discordId || typeof discordId !== "string") {
-        return { valid: false, error: "Invalid Discord ID: must be a non-empty string" };
-    }
-    
-    // Discord IDs are numeric strings (typically 17-19 digits)
-    const discordIdRegex = /^\d{17,19}$/;
-    if (!discordIdRegex.test(discordId)) {
-        return { valid: false, error: "Invalid Discord ID: must be a numeric string (17-19 digits)" };
-    }
-    
-    return { valid: true };
-}
 
-/**
- * Validate map name format (alphanumeric, underscores, hyphens, max 64 chars)
- * @param {string} mapName - The map name to validate
- * @returns {Object} - Validation result with valid boolean and error message
- */
-function validateMapNameInput(mapName) {
-    if (!mapName || typeof mapName !== "string") {
-        return { valid: false, error: "Invalid map name: must be a non-empty string" };
-    }
-    
-    const trimmedMapName = mapName.trim();
-    
-    if (trimmedMapName.length === 0) {
-        return { valid: false, error: "Invalid map name: cannot be empty or whitespace" };
-    }
-    
-    // Map names should only contain alphanumeric characters, underscores, and hyphens
-    const mapNameRegex = /^[a-zA-Z0-9_-]+$/;
-    if (!mapNameRegex.test(trimmedMapName)) {
-        return { valid: false, error: "Invalid map name: contains invalid characters (only alphanumeric, underscores, and hyphens allowed)" };
-    }
-    
-    // CS:GO map name limit is typically 64 characters
-    if (trimmedMapName.length > 64) {
-        return { valid: false, error: "Invalid map name: too long (max 64 characters)" };
-    }
-    
-    return { valid: true, sanitized: trimmedMapName.toLowerCase() };
-}
-
-/**
- * Initialize the database and create tables if they don't exist
- * Uses a transaction to ensure atomic initialization
- */
-async function initDB() {
-    db = new Database("db.sqlite");
-    // Enable WAL mode for better concurrency
-    db.pragma("journal_mode = WAL");
-    
-    // Use a transaction for atomic initialization
-    const initTransaction = db.transaction(() => {
-        // Create table called players_follow with columns for discord_id, map_name, and a unique index on conflict replace
-        db.exec(`
-            CREATE TABLE IF NOT EXISTS players_follow (
-                discord_id TEXT,
-                map_name TEXT,
-                UNIQUE(discord_id, map_name) ON CONFLICT REPLACE
-            )
-        `);
-        // Add index on map_name for faster getFollowers queries
-        db.exec("CREATE INDEX IF NOT EXISTS idx_map_name ON players_follow(map_name)");
-        // Add index on discord_id for faster getUserFollows queries (backwards compatible - uses IF NOT EXISTS)
-        db.exec("CREATE INDEX IF NOT EXISTS idx_discord_id ON players_follow(discord_id)");
-    });
-    
-    // Execute the transaction
-    initTransaction();
-}
+import { getDB } from "./connection.js";
+import { validateDiscordId, validateMapNameInput } from "./validation.js";
 
 /**
  * Follow a map for a user
  * @param {string} discord_id - The Discord user ID
  * @param {string} map_name - The map name to follow
  */
-function followMap(discord_id, map_name) {
+export function followMap(discord_id, map_name) {
+    const db = getDB();
+    
     // Validate inputs to prevent SQL injection
     const idValidation = validateDiscordId(discord_id);
     if (!idValidation.valid) {
@@ -112,7 +39,9 @@ function followMap(discord_id, map_name) {
  * @param {string} discord_id - The Discord user ID
  * @param {string} map_name - The map name to unfollow
  */
-function unfollowMap(discord_id, map_name) {
+export function unfollowMap(discord_id, map_name) {
+    const db = getDB();
+    
     // Validate inputs to prevent SQL injection
     const idValidation = validateDiscordId(discord_id);
     if (!idValidation.valid) {
@@ -137,7 +66,9 @@ function unfollowMap(discord_id, map_name) {
  * Get all follows from the database
  * @returns {Array} - Array of all rows from players_follow
  */
-function getAllFollows() {
+export function getAllFollows() {
+    const db = getDB();
+    
     const stmt = db.prepare("SELECT * FROM players_follow");
     try {
         return stmt.all();
@@ -152,7 +83,9 @@ function getAllFollows() {
  * @param {string} discord_id - The Discord user ID
  * @returns {Array} - Array of objects with map_name property
  */
-function getUserFollows(discord_id) {
+export function getUserFollows(discord_id) {
+    const db = getDB();
+    
     // Validate Discord ID input
     const idValidation = validateDiscordId(discord_id);
     if (!idValidation.valid) {
@@ -174,7 +107,9 @@ function getUserFollows(discord_id) {
  * @param {string} map_name - The map name
  * @returns {Object|null} - Row object if following, null otherwise
  */
-function isFollowingMap(discord_id, map_name) {
+export function isFollowingMap(discord_id, map_name) {
+    const db = getDB();
+    
     // Validate inputs to prevent SQL injection
     const idValidation = validateDiscordId(discord_id);
     if (!idValidation.valid) {
@@ -200,7 +135,9 @@ function isFollowingMap(discord_id, map_name) {
  * @param {string} map_name - The map name
  * @returns {Array} - Array of objects with discord_id property
  */
-function getUsersFollowingMap(map_name) {
+export function getUsersFollowingMap(map_name) {
+    const db = getDB();
+    
     // Validate map name input
     const mapValidation = validateMapNameInput(map_name);
     if (!mapValidation.valid) {
@@ -221,7 +158,9 @@ function getUsersFollowingMap(map_name) {
  * @param {string} map_name - The map name
  * @returns {Object|null} - Row object if exists, null otherwise
  */
-function hasMap(map_name) {
+export function hasMap(map_name) {
+    const db = getDB();
+    
     // Validate map name input
     const mapValidation = validateMapNameInput(map_name);
     if (!mapValidation.valid) {
@@ -241,7 +180,9 @@ function hasMap(map_name) {
  * Unfollow all maps for a user
  * @param {string} discord_id - The Discord user ID
  */
-function unfollowAll(discord_id) {
+export function unfollowAll(discord_id) {
+    const db = getDB();
+    
     // Validate Discord ID input
     const idValidation = validateDiscordId(discord_id);
     if (!idValidation.valid) {
@@ -256,26 +197,3 @@ function unfollowAll(discord_id) {
         throw err;
     }
 }
-
-/**
- * Close the database connection
- */
-function closeDB() {
-    if (db) {
-        db.close();
-        db = null;
-    }
-}
-
-export {
-    initDB,
-    followMap,
-    unfollowMap,
-    getAllFollows,
-    getUserFollows,
-    isFollowingMap,
-    getUsersFollowingMap,
-    hasMap,
-    unfollowAll,
-    closeDB
-};
