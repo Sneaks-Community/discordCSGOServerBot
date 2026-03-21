@@ -423,29 +423,74 @@ async function withRetry(fn, maxRetries = CONFIG_VALUES.RETRY_MAX_RETRIES, baseD
 // User cache for reducing API calls
 const userCache = new Map();
 
+// Maximum cache sizes to prevent memory leaks
+const MAX_USER_CACHE_SIZE = 1000;
+const MAX_RATE_LIMIT_MAP_SIZE = 5000;
+
 async function getCachedUser(userId) {
     const cached = userCache.get(userId);
     if (cached && Date.now() - cached.timestamp < CONFIG_VALUES.USER_CACHE_TTL) {
         return cached.user;
     }
+    
+    // Enforce maximum cache size with LRU eviction
+    if (userCache.size >= MAX_USER_CACHE_SIZE) {
+        // Find and remove the oldest entry
+        let oldestKey = null;
+        let oldestTimestamp = Infinity;
+        for (const [key, value] of userCache.entries()) {
+            if (value.timestamp < oldestTimestamp) {
+                oldestTimestamp = value.timestamp;
+                oldestKey = key;
+            }
+        }
+        if (oldestKey) {
+            userCache.delete(oldestKey);
+        }
+    }
+    
     const user = await bot.users.fetch(userId);
     userCache.set(userId, { user, timestamp: Date.now() });
     return user;
 }
 
-// Clear cache periodically (run every 5 minutes regardless of TTL)
-setInterval(() => {
+// Clear cache periodically - only runs when cache has entries
+function cleanupUserCache() {
+    if (userCache.size === 0) return;
+    
     const now = Date.now();
+    let cleaned = 0;
     for (const [key, value] of userCache.entries()) {
         if (now - value.timestamp > CONFIG_VALUES.USER_CACHE_TTL) {
             userCache.delete(key);
+            cleaned++;
         }
     }
-}, 300000); // 5 minutes
+    
+    // If cache is still over limit after TTL cleanup, evict oldest entries
+    if (userCache.size >= MAX_USER_CACHE_SIZE) {
+        const entries = [...userCache.entries()]
+            .sort((a, b) => a[1].timestamp - b[1].timestamp);
+        
+        const toDelete = entries.slice(0, userCache.size - MAX_USER_CACHE_SIZE + 1);
+        for (const [key] of toDelete) {
+            userCache.delete(key);
+            cleaned++;
+        }
+    }
+    
+    if (cleaned > 0) {
+        console.log(`User cache cleanup: removed ${cleaned} entries, current size: ${userCache.size}`);
+    }
+}
 
 // Clear rate limit map periodically to prevent memory leaks
-setInterval(() => {
+function cleanupRateLimits() {
+    if (userActionRateLimits.size === 0) return;
+    
     const now = Date.now();
+    let cleaned = 0;
+    
     for (const [userId, actions] of userActionRateLimits.entries()) {
         let hasValidActions = false;
         for (const action of Object.keys(actions)) {
@@ -458,9 +503,43 @@ setInterval(() => {
         }
         if (!hasValidActions) {
             userActionRateLimits.delete(userId);
+            cleaned++;
         }
     }
-}, 300000); // Clean every 5 minutes
+    
+    // Enforce maximum size with LRU eviction if still over limit
+    if (userActionRateLimits.size >= MAX_RATE_LIMIT_MAP_SIZE) {
+        // Find users with oldest action timestamps
+        const userTimestamps = [];
+        for (const [userId, actions] of userActionRateLimits.entries()) {
+            let oldestTs = Infinity;
+            for (const action of Object.keys(actions)) {
+                if (actions[action].length > 0) {
+                    oldestTs = Math.min(oldestTs, actions[action][0]);
+                }
+            }
+            if (oldestTs !== Infinity) {
+                userTimestamps.push({ userId, oldestTs });
+            }
+        }
+        
+        // Sort by oldest timestamp and remove oldest users
+        userTimestamps.sort((a, b) => a.oldestTs - b.oldestTs);
+        const toDelete = userTimestamps.slice(0, userActionRateLimits.size - MAX_RATE_LIMIT_MAP_SIZE + 100);
+        for (const { userId } of toDelete) {
+            userActionRateLimits.delete(userId);
+            cleaned++;
+        }
+    }
+    
+    if (cleaned > 0) {
+        console.log(`Rate limit cleanup: removed ${cleaned} users, current size: ${userActionRateLimits.size}`);
+    }
+}
+
+// Run cleanup intervals
+setInterval(cleanupUserCache, 300000); // 5 minutes
+setInterval(cleanupRateLimits, 300000); // 5 minutes
 
 async function keywordToServer(keyword) {
     // Takes keywords and returns server obj
