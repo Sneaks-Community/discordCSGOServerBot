@@ -124,27 +124,6 @@ function unfollowMap(discord_id, map_name) {
 }
 
 /**
- * Get followers of a map
- * @param {string} map_name - The map name
- * @returns {Array} - Array of objects with discord_id property
- */
-function getFollowers(map_name) {
-    // Validate map name input
-    const mapValidation = validateMapNameInput(map_name);
-    if (!mapValidation.valid) {
-        throw new Error(mapValidation.error);
-    }
-    
-    const stmt = db.prepare("SELECT discord_id FROM players_follow WHERE map_name = ?");
-    try {
-        return stmt.all(mapValidation.sanitized);
-    } catch (err) {
-        console.error("Database error in getFollowers:", err);
-        throw err;
-    }
-}
-
-/**
  * Get all follows from the database
  * @returns {Array} - Array of all rows from players_follow
  */
@@ -269,20 +248,6 @@ function unfollowAll(discord_id) {
 }
 
 /**
- * Get total number of follows in the database
- * @returns {Object} - Object with total count
- */
-function totalFollows() {
-    const stmt = db.prepare("SELECT COUNT(*) AS total FROM players_follow");
-    try {
-        return stmt.get();
-    } catch (err) {
-        console.error("Database error in totalFollows:", err);
-        throw err;
-    }
-}
-
-/**
  * Close the database connection
  */
 function closeDB() {
@@ -296,13 +261,11 @@ export {
     initDB,
     followMap,
     unfollowMap,
-    getFollowers,
     getAllFollows,
     getUserFollows,
     isFollowingMap,
     getUsersFollowingMap,
     hasMap,
     unfollowAll,
-    totalFollows,
     closeDB
 };

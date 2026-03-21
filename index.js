@@ -4,7 +4,7 @@ import pLimit from "p-limit";
 
 import config from "./config.json" with { type: "json" };
 import serverObject from "./servers.json" with { type: "json" };
-import { initDB, followMap, unfollowMap, getFollowers, getAllFollows, getUserFollows, isFollowingMap, getUsersFollowingMap, hasMap, unfollowAll, totalFollows, closeDB } from "./db.js";
+import { initDB, followMap, unfollowMap, getAllFollows, getUserFollows, isFollowingMap, getUsersFollowingMap, hasMap, unfollowAll, closeDB } from "./db.js";
 
 // Helper function to convert seconds to milliseconds
 function secondsToMilliseconds(seconds) {
@@ -276,40 +276,6 @@ async function registerSlashCommands() {
     }
 }
 
-// Configuration validation
-function validateConfig(config) {
-    const errors = [];
-  
-    if (!config.discord?.token) {
-        errors.push("Missing required config field: discord.token");
-    }
-    if (!config.discord?.prefix) {
-        errors.push("Missing required config field: discord.prefix");
-    }
-    if (!config.logging?.guildID) {
-        errors.push("Missing required config field: logging.guildID");
-    }
-    if (!config.logging?.channelID) {
-        errors.push("Missing required config field: logging.channelID");
-    }
-    if (!config.embeds || !Array.isArray(config.embeds) || config.embeds.length === 0) {
-        errors.push("Missing required config field: embeds (must be a non-empty array)");
-    } else {
-        config.embeds.forEach((embed, index) => {
-            if (!embed.channelID) {
-                errors.push(`Missing channelID in embeds[${index}]`);
-            }
-            if (!embed.messageID) {
-                errors.push(`Missing messageID in embeds[${index}]`);
-            }
-        });
-    }
-  
-    if (errors.length > 0) {
-        throw new Error(errors.join("\n"));
-    }
-}
-
 // Validate map name input - ensures map names are safe and follow CS:GO conventions
 function validateMapName(mapName) {
     // Check for empty or whitespace-only input
@@ -463,7 +429,7 @@ setInterval(() => {
 
 async function keywordToServer(keyword) {
     // Takes keywords and returns server obj
-    for (const [name, server] of Object.entries(gData)) {
+    for (const server of Object.values(gData)) {
         if (server.keywords.includes(keyword) || String(server.index) === keyword) {
             return server;
         }
@@ -583,7 +549,7 @@ async function addTrash(msg, om) {
                 if (r.message.channel.type !== "DM") {
                     await om.delete().catch(() => {});
                 }
-            } catch (e) {
+            } catch {
                 // Message may already be deleted
                 console.debug("Message already deleted in addTrash collector");
             } finally {
@@ -725,7 +691,7 @@ async function getInfo(server, index) {
         host: ip,
         port: port,
         maxRetries: CONFIG_VALUES.GAMEDIG_MAX_RETRIES
-    }).catch((e) => {
+    }).catch(() => {
         valid = false;
     });
 
@@ -1340,7 +1306,7 @@ async function handlePublicCommand(message, args, command) {
                     await r.message.delete();
                     await message.delete().catch(() => {});
                     await message.channel.send(`You are no longer following ${map}.`);
-                } catch (e) {
+                } catch {
                     // Message may already be deleted
                     console.debug("Message already deleted in follow confirmation collector");
                 } finally {
