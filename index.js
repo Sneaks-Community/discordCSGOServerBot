@@ -108,53 +108,92 @@ function validateIPv4(ip) {
 }
 
 /**
- * Validate IPv6 address format
- * @param {string} ip - The IPv6 address to validate
- * @returns {Object} - { valid: boolean, error?: string, isPrivate?: boolean }
+ * Validate FQDN format
+ * @param {string} fqdn - The FQDN to validate (may include port)
+ * @returns {Object} - { valid: boolean, error?: string, hostname?: string, port?: string }
  */
-function validateIPv6(ip) {
-    // Simplified IPv6 validation (allows common formats)
-    const ipv6Regex = /^([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}$/;
-    
-    if (!ipv6Regex.test(ip)) {
-        // Try expanded format with ::
-        const ipv6ExpandedRegex = /^([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}$/;
-        if (!ipv6ExpandedRegex.test(ip)) {
-            return { valid: false, error: "Invalid IPv6 address format" };
-        }
+function validateFQDN(fqdn) {
+    if (!fqdn || typeof fqdn !== "string") {
+        return { valid: false, error: "Invalid FQDN: must be a non-empty string" };
     }
     
-    // Check for private IPv6 ranges (simplified check)
-    const isPrivate = ip.toLowerCase().startsWith("fc") || ip.toLowerCase().startsWith("fd"); // Unique local addresses
+    const trimmed = fqdn.trim();
     
-    return { valid: true, isPrivate };
+    // Split hostname and port if present
+    let hostname = trimmed;
+    let port = null;
+    
+    // Handle port (e.g., "example.com:27015")
+    // Note: IPv6 is not supported, so we don't need to handle bracket notation
+    if (trimmed.includes(":")) {
+        const lastColonIndex = trimmed.lastIndexOf(":");
+        hostname = trimmed.substring(0, lastColonIndex);
+        const portStr = trimmed.substring(lastColonIndex + 1);
+        
+        // Validate port
+        const portNum = parseInt(portStr, 10);
+        if (isNaN(portNum) || portNum < 1023 || portNum > 49152) {
+            return { valid: false, error: "Invalid port number. Must be between 1023 and 49152" };
+        }
+        port = portStr;
+    }
+    
+    // Validate hostname format
+    // FQDN regex: allows letters, numbers, hyphens, and dots
+    // Each label must start and end with alphanumeric, max 63 chars per label
+    // Total max 253 chars (255 with trailing dot)
+    const hostnameRegex = /^(?=.{1,253}$)([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)*[a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?$/;
+    
+    if (!hostnameRegex.test(hostname)) {
+        return { valid: false, error: "Invalid hostname format. Must be a valid domain name (e.g., example.com)" };
+    }
+    
+    // Check for suspicious patterns (directory traversal, etc.)
+    if (hostname.includes("..") || hostname.includes("/") || hostname.includes("\\")) {
+        return { valid: false, error: "Invalid hostname: contains disallowed characters" };
+    }
+    
+    return { valid: true, hostname, port };
 }
 
 /**
- * Validate IP address (IPv4 or IPv6)
- * @param {string} ip - The IP address to validate
- * @returns {Object} - { valid: boolean, error?: string, isPrivate?: boolean }
+ * Validate server input - accepts FQDNs, public IPv4, or keywords from servers.json
+ * @param {string} input - The input to validate
+ * @returns {Object} - { valid: boolean, error?: string, type?: 'ipv4'|'fqdn'|'keyword', value?: object }
  */
-function validateIP(ip) {
-    if (!ip || typeof ip !== "string") {
-        return { valid: false, error: "Invalid IP: must be a non-empty string" };
+function validateServerInput(input) {
+    if (!input || typeof input !== "string") {
+        return { valid: false, error: "Invalid input: must be a non-empty string" };
     }
     
-    const trimmedIp = ip.trim();
+    const trimmed = input.trim();
     
-    // Try IPv4 first
-    const ipv4Result = validateIPv4(trimmedIp);
+    // Check if it's a keyword from servers.json
+    const server = keywordToServer(trimmed.toLowerCase());
+    if (server) {
+        return { valid: true, type: "keyword", value: { server } };
+    }
+    
+    // Check if it's a valid IPv4 address
+    const ipv4Result = validateIPv4(trimmed);
     if (ipv4Result.valid) {
-        return ipv4Result;
+        if (ipv4Result.isPrivate) {
+            return { valid: false, error: "Private IP addresses are not allowed for security reasons" };
+        }
+        return { valid: true, type: "ipv4", value: { ip: trimmed } };
     }
     
-    // Try IPv6
-    const ipv6Result = validateIPv6(trimmedIp);
-    if (ipv6Result.valid) {
-        return ipv6Result;
+    // Check if it's a valid FQDN
+    const fqdnResult = validateFQDN(trimmed);
+    if (fqdnResult.valid) {
+        return { valid: true, type: "fqdn", value: { hostname: fqdnResult.hostname, port: fqdnResult.port } };
     }
     
-    return { valid: false, error: "Invalid IP address format" };
+    // Return error with guidance
+    return {
+        valid: false,
+        error: "Invalid input. Must be a public IPv4 address, a valid domain name (e.g., example.com:27015), or a server keyword. IPv6 addresses are not supported."
+    };
 }
 
 // Discord v14 imports
@@ -218,10 +257,10 @@ const slashCommands = [
     // Admin commands
     new SlashCommandBuilder()
         .setName("check")
-        .setDescription("Check server status by IP (Admin only)")
+        .setDescription("Check server status by IP, domain, or keyword (Admin only)")
         .addStringOption(option =>
-            option.setName("ip")
-                .setDescription("Server IP address")
+            option.setName("server")
+                .setDescription("Server IP address, domain name (e.g., example.com:27015), or keyword")
                 .setRequired(true))
         .setDefaultMemberPermissions(0), // Admin only
     new SlashCommandBuilder()
@@ -965,27 +1004,30 @@ async function handleSlashHelp(interaction) {
 }
 
 async function handleSlashCheck(interaction) {
-    const ip = interaction.options.getString("ip");
+    const input = interaction.options.getString("server");
 
     const rateLimitResult = checkRateLimit(interaction.user.id, "ipCheck", CONFIG_VALUES.IP_CHECK_RATE_LIMIT_PER_MINUTE);
     if (!rateLimitResult.allowed) {
-        return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before checking another IP.`, ephemeral: true });
+        return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before checking another server.`, ephemeral: true });
     }
 
-    if (!ip) {
-        return interaction.reply({ content: "Please enter an IP address.", ephemeral: true });
+    if (!input) {
+        return interaction.reply({ content: "Please enter a server IP address, domain name, or keyword.", ephemeral: true });
     }
 
-    const ipValidation = validateIP(ip);
-    if (!ipValidation.valid) {
-        return interaction.reply({ content: `Invalid IP address: ${ipValidation.error}`, ephemeral: true });
+    const validation = validateServerInput(input);
+    if (!validation.valid) {
+        return interaction.reply({ content: validation.error, ephemeral: true });
     }
 
-    if (ipValidation.isPrivate) {
-        return interaction.reply({ content: "Private IP addresses are not allowed for security reasons.", ephemeral: true });
+    let embed;
+    if (validation.type === "keyword") {
+        // It's a keyword from servers.json
+        embed = await checkServer(validation.value.server);
+    } else {
+        // It's an IP or FQDN
+        embed = await checkIP(input, validation);
     }
-
-    const embed = await checkIP(ip);
 
     if (!embed) {
         return interaction.reply({ content: "The server is unavailable.", ephemeral: true });
@@ -1063,11 +1105,77 @@ async function handleSlashMem(interaction) {
     await interaction.reply({ content: out, ephemeral: true });
 }
 
-async function checkIP(ip) {
-    // Extract port from the IP address, if available
-    let port = config.serverUpdate?.defaultPort || "27015";
-    if (ip.includes(":")) {
-        [ip, port] = ip.split(":");
+/**
+ * Check a server by keyword from servers.json
+ * @param {Object} server - The server object from servers.json
+ * @returns {Promise<EmbedBuilder|false>} - Discord embed or false if unavailable
+ */
+async function checkServer(server) {
+    // Get server info using getInfo()
+    const serverInfo = await getInfo(server);
+
+    if (!serverInfo.online) return false;
+
+    // Get the map image
+    const image = getMapImage(serverInfo.map);
+
+    // Create the embed with the server data
+    const embed = new EmbedBuilder()
+        .setTitle(
+            `${serverInfo.numPlayers} (${serverInfo.numBots}) / ${serverInfo.maxPlayers} players connected to ${serverInfo.name} on ${serverInfo.map}`.replace(
+                /_/g,
+                "\\_"
+            )
+        )
+        .setColor(CONFIG_VALUES.EMBED_COLOR)
+        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+        .setTimestamp(Date.now());
+    if (image) embed.setImage(image);
+
+    // Create a list of players and bots
+    let list = "";
+    for (const player of serverInfo.players) {
+        list += `${player.name}\n`;
+    }
+    for (const bot of serverInfo.bots) {
+        list += `${bot.name}\n`;
+    }
+
+    // Sanitize the list for Discord and remove undefined entries
+    list = list
+        .replace(/`/g, "'")
+        .replace(/\*/g, "\\*")
+        .replace(/_/g, "\\_")
+        .replace(/undefined\n/g, "");
+
+    // Set the list as the embed description
+    embed.setDescription(list);
+
+    return embed;
+}
+
+/**
+ * Check a server by IP address or FQDN
+ * @param {string} input - The IP or FQDN input
+ * @param {Object} validation - The validation result from validateServerInput
+ * @returns {Promise<EmbedBuilder|false>} - Discord embed or false if unavailable
+ */
+async function checkIP(input, validation) {
+    let ip;
+    let port;
+
+    if (validation.type === "fqdn") {
+        // Handle FQDN with optional port
+        ip = validation.value.hostname;
+        port = validation.value.port || config.serverUpdate?.defaultPort || "27015";
+    } else {
+        // Handle IPv4 with optional port
+        if (input.includes(":")) {
+            [ip, port] = input.split(":");
+        } else {
+            ip = input;
+            port = config.serverUpdate?.defaultPort || "27015";
+        }
     }
 
     // Create a server object with the necessary information for getInfo()
