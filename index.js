@@ -553,7 +553,20 @@ bot.on("ready", async () => {
 // Initialize database before logging in
 await initDB();
 
-bot.login(config.discord.token).catch(err => {
+// Validate Discord token before attempting login
+if (!config.discord?.token || typeof config.discord.token !== "string" || config.discord.token.trim() === "") {
+    console.error("ERROR: Discord token is missing or invalid in config.json");
+    console.error("Please ensure config.json contains a valid 'discord.token' value");
+    process.exit(1);
+}
+
+// Validate token format (Discord tokens are typically base64-like strings)
+const token = config.discord.token.trim();
+if (token.length < 50) {
+    console.warn("WARNING: Discord token appears to be shorter than expected. Please verify the token is correct.");
+}
+
+bot.login(token).catch(err => {
     console.error("Failed to login to Discord:", err.message);
     process.exit(1);
 });
