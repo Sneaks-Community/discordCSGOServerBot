@@ -484,11 +484,6 @@ function getMapImage(mapName) {
     return false;
 }
 
-function isEmpty(obj) {
-    // Checks if bot has started - if empty, bot is still starting
-    return Object.keys(obj).length === 0;
-}
-
 // Retry logic with exponential backoff
 async function withRetry(fn, maxRetries = CONFIG_VALUES.RETRY_MAX_RETRIES, baseDelay = CONFIG_VALUES.RETRY_BASE_DELAY_MS) {
     for (let i = 0; i < maxRetries; i++) {
@@ -625,12 +620,7 @@ setInterval(cleanupRateLimits, 300000); // 5 minutes
 
 async function keywordToServer(keyword) {
     // Takes keywords and returns server obj
-    for (const server of Object.values(gData)) {
-        if (server.keywords.includes(keyword) || String(server.index) === keyword) {
-            return server;
-        }
-    }
-    return null;
+    return getServerByKeyword(keyword);
 }
 
 function playerListEmbed(server) {
@@ -679,7 +669,8 @@ function makeServerList() {
         .setTimestamp(Date.now());
 
     // Generate the server list
-    let list = Object.values(gData)
+    const serverData = getServerData();
+    let list = Object.values(serverData)
         .map((server) => {
             if (server.online) {
                 return `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}`;
@@ -764,7 +755,50 @@ bot.login(token).catch(err => {
     process.exit(1);
 });
 
-let gData = {};
+// Server data state management
+// Using a module-level variable with controlled access to prevent race conditions
+let _serverData = {};
+let _isRefreshing = false;
+let _lastRefreshTime = 0;
+
+/**
+ * Get current server data (immutable copy)
+ * @returns {Object} - Copy of server data
+ */
+function getServerData() {
+    return { ..._serverData };
+}
+
+/**
+ * Check if server data is empty (bot still starting)
+ * @returns {boolean}
+ */
+function isServerDataEmpty() {
+    return Object.keys(_serverData).length === 0;
+}
+
+/**
+ * Update server data atomically
+ * @param {Object} newData - New server data from refresh
+ */
+function setServerData(newData) {
+    _serverData = { ...newData };
+    _lastRefreshTime = Date.now();
+}
+
+/**
+ * Get a specific server by keyword or index
+ * @param {string} keyword - Server keyword or index
+ * @returns {Object|null} - Server object or null
+ */
+function getServerByKeyword(keyword) {
+    for (const server of Object.values(_serverData)) {
+        if (server.keywords.includes(keyword) || String(server.index) === keyword) {
+            return server;
+        }
+    }
+    return null;
+}
 
 const allowedDevs = config.security.adminUserIds;
 
@@ -815,7 +849,7 @@ async function refresh(servers) {
         )
     );
 
-    gData = Object.fromEntries(results); //overwrites Global data var
+    setServerData(Object.fromEntries(results));
 }
 
 async function getInfo(server, index) {
@@ -874,8 +908,9 @@ function makeEmbed() {
         .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
         .setTimestamp(Date.now());
 
-    // Iterate through the servers in gData and add server details to the embed
-    for (const server of Object.values(gData)) {
+    // Iterate through the servers and add server details to the embed
+    const serverData = getServerData();
+    for (const server of Object.values(serverData)) {
         if (!server.online) {
             // If the server is offline, add a field indicating it's not available
             embed.addFields({
@@ -952,7 +987,7 @@ bot.on("interactionCreate", async (interaction) => {
 
 // Slash command handlers
 async function handleSlashPlayers(interaction) {
-    if (isEmpty(gData)) {
+    if (isServerDataEmpty()) {
         return interaction.reply({ content: "Please Wait. The bot is starting.", ephemeral: true });
     }
 
@@ -974,7 +1009,7 @@ async function handleSlashPlayers(interaction) {
 }
 
 async function handleSlashMap(interaction) {
-    if (isEmpty(gData)) {
+    if (isServerDataEmpty()) {
         return interaction.reply({ content: "Please Wait. The bot is starting.", ephemeral: true });
     }
 
@@ -1544,6 +1579,8 @@ for (const server of serverObjectKeys) {
 
 // Function to update server data and notify users if there's a change in the .map property
 const updateServerData = async () => {
+    const serverData = getServerData();
+    
     for (const currentServer of serverObjectKeys) {
         let currentServerObject = serverObject[currentServer];
 
@@ -1552,18 +1589,18 @@ const updateServerData = async () => {
             continue;
         }
 
-        if (!gData[currentServer] || !gData[currentServer].online) {
+        if (!serverData[currentServer] || !serverData[currentServer].online) {
             continue;
         }
 
-        const currentMap = gData[currentServer].map;
+        const currentMap = serverData[currentServer].map;
 
         if (oldData[currentServer] !== "" && oldData[currentServer] !== currentMap) {
             const newMap = currentMap;
 
-            currentServerObject["numPlayers"] = gData[currentServer].numPlayers;
-            currentServerObject["numBots"] = gData[currentServer].numBots;
-            currentServerObject["maxPlayers"] = gData[currentServer].maxPlayers;
+            currentServerObject["numPlayers"] = serverData[currentServer].numPlayers;
+            currentServerObject["numBots"] = serverData[currentServer].numBots;
+            currentServerObject["maxPlayers"] = serverData[currentServer].maxPlayers;
 
             await notifyUsers(newMap, currentServerObject);
             oldData[currentServer] = newMap;
