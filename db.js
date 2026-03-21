@@ -69,6 +69,8 @@ async function initDB() {
     `);
     // Add index on map_name for faster getFollowers queries
     db.exec("CREATE INDEX IF NOT EXISTS idx_map_name ON players_follow(map_name)");
+    // Add index on discord_id for faster getUserFollows queries (backwards compatible - uses IF NOT EXISTS)
+    db.exec("CREATE INDEX IF NOT EXISTS idx_discord_id ON players_follow(discord_id)");
 }
 
 /**
