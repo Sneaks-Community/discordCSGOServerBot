@@ -1,4 +1,4 @@
-import Discord, { GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder } from "discord.js";
+import Discord, { GatewayIntentBits, SlashCommandBuilder, REST, Routes, EmbedBuilder, ChannelType } from "discord.js";
 import { GameDig } from "gamedig";
 import pLimit from "p-limit";
 
@@ -284,11 +284,7 @@ function validateMapName(mapName) {
     }
 
     // Check for mentions (users, roles, everyone)
-    if (
-        mapName.match(Discord.MessageMentions.USERS_PATTERN) ||
-    mapName.match(Discord.MessageMentions.ROLES_PATTERN) ||
-    mapName.match(Discord.MessageMentions.EVERYONE_PATTERN)
-    ) {
+    if (mapName.match(Discord.MessageMentions.USERS_PATTERN) || mapName.match(Discord.MessageMentions.ROLES_PATTERN) || mapName.match(Discord.MessageMentions.EVERYONE_PATTERN)) {
         return { valid: false, error: "Map name cannot contain mentions" };
     }
 
@@ -443,9 +439,7 @@ function playerListEmbed(server) {
     if (server.online) {
     // Create an embed for the online server using EmbedBuilder
         embed = new EmbedBuilder()
-            .setTitle(
-                `${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/_/g, "\\_")
-            )
+            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/_/g, "\\_"))
             .setColor(CONFIG_VALUES.EMBED_COLOR)
             .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
             .setTimestamp(Date.now());
@@ -546,7 +540,7 @@ async function addTrash(msg, om) {
         collector.on("collect", async (r) => {
             try {
                 await r.message.delete();
-                if (r.message.channel.type !== "DM") {
+                if (r.message.channel.type !== ChannelType.DM) {
                     await om.delete().catch(() => {});
                 }
             } catch {
