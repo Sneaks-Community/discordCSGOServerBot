@@ -4,6 +4,7 @@ import pLimit from "p-limit";
 
 import config from "./config.json" with { type: "json" };
 import serverObject from "./servers.json" with { type: "json" };
+import pkg from "./package.json" with { type: "json" };
 import { initDB, followMap, unfollowMap, getAllFollows, getUserFollows, isFollowingMap, getUsersFollowingMap, hasMap, unfollowAll, closeDB } from "./db.js";
 
 /**
@@ -375,25 +376,33 @@ const slashCommands = [
 async function registerSlashCommands() {
     try {
         const rest = new REST({ version: "10" }).setToken(config.discord.token);
+        
+        // Get application ID - use bot.application.id if available, fallback to bot.user.id
+        const applicationId = bot.application?.id || bot.user?.id;
+        if (!applicationId) {
+            throw new Error("Unable to get application ID - bot may not be fully initialized");
+        }
     
         // Register commands globally (or for specific guild)
         if (config.discord?.guildID) {
             // Guild commands update instantly (good for development)
             await rest.put(
-                Routes.applicationGuildCommands(bot.application.id, config.discord.guildID),
+                Routes.applicationGuildCommands(applicationId, config.discord.guildID),
                 { body: slashCommands }
             );
             console.log(`Successfully registered ${slashCommands.length} guild slash commands`);
         } else {
             // Global commands take up to an hour to update
             await rest.put(
-                Routes.applicationCommands(bot.application.id),
+                Routes.applicationCommands(applicationId),
                 { body: slashCommands }
             );
             console.log(`Successfully registered ${slashCommands.length} global slash commands`);
         }
     } catch (error) {
         console.error("Error registering slash commands:", error);
+        // Re-throw to allow caller to handle the error
+        throw error;
     }
 }
 
@@ -962,7 +971,7 @@ bot.on("interactionCreate", async (interaction) => {
         } else if (commandName === "ping") {
             await interaction.reply({ content: "🏓 Pong!", ephemeral: true });
         } else if (commandName === "version") {
-            await interaction.reply({ content: require("./package.json").version, ephemeral: true });
+            await interaction.reply({ content: pkg.version, ephemeral: true });
         }
         // Handle admin commands
         else if (commandName === "check" && isAdmin) {
