@@ -26,8 +26,7 @@ export default [
         clearInterval: "readonly",
         clearTimeout: "readonly",
         process: "readonly",
-        fetch: "readonly",
-        require: "readonly"
+        fetch: "readonly"
       }
     },
     rules: {

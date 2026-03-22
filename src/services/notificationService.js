@@ -56,7 +56,7 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
         try {
             if (!u) {
                 // User fetch failed, send fallback notification to log channel
-                await sendFallbackNotification(map, server, serverObj, ip, stats, mapImage, logChannel);
+                await sendFallbackNotification(map, server, serverObj, ip, stats, mapImage);
                 continue;
             }
 

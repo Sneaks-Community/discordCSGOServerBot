@@ -1,9 +1,9 @@
 /**
  * Application constants and configuration values
- * Derived from config.json with defaults
+ * Derived from environment variables with defaults
  */
 
-import config from "../../config.json" with { type: "json" };
+import { config } from "./config.js";
 
 // Helper function to convert seconds to milliseconds
 function secondsToMilliseconds(seconds) {

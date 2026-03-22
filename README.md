@@ -4,6 +4,7 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 
 ![Version](https://img.shields.io/badge/version-7.0.0-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-blue)
+![Docker](https://img.shields.io/badge/docker-ready-blue)
 
 ## Features
 
@@ -68,39 +69,58 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
    ```
 
 3. **Configure the bot**
-   - Copy the example configuration file:
+   - Copy the example environment file:
 
      ```bash
-     cp config.json.example config.json
+     cp .env.example .env
      ```
 
-   - Edit `config.json` with your settings (see [Configuration Fields](#configuration-fields) below)
+   - Edit `.env` with your settings (see [Environment Variables](#environment-variables-1) below)
 
-4. **Run the bot**
+4. **Configure servers**
+   - Edit `servers.json` with your game server details (see [Server Configuration](#server-configuration) below)
+
+5. **Run the bot**
 
    ```bash
    npm start
    ```
 
-### Configuration Fields
+### Environment Variables
 
-| Field | Type | Required | Default | Description |
-|-------|------|----------|---------|-------------|
-| `discord.token` | string | Yes | - | Your Discord bot token |
-| `discord.intents` | array | Yes | - | Discord gateway intents required for bot functionality |
-| `security.adminUserIds` | array | Yes | - | Discord user IDs with access to admin commands |
-| `logging.guildID` | string | Yes | - | Guild ID for logging bot activities |
-| `logging.channelID` | string | Yes | - | Channel ID for logging bot activities |
-| `embeds` | array | Yes | - | Array of channel/message pairs for embed updates |
-| `serverUpdate.intervalSeconds` | number | No | `90` | How often to update server status (seconds) |
-| `serverUpdate.mapCheckIntervalSeconds` | number | No | `91` | How often to check for map changes (seconds) |
-| `serverUpdate.maxConcurrentQueries` | number | No | `10` | Maximum concurrent server queries |
-| `follow.timeoutSeconds` | number | No | `30` | Timeout for reaction collectors (seconds) |
-| `cache.userCacheTTLSeconds` | number | No | `300` | User cache TTL (seconds) |
-| `cache.mapImageCacheTTLSeconds` | number | No | `86400` | Map image cache TTL (seconds) |
-| `retry.maxRetries` | number | No | `3` | Maximum retry attempts for failed operations |
-| `retry.baseDelaySeconds` | number | No | `1` | Base delay for retry exponential backoff (seconds) |
-| `gamedig.defaultMaxRetries` | number | No | `4` | Default retry attempts for server queries |
+All configuration is done via environment variables. Copy `.env.example` to `.env` and configure as needed.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `DISCORD_TOKEN` | Yes | - | Your Discord bot token |
+| `ADMIN_USER_IDS` | Recommended | - | Comma-separated Discord user IDs with admin access |
+| `LOGGING_ENABLED` | No | `true` | Enable/disable logging |
+| `LOG_GUILD_ID` | No | - | Guild ID for logging bot activities |
+| `LOG_CHANNEL_ID` | No | - | Channel ID for logging bot activities |
+| `FALLBACK_GUILD_ID` | No | - | Fallback guild ID for DM failures |
+| `FALLBACK_CHANNEL_ID` | No | - | Fallback channel ID for DM failures |
+| `EMBEDS` | No | `[]` | JSON array of embed configs: `[{"channelID":"xxx","messageID":"yyy"}]` |
+| `EMBED_COLOR` | No | `7980240` | Embed color in decimal |
+| `SERVER_UPDATE_INTERVAL` | No | `90` | Server status update interval (seconds) |
+| `MAP_CHECK_INTERVAL` | No | `91` | Map change check interval (seconds) |
+| `MAX_CONCURRENT_QUERIES` | No | `10` | Maximum concurrent server queries |
+| `FOLLOW_TIMEOUT` | No | `30` | Timeout for follow/unfollow actions (seconds) |
+| `USER_CACHE_TTL` | No | `300` | User cache TTL (seconds) |
+| `MAP_IMAGE_CACHE_TTL` | No | `86400` | Map image cache TTL (seconds) |
+| `RETRY_MAX_RETRIES` | No | `3` | Maximum retry attempts for failed operations |
+| `RETRY_BASE_DELAY` | No | `1` | Base delay for exponential backoff (seconds) |
+| `GAMEDIG_MAX_RETRIES` | No | `4` | Maximum retries for GameDig queries |
+| `FALLBACK_AVATAR_URL` | No | `https://i.imgur.com/cBiDnMi.png` | Fallback avatar URL |
+| `OFFLINE_SERVER_IMAGE` | No | `https://i.imgur.com/WnS0Biz.png` | Offline server image URL |
+| `MAP_URLS_SURF_STATS` | No | `https://snksrv.com/surfstats/` | Surf stats URL |
+| `MAP_URLS_SURF_IMAGE` | No | `https://bans.snksrv.com/images/maps/` | Surf map image URL |
+| `MAP_URLS_KZ_STATS` | No | `https://snksrv.com/kzstats/#/maps/` | KZ stats URL |
+| `MAP_URLS_KZ_IMAGE` | No | `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/` | KZ map image URL |
+| `MAP_URLS_BHOP_STATS` | No | `https://snksrv.com/bhopstats/index.php?map=` | Bhop stats URL |
+| `MAP_URLS_BHOP_IMAGE` | No | `https://bans.snksrv.com/images/maps/` | Bhop map image URL |
+| `RATE_LIMIT_FOLLOW_PER_MINUTE` | No | `5` | Max follow commands per minute per user |
+| `RATE_LIMIT_UNFOLLOW_PER_MINUTE` | No | `5` | Max unfollow commands per minute per user |
+| `RATE_LIMIT_IP_CHECK_PER_MINUTE` | No | `10` | Max IP check commands per minute per user |
 
 ## Supported Game Modes
 
@@ -154,7 +174,8 @@ Add your CS:GO servers to `servers.json`:
 
 ### System Requirements
 
-**Node.js** v20.x
+- **Node.js** v20.x or higher
+- **Docker** (optional, for containerized deployment)
 
 ### Discord Bot Requirements
 
@@ -174,6 +195,95 @@ Add your CS:GO servers to `servers.json`:
   - DirectMessages
   - DirectMessageReactions
 
+## Docker Deployment
+
+The bot can be run in a Docker container for easy deployment. The Docker image uses a multi-stage build with `node:22-alpine` for a minimal footprint (~100MB).
+
+### Quick Start with Docker Compose
+
+1. **Clone and configure**
+
+   ```bash
+   git clone https://github.com/Sneaks-Community/discordCSGOServerBot.git
+   cd discordCSGOServerBot
+   ```
+
+2. **Create environment file**
+
+   ```bash
+   cp .env.example .env
+   nano .env  # Edit with your Discord token and settings
+   ```
+
+3. **Configure servers**
+
+   Edit `servers.json` with your game server details.
+
+4. **Build and run**
+
+   ```bash
+   docker-compose up -d
+   ```
+
+5. **View logs**
+
+   ```bash
+   docker-compose logs -f
+   ```
+
+### Manual Docker Build
+
+```bash
+# Build the image
+docker build -t discord-csgo-bot .
+
+# Run the container
+docker run -d \
+  --name csgo-server-bot \
+  --env-file .env \
+  -v $(pwd)/servers.json:/app/servers.json:ro \
+  -v bot-data:/app/data \
+  discord-csgo-bot
+```
+
+### Environment Variables
+
+All configuration options can be set via environment variables. See `.env.example` for the full list.
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `DISCORD_TOKEN` | Yes | Your Discord bot token |
+| `ADMIN_USER_IDS` | Yes | Comma-separated Discord user IDs |
+| `LOG_GUILD_ID` | No | Guild ID for logging |
+| `LOG_CHANNEL_ID` | No | Channel ID for logging |
+| `FALLBACK_GUILD_ID` | No | Fallback guild for DMs |
+| `FALLBACK_CHANNEL_ID` | No | Fallback channel for DMs |
+| `EMBEDS` | No | JSON array of embed configs |
+| `SERVER_UPDATE_INTERVAL` | No | Server update interval (seconds) |
+| `MAP_CHECK_INTERVAL` | No | Map check interval (seconds) |
+
+### Data Persistence
+
+The Docker compose setup uses named volumes:
+- `bot-data` - SQLite database storage
+
+### Updating
+
+```bash
+# Pull latest changes
+git pull
+
+# Rebuild and restart
+docker-compose up -d --build
+```
+
+### Troubleshooting Docker Issues
+
+- **Container won't start**: Check that `DISCORD_TOKEN` is set in your `.env` file
+- **Commands not working**: Ensure slash commands have propagated (may take a few minutes)
+- **Database errors**: Check volume permissions and disk space
+- **Permission denied**: Ensure the `bot-data` volume exists and is accessible
+
 ## Troubleshooting
 
 ### Bot won't start
@@ -181,8 +291,8 @@ Add your CS:GO servers to `servers.json`:
 First and foremost, **review all logs**.
 
 - Verify your Discord token is correct and has proper permissions
-- Check that `config.json` exists and is valid JSON
-- Ensure all required configuration fields are present
+- Check that `.env` file exists and contains `DISCORD_TOKEN`
+- Ensure all required environment variables are set
 
 ### Commands not appearing
 

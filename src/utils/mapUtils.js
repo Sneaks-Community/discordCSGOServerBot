@@ -3,7 +3,7 @@
  * Handles map type detection, URL generation, and image fetching
  */
 
-import config from "../../config.json" with { type: "json" };
+import { config } from "../config/index.js";
 
 /**
  * Map type configuration for URL generation

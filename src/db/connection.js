@@ -8,11 +8,22 @@ import Database from "better-sqlite3";
 let db = null;
 
 /**
+ * Get the database path from environment variable or use default
+ * In Docker, set DATABASE_PATH=/app/data/db.sqlite to persist data
+ * @returns {string} - The database file path
+ */
+function getDatabasePath() {
+    return process.env.DATABASE_PATH || "db.sqlite";
+}
+
+/**
  * Initialize the database and create tables if they don't exist
  * Uses a transaction to ensure atomic initialization
  */
 export async function initDB() {
-    db = new Database("db.sqlite");
+    const dbPath = getDatabasePath();
+    console.log(`Initializing database at: ${dbPath}`);
+    db = new Database(dbPath);
     // Enable WAL mode for better concurrency
     db.pragma("journal_mode = WAL");
     
