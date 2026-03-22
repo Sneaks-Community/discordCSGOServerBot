@@ -63,15 +63,6 @@ export function getServerByKeyword(keyword) {
 }
 
 /**
- * Convert keyword to server object
- * @param {string} keyword - Server keyword
- * @returns {Object|null} - Server object or null
- */
-export async function keywordToServer(keyword) {
-    return getServerByKeyword(keyword);
-}
-
-/**
  * Query server information using GameDig
  * @param {Object} server - Server configuration object
  * @param {number} index - Server index
@@ -153,15 +144,6 @@ export async function refresh() {
 }
 
 /**
- * Get the server object for notifications
- * @param {string} serverKey - Server key
- * @returns {Object} - Server object with player info
- */
-export function getServerObjectForKey(serverKey) {
-    return serverObject[serverKey];
-}
-
-/**
  * Update server data and check for map changes
  * @param {Function} notifyCallback - Callback function for map change notifications
  * @returns {Promise<void>}
@@ -199,13 +181,3 @@ export async function updateServerData(notifyCallback) {
         }
     }
 }
-
-/**
- * Get the list of server object keys
- * @returns {string[]} - Array of server keys
- */
-export function getServerObjectKeys() {
-    return serverObjectKeys;
-}
-
-export { serverObject };

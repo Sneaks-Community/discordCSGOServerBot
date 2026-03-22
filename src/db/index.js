@@ -4,7 +4,7 @@
  */
 
 // Connection management
-export { initDB, closeDB, getDB } from "./connection.js";
+export { initDB, closeDB } from "./connection.js";
 
 // Validation functions
 export { validateDiscordId, validateMapNameInput } from "./validation.js";
