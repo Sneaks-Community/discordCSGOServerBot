@@ -3,9 +3,9 @@
  * Handles config loading and validation from environment variables
  */
 
-import { config } from "./config.js";
+import { config, CONFIG_VALUES, REQUIRED_PERMISSIONS } from "./config.js";
 
-export { CONFIG_VALUES, REQUIRED_PERMISSIONS, config } from "./constants.js";
+export { config, CONFIG_VALUES, REQUIRED_PERMISSIONS };
 
 /**
  * Validate required configuration fields

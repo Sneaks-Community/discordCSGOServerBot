@@ -52,10 +52,18 @@ function parseInt_(value, defaultValue) {
 }
 
 /**
- * Build the configuration object from environment variables
- * Maintains backward compatibility with the config.json structure
+ * Convert seconds to milliseconds
+ * @param {number} seconds - Seconds
+ * @returns {number} Milliseconds
  */
-export const config = {
+function toMs(seconds) {
+    return seconds * 1000;
+}
+
+/**
+ * Build the base configuration object from environment variables
+ */
+const baseConfig = {
     discord: {
         token: process.env.DISCORD_TOKEN || ""
     },
@@ -118,5 +126,49 @@ export const config = {
         ipCheckPerMinute: parseInt_(process.env.RATE_LIMIT_IP_CHECK_PER_MINUTE, 10)
     }
 };
+
+/**
+ * Configuration values with milliseconds conversion
+ */
+export const CONFIG_VALUES = {
+    EMBED_UPDATE_INTERVAL_MS: toMs(baseConfig.serverUpdate.intervalSeconds),
+    MAP_CHECK_INTERVAL_MS: toMs(baseConfig.serverUpdate.mapCheckIntervalSeconds),
+    MAP_FOLLOW_TIMEOUT_MS: toMs(baseConfig.follow.timeoutSeconds),
+    MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
+    USER_CACHE_TTL: toMs(baseConfig.cache.userCacheTTLSeconds),
+    MAP_IMAGE_CACHE_TTL: toMs(baseConfig.cache.mapImageCacheTTLSeconds),
+    RETRY_MAX_RETRIES: baseConfig.retry.maxRetries,
+    RETRY_BASE_DELAY_MS: toMs(baseConfig.retry.baseDelaySeconds),
+    GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
+    EMBED_COLOR: baseConfig.embedsConfig.color,
+    FALLBACK_AVATAR: baseConfig.images.fallbackAvatar,
+    OFFLINE_SERVER_IMAGE: baseConfig.images.offlineServer,
+    FOLLOW_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.followPerMinute,
+    UNFOLLOW_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.unfollowPerMinute,
+    IP_CHECK_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.ipCheckPerMinute
+};
+
+/**
+ * Required permissions for bot operations
+ */
+export const REQUIRED_PERMISSIONS = {
+    SEND_MESSAGES: "SendMessages",
+    EMBED_LINKS: "EmbedLinks",
+    READ_MESSAGE_HISTORY: "ReadMessageHistory",
+    VIEW_CHANNEL: "ViewChannel"
+};
+
+/**
+ * Validate required configuration values
+ * @throws {Error} If required config is missing
+ */
+export function validateConfig() {
+    if (!baseConfig.discord.token) {
+        throw new Error("DISCORD_TOKEN is required");
+    }
+}
+
+// Export the base config as the primary config
+export const config = baseConfig;
 
 export default config;

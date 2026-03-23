@@ -15,86 +15,87 @@ import { handleSlashHelp, handleSlashPing, handleSlashVersion } from "./utilityC
 const allowedDevs = config.security?.adminUserIds || [];
 
 /**
- * Slash command definitions
+ * Public command handlers map - O(1) lookup
+ * @type {Map<string, Function>}
  */
-export const slashCommands = [
-    new SlashCommandBuilder()
-        .setName("players")
-        .setDescription("Show players on a server")
-        .addStringOption(option =>
-            option.setName("server")
-                .setDescription("Server keyword or name")
-                .setRequired(false)),
-    new SlashCommandBuilder()
-        .setName("map")
-        .setDescription("Show current map on a server or map stats")
-        .addStringOption(option =>
-            option.setName("server")
-                .setDescription("Server keyword or map name")
-                .setRequired(false)),
-    new SlashCommandBuilder()
-        .setName("keywords")
-        .setDescription("List all available server keywords"),
-    new SlashCommandBuilder()
-        .setName("follow")
-        .setDescription("Follow a map to receive DM notifications")
-        .addStringOption(option =>
-            option.setName("map")
-                .setDescription("Map name to follow")
-                .setRequired(true)),
-    new SlashCommandBuilder()
-        .setName("unfollow")
-        .setDescription("Stop following a map")
-        .addStringOption(option =>
-            option.setName("map")
-                .setDescription("Map name to unfollow (or \"all\" for all maps)")
-                .setRequired(true)),
-    new SlashCommandBuilder()
-        .setName("listfollows")
-        .setDescription("List all maps you are following"),
-    new SlashCommandBuilder()
-        .setName("help")
-        .setDescription("Show list of available commands"),
-    new SlashCommandBuilder()
-        .setName("ping")
-        .setDescription("Check bot latency"),
-    new SlashCommandBuilder()
-        .setName("version")
-        .setDescription("Show bot version"),
-    // Admin commands
-    new SlashCommandBuilder()
-        .setName("check")
-        .setDescription("Check server status by IP, domain, or keyword (Admin only)")
-        .addStringOption(option =>
-            option.setName("server")
-                .setDescription("Server IP address, domain name (e.g., example.com:27015), or keyword")
-                .setRequired(true))
-        .setDefaultMemberPermissions(0), // Admin only
-    new SlashCommandBuilder()
-        .setName("listallfollows")
-        .setDescription("List all users and their followed maps (Admin only)")
-        .setDefaultMemberPermissions(0),
-    new SlashCommandBuilder()
-        .setName("testnotify")
-        .setDescription("Test map notification system (Admin only)")
-        .addStringOption(option =>
-            option.setName("map")
-                .setDescription("Map name to test")
-                .setRequired(true))
-        .setDefaultMemberPermissions(0),
-    new SlashCommandBuilder()
-        .setName("removeuser")
-        .setDescription("Remove all follows for a user (Admin only)")
-        .addStringOption(option =>
-            option.setName("userid")
-                .setDescription("Discord user ID")
-                .setRequired(true))
-        .setDefaultMemberPermissions(0),
-    new SlashCommandBuilder()
-        .setName("mem")
-        .setDescription("Show memory usage (Admin only)")
-        .setDefaultMemberPermissions(0)
-].map(command => command.toJSON());
+const publicCommands = new Map([
+    ["players", handleSlashPlayers],
+    ["map", handleSlashMap],
+    ["keywords", handleSlashKeywords],
+    ["follow", handleSlashFollow],
+    ["unfollow", handleSlashUnfollow],
+    ["listfollows", handleSlashListfollows],
+    ["help", handleSlashHelp],
+    ["ping", handleSlashPing],
+    ["version", handleSlashVersion]
+]);
+
+/**
+ * Admin command handlers map - O(1) lookup
+ * @type {Map<string, Function>}
+ */
+const adminCommands = new Map([
+    ["check", handleSlashCheck],
+    ["listallfollows", handleSlashListallfollows],
+    ["testnotify", handleSlashTestnotify],
+    ["removeuser", handleSlashRemoveuser],
+    ["mem", handleSlashMem]
+]);
+
+/**
+ * Get command handler metadata for building slash commands
+ * @returns {Array<{name: string, description: string, admin: boolean, options?: Function}>}
+ */
+function getCommandDefinitions() {
+    return [
+        { name: "players", description: "Show players on a server", admin: false,
+            options: opt => opt.setName("server").setDescription("Server keyword or name").setRequired(false) },
+        { name: "map", description: "Show current map on a server or map stats", admin: false,
+            options: opt => opt.setName("server").setDescription("Server keyword or map name").setRequired(false) },
+        { name: "keywords", description: "List all available server keywords", admin: false },
+        { name: "follow", description: "Follow a map to receive DM notifications", admin: false,
+            options: opt => opt.setName("map").setDescription("Map name to follow").setRequired(true) },
+        { name: "unfollow", description: "Stop following a map", admin: false,
+            options: opt => opt.setName("map").setDescription("Map name to unfollow (or 'all' for all maps)").setRequired(true) },
+        { name: "listfollows", description: "List all maps you are following", admin: false },
+        { name: "help", description: "Show list of available commands", admin: false },
+        { name: "ping", description: "Check bot latency", admin: false },
+        { name: "version", description: "Show bot version", admin: false },
+        { name: "check", description: "Check server status by IP, domain, or keyword (Admin only)", admin: true,
+            options: opt => opt.setName("server").setDescription("Server IP address, domain name (e.g., example.com:27015), or keyword").setRequired(true) },
+        { name: "listallfollows", description: "List all users and their followed maps (Admin only)", admin: true },
+        { name: "testnotify", description: "Test map notification system (Admin only)", admin: true,
+            options: opt => opt.setName("map").setDescription("Map name to test").setRequired(true) },
+        { name: "removeuser", description: "Remove all follows for a user (Admin only)", admin: true,
+            options: opt => opt.setName("userid").setDescription("Discord user ID").setRequired(true) },
+        { name: "mem", description: "Show memory usage (Admin only)", admin: true }
+    ];
+}
+
+/**
+ * Build SlashCommandBuilder instances from definitions
+ * @returns {SlashCommandBuilder[]}
+ */
+function buildSlashCommands() {
+    return getCommandDefinitions().map(def => {
+        const builder = new SlashCommandBuilder()
+            .setName(def.name)
+            .setDescription(def.description);
+        
+        if (def.admin) {
+            builder.setDefaultMemberPermissions(0);
+        }
+        if (def.options) {
+            builder.addStringOption(def.options);
+        }
+        return builder;
+    });
+}
+
+/**
+ * Slash command definitions (JSON format for Discord API)
+ */
+export const slashCommands = buildSlashCommands().map(cmd => cmd.toJSON());
 
 /**
  * Register slash commands with Discord
@@ -104,22 +105,18 @@ export async function registerSlashCommands(bot) {
     try {
         const rest = new REST({ version: "10" }).setToken(config.discord.token);
         
-        // Get application ID - use bot.application.id if available, fallback to bot.user.id
         const applicationId = bot.application?.id || bot.user?.id;
         if (!applicationId) {
             throw new Error("Unable to get application ID - bot may not be fully initialized");
         }
     
-        // Register commands globally (or for specific guild)
         if (config.discord?.guildID) {
-            // Guild commands update instantly (good for development)
             await rest.put(
                 Routes.applicationGuildCommands(applicationId, config.discord.guildID),
                 { body: slashCommands }
             );
             console.log(`Successfully registered ${slashCommands.length} guild slash commands`);
         } else {
-            // Global commands take up to an hour to update
             await rest.put(
                 Routes.applicationCommands(applicationId),
                 { body: slashCommands }
@@ -128,7 +125,6 @@ export async function registerSlashCommands(bot) {
         }
     } catch (error) {
         console.error("Error registering slash commands:", error);
-        // Re-throw to allow caller to handle the error
         throw error;
     }
 }
@@ -147,40 +143,31 @@ export async function handleInteraction(interaction, bot, Discord, logChannel) {
     const isAdmin = allowedDevs.includes(interaction.user.id);
 
     try {
-        // Handle public commands
-        if (commandName === "players") {
-            await handleSlashPlayers(interaction);
-        } else if (commandName === "map") {
-            await handleSlashMap(interaction);
-        } else if (commandName === "keywords") {
-            await handleSlashKeywords(interaction);
-        } else if (commandName === "follow") {
-            await handleSlashFollow(interaction, Discord);
-        } else if (commandName === "unfollow") {
-            await handleSlashUnfollow(interaction, Discord);
-        } else if (commandName === "listfollows") {
-            await handleSlashListfollows(interaction);
-        } else if (commandName === "help") {
-            await handleSlashHelp(interaction);
-        } else if (commandName === "ping") {
-            await handleSlashPing(interaction);
-        } else if (commandName === "version") {
-            await handleSlashVersion(interaction);
+        // Check admin commands first (requires auth)
+        if (adminCommands.has(commandName)) {
+            if (!isAdmin) {
+                return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+            }
+            const handler = adminCommands.get(commandName);
+            // Some handlers need extra params
+            if (commandName === "testnotify") {
+                return await handler(interaction, bot, logChannel);
+            }
+            return await handler(interaction);
         }
-        // Handle admin commands
-        else if (commandName === "check" && isAdmin) {
-            await handleSlashCheck(interaction);
-        } else if (commandName === "listallfollows" && isAdmin) {
-            await handleSlashListallfollows(interaction);
-        } else if (commandName === "testnotify" && isAdmin) {
-            await handleSlashTestnotify(interaction, bot, logChannel);
-        } else if (commandName === "removeuser" && isAdmin) {
-            await handleSlashRemoveuser(interaction);
-        } else if (commandName === "mem" && isAdmin) {
-            await handleSlashMem(interaction);
-        } else {
-            await interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+
+        // Check public commands
+        if (publicCommands.has(commandName)) {
+            const handler = publicCommands.get(commandName);
+            // Some handlers need Discord param
+            if (commandName === "follow" || commandName === "unfollow") {
+                return await handler(interaction, Discord);
+            }
+            return await handler(interaction);
         }
+
+        // Unknown command
+        await interaction.reply({ content: "Unknown command.", ephemeral: true });
     } catch (error) {
         console.error(`Error handling slash command ${commandName}:`, error);
         const replyMethod = interaction.replied || interaction.deferred ? "editReply" : "reply";
