@@ -1,0 +1,22 @@
+{
+    "server_1": {
+        "ip": "0.0.0.0:27015",
+        "nick": "Beginner Surf",
+        "show": true,
+        "protocol": "csgo",
+        "keywords": [
+            "server1",
+            "test1"
+        ]
+    },
+    "server_2": {
+        "ip": "fqdn.example.tld:27015",
+        "nick": "Server Two",
+        "show": true,
+        "protocol": "cs2",
+        "keywords": [
+            "server2",
+            "test2"
+        ]
+    }
+}
