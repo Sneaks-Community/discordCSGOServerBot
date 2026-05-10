@@ -45,7 +45,7 @@ export async function getCachedUser(userId, bot) {
     }
     
     const user = await bot.users.fetch(userId);
-    userCache.set(userId, { user, timestamp: Date.now() });
+    userCache.set(userId, { timestamp: Date.now(), user });
     return user;
 }
 
@@ -155,7 +155,7 @@ export function cleanupRateLimits() {
                 }
             }
             if (oldestTs !== Infinity) {
-                userTimestamps.push({ userId, oldestTs });
+                userTimestamps.push({ oldestTs, userId });
             }
         }
         

@@ -6,12 +6,12 @@
 import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
+import { getAllFollows, hasMap, unfollowAll } from "../db/index.js";
 import { checkRateLimit } from "../services/cacheService.js";
-import { validateServerInput } from "../utils/validation.js";
+import { notifyUsers } from "../services/notificationService.js";
 import { getInfo, getServerByKeyword } from "../services/serverService.js";
 import { getMapImage, getStatsPage } from "../utils/mapUtils.js";
-import { getAllFollows, hasMap, unfollowAll } from "../db/index.js";
-import { notifyUsers } from "../services/notificationService.js";
+import { validateServerInput } from "../utils/validation.js";
 
 /**
  * Handle /check slash command (Admin only)
@@ -34,14 +34,9 @@ export async function handleSlashCheck(interaction) {
         return interaction.reply({ content: validation.error, ephemeral: true });
     }
 
-    let embed;
-    if (validation.type === "keyword") {
-        // It's a keyword from servers.json
-        embed = await checkServer(validation.value.server);
-    } else {
-        // It's an IP or FQDN
-        embed = await checkIP(input, validation);
-    }
+    const embed = validation.type === "keyword"
+        ? await checkServer(validation.value.server)
+        : await checkIP(input, validation);
 
     if (!embed) {
         return interaction.reply({ content: "The server is unavailable.", ephemeral: true });
@@ -73,7 +68,7 @@ async function checkServer(server) {
             )
         )
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
     if (image) embed.setImage(image);
 
@@ -126,9 +121,9 @@ async function checkIP(input, validation) {
     // Create a server object with the necessary information for getInfo()
     const server = {
         ip: `${ip}:${port}`,
+        keywords: [],
         nick: "Custom Server",
-        show: true,
-        keywords: []
+        show: true
     };
 
     // Get server info using getInfo()
@@ -148,7 +143,7 @@ async function checkIP(input, validation) {
             )
         )
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
     if (image) embed.setImage(image);
 
@@ -194,11 +189,7 @@ export async function handleSlashListallfollows(interaction) {
     let list = "";
     for (const follow of follows) {
         const stats = getStatsPage(follow.map_name);
-        if (stats) {
-            list += `<@${follow.discord_id}>: [${follow.map_name}](${stats})\n`;
-        } else {
-            list += `<@${follow.discord_id}>: ${follow.map_name}\n`;
-        }
+        list += stats ? `<@${follow.discord_id}>: [${follow.map_name}](${stats})\n` : `<@${follow.discord_id}>: ${follow.map_name}\n`;
     }
 
     const embed = new EmbedBuilder()
@@ -227,7 +218,7 @@ export async function handleSlashTestnotify(interaction, bot, logChannel) {
         return interaction.reply({ content: "No one is following this map.", ephemeral: true });
     }
 
-    await notifyUsers(map, { nick: "Test Server", ip: "0.0.0.0:27015" }, bot, logChannel);
+    await notifyUsers(map, { ip: "0.0.0.0:27015", nick: "Test Server" }, bot, logChannel);
     await interaction.reply({ content: `Notification sent for map: ${map}`, ephemeral: true });
 }
 

@@ -3,9 +3,9 @@
  * Handles all follow/unfollow database operations
  */
 
+import { dbLogger } from "../utils/logger.js";
 import { getDB } from "./connection.js";
 import { validateDiscordId, validateMapNameInput } from "./validation.js";
-import { dbLogger } from "../utils/logger.js";
 
 /**
  * Helper to validate and execute database operations

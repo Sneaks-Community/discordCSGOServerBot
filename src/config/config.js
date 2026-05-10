@@ -8,7 +8,7 @@
  * @param {string} value - Comma-separated string
  * @returns {string[]} Array of trimmed values
  */
-function parseArray(value) {
+function _parseArray(value) {
     if (!value || typeof value !== "string") return [];
     return value.split(",").map(s => s.trim()).filter(Boolean);
 }
@@ -64,67 +64,67 @@ function toMs(seconds) {
  * Build the base configuration object from environment variables
  */
 const baseConfig = {
+    cache: {
+        mapImageCacheTTLSeconds: parseInt_(process.env.MAP_IMAGE_CACHE_TTL, 86400),
+        userCacheTTLSeconds: parseInt_(process.env.USER_CACHE_TTL, 300)
+    },
     discord: {
-        token: process.env.DISCORD_TOKEN || "",
-        guildID: process.env.DISCORD_GUILD_ID || ""
+        guildID: process.env.DISCORD_GUILD_ID || "",
+        token: process.env.DISCORD_TOKEN || ""
     },
-    security: {
-        adminRoleId: process.env.ADMIN_ROLE_ID || ""
-    },
-    logging: {
-        enabled: parseBoolean(process.env.LOGGING_ENABLED, true),
-        guildID: process.env.LOG_GUILD_ID || "",
-        channelID: process.env.LOG_CHANNEL_ID || ""
+    embeds: parseJson(process.env.EMBEDS, []),
+    embedsConfig: {
+        color: parseInt_(process.env.EMBED_COLOR, 7980240)
     },
     fallback: {
-        guildID: process.env.FALLBACK_GUILD_ID || "",
-        channelID: process.env.FALLBACK_CHANNEL_ID || ""
-    },
-    serverUpdate: {
-        intervalSeconds: parseInt_(process.env.SERVER_UPDATE_INTERVAL, 90),
-        mapCheckIntervalSeconds: parseInt_(process.env.MAP_CHECK_INTERVAL, 91),
-        maxConcurrentQueries: parseInt_(process.env.MAX_CONCURRENT_QUERIES, 10)
+        channelID: process.env.FALLBACK_CHANNEL_ID || "",
+        guildID: process.env.FALLBACK_GUILD_ID || ""
     },
     follow: {
         timeoutSeconds: parseInt_(process.env.FOLLOW_TIMEOUT, 30)
     },
-    embeds: parseJson(process.env.EMBEDS, []),
-    cache: {
-        userCacheTTLSeconds: parseInt_(process.env.USER_CACHE_TTL, 300),
-        mapImageCacheTTLSeconds: parseInt_(process.env.MAP_IMAGE_CACHE_TTL, 86400)
-    },
-    retry: {
-        maxRetries: parseInt_(process.env.RETRY_MAX_RETRIES, 3),
-        baseDelaySeconds: parseInt_(process.env.RETRY_BASE_DELAY, 1)
-    },
     gamedig: {
         defaultMaxRetries: parseInt_(process.env.GAMEDIG_MAX_RETRIES, 4)
-    },
-    embedsConfig: {
-        color: parseInt_(process.env.EMBED_COLOR, 7980240)
     },
     images: {
         fallbackAvatar: process.env.FALLBACK_AVATAR_URL || "https://i.imgur.com/cBiDnMi.png",
         offlineServer: process.env.OFFLINE_SERVER_IMAGE || "https://i.imgur.com/WnS0Biz.png"
     },
+    logging: {
+        channelID: process.env.LOG_CHANNEL_ID || "",
+        enabled: parseBoolean(process.env.LOGGING_ENABLED, true),
+        guildID: process.env.LOG_GUILD_ID || ""
+    },
     mapUrls: {
-        surf: {
-            stats: process.env.MAP_URLS_SURF_STATS || "https://snksrv.com/surfstats/",
-            image: process.env.MAP_URLS_SURF_IMAGE || "https://bans.snksrv.com/images/maps/"
+        bhop: {
+            image: process.env.MAP_URLS_BHOP_IMAGE || "https://bans.snksrv.com/images/maps/",
+            stats: process.env.MAP_URLS_BHOP_STATS || "https://snksrv.com/bhopstats/index.php?map="
         },
         kz: {
-            stats: process.env.MAP_URLS_KZ_STATS || "https://snksrv.com/kzstats/#/maps/",
-            image: process.env.MAP_URLS_KZ_IMAGE || "https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/"
+            image: process.env.MAP_URLS_KZ_IMAGE || "https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/",
+            stats: process.env.MAP_URLS_KZ_STATS || "https://snksrv.com/kzstats/#/maps/"
         },
-        bhop: {
-            stats: process.env.MAP_URLS_BHOP_STATS || "https://snksrv.com/bhopstats/index.php?map=",
-            image: process.env.MAP_URLS_BHOP_IMAGE || "https://bans.snksrv.com/images/maps/"
+        surf: {
+            image: process.env.MAP_URLS_SURF_IMAGE || "https://bans.snksrv.com/images/maps/",
+            stats: process.env.MAP_URLS_SURF_STATS || "https://snksrv.com/surfstats/"
         }
     },
     rateLimit: {
         followPerMinute: parseInt_(process.env.RATE_LIMIT_FOLLOW_PER_MINUTE, 5),
-        unfollowPerMinute: parseInt_(process.env.RATE_LIMIT_UNFOLLOW_PER_MINUTE, 5),
-        ipCheckPerMinute: parseInt_(process.env.RATE_LIMIT_IP_CHECK_PER_MINUTE, 10)
+        ipCheckPerMinute: parseInt_(process.env.RATE_LIMIT_IP_CHECK_PER_MINUTE, 10),
+        unfollowPerMinute: parseInt_(process.env.RATE_LIMIT_UNFOLLOW_PER_MINUTE, 5)
+    },
+    retry: {
+        baseDelaySeconds: parseInt_(process.env.RETRY_BASE_DELAY, 1),
+        maxRetries: parseInt_(process.env.RETRY_MAX_RETRIES, 3)
+    },
+    security: {
+        adminRoleId: process.env.ADMIN_ROLE_ID || ""
+    },
+    serverUpdate: {
+        intervalSeconds: parseInt_(process.env.SERVER_UPDATE_INTERVAL, 90),
+        mapCheckIntervalSeconds: parseInt_(process.env.MAP_CHECK_INTERVAL, 91),
+        maxConcurrentQueries: parseInt_(process.env.MAX_CONCURRENT_QUERIES, 10)
     }
 };
 
@@ -132,30 +132,30 @@ const baseConfig = {
  * Configuration values with milliseconds conversion
  */
 export const CONFIG_VALUES = {
+    EMBED_COLOR: baseConfig.embedsConfig.color,
     EMBED_UPDATE_INTERVAL_MS: toMs(baseConfig.serverUpdate.intervalSeconds),
+    FALLBACK_AVATAR: baseConfig.images.fallbackAvatar,
+    FOLLOW_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.followPerMinute,
+    GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
+    IP_CHECK_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.ipCheckPerMinute,
     MAP_CHECK_INTERVAL_MS: toMs(baseConfig.serverUpdate.mapCheckIntervalSeconds),
     MAP_FOLLOW_TIMEOUT_MS: toMs(baseConfig.follow.timeoutSeconds),
-    MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
-    USER_CACHE_TTL: toMs(baseConfig.cache.userCacheTTLSeconds),
     MAP_IMAGE_CACHE_TTL: toMs(baseConfig.cache.mapImageCacheTTLSeconds),
-    RETRY_MAX_RETRIES: baseConfig.retry.maxRetries,
-    RETRY_BASE_DELAY_MS: toMs(baseConfig.retry.baseDelaySeconds),
-    GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
-    EMBED_COLOR: baseConfig.embedsConfig.color,
-    FALLBACK_AVATAR: baseConfig.images.fallbackAvatar,
+    MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
     OFFLINE_SERVER_IMAGE: baseConfig.images.offlineServer,
-    FOLLOW_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.followPerMinute,
+    RETRY_BASE_DELAY_MS: toMs(baseConfig.retry.baseDelaySeconds),
+    RETRY_MAX_RETRIES: baseConfig.retry.maxRetries,
     UNFOLLOW_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.unfollowPerMinute,
-    IP_CHECK_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.ipCheckPerMinute
+    USER_CACHE_TTL: toMs(baseConfig.cache.userCacheTTLSeconds)
 };
 
 /**
  * Required permissions for bot operations
  */
 export const REQUIRED_PERMISSIONS = {
-    SEND_MESSAGES: "SendMessages",
     EMBED_LINKS: "EmbedLinks",
     READ_MESSAGE_HISTORY: "ReadMessageHistory",
+    SEND_MESSAGES: "SendMessages",
     VIEW_CHANNEL: "ViewChannel"
 };
 

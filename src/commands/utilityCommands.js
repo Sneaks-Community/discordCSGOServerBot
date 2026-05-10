@@ -5,8 +5,8 @@
 
 import { EmbedBuilder } from "discord.js";
 
-import { CONFIG_VALUES } from "../config/index.js";
 import pkg from "../../package.json" with { type: "json" };
+import { CONFIG_VALUES } from "../config/index.js";
 
 /**
  * Handle /help slash command

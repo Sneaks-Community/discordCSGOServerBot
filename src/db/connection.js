@@ -22,7 +22,7 @@ function getDatabasePath() {
  * Initialize the database and create tables if they don't exist
  * Uses a transaction to ensure atomic initialization
  */
-export async function initDB() {
+export function initDB() {
     const dbPath = getDatabasePath();
     dbLogger.info(`Initializing database at: ${dbPath}`);
     db = new Database(dbPath);

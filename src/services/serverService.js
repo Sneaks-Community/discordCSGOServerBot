@@ -6,13 +6,13 @@
 import { GameDig } from "gamedig";
 import pLimit from "p-limit";
 
-import { CONFIG_VALUES } from "../config/index.js";
 import serverObject from "../../servers.json" with { type: "json" };
+import { CONFIG_VALUES } from "../config/index.js";
 import { serviceLogger } from "../utils/logger.js";
 
 // Server data state management
 let _serverData = {};
-let _isRefreshing = false;
+const _isRefreshing = false;
 let _lastRefreshTime = 0;
 
 // Track old data for map change notifications
@@ -77,10 +77,10 @@ export async function getInfo(server, index) {
 
     // Query the server using Gamedig
     const res = await GameDig.query({
-        type: server.protocol || "csgo",
         host: ip,
+        maxRetries: CONFIG_VALUES.GAMEDIG_MAX_RETRIES,
         port: port,
-        maxRetries: CONFIG_VALUES.GAMEDIG_MAX_RETRIES
+        type: server.protocol || "csgo"
     }).catch((err) => {
         serviceLogger.error(`GameDig query failed for ${server.ip}:`, err.message);
         valid = false;
@@ -91,26 +91,26 @@ export async function getInfo(server, index) {
     if (valid) {
         // If the server is valid, populate the data object with server information
         data = {
-            online: true,
-            name: server.nick, // Short nickname
+            bots: res.bots, // Bots array {name, score, time}
             fullIP: res.connect, // String with ip:port
+            index: index,
+            keywords: server.keywords, // array of keywords for --players command
             map: res.map, // Current map
             maxPlayers: res.maxplayers,
-            players: res.players, // Players array {name, score, time}
-            bots: res.bots, // Bots array {name, score, time}
-            numPlayers: res.players.length, // int (gamedig v5.x API)
+            name: server.nick, // Short nickname
             numBots: res.bots.length, // int (gamedig v5.x API)
-            show: server.show, // bool to print server in embed
-            keywords: server.keywords, // array of keywords for --players command
-            index: index
+            numPlayers: res.players.length, // int (gamedig v5.x API)
+            online: true,
+            players: res.players, // Players array {name, score, time}
+            show: server.show // bool to print server in embed
         };
     } else {
         // If the server is not valid, populate the data object with minimal information
         data = {
-            online: false,
-            name: server.nick,
+            index: index,
             keywords: server.keywords,
-            index: index
+            name: server.nick,
+            online: false
         };
     }
 
@@ -136,7 +136,7 @@ export async function refresh() {
                 } catch (err) {
                     serviceLogger.error(`Failed to query ${name}:`, err);
                     // Return minimal data on error
-                    return [name, { online: false, name: server.nick, keywords: server.keywords, index: index + 1 }];
+                    return [name, { index: index + 1, keywords: server.keywords, name: server.nick, online: false }];
                 }
             })
         )
@@ -154,7 +154,7 @@ export async function updateServerData(notifyCallback) {
     const serverData = getServerData();
     
     for (const currentServer of serverObjectKeys) {
-        let currentServerObject = serverObject[currentServer];
+        const currentServerObject = serverObject[currentServer];
 
         if (!(currentServer in oldData)) {
             oldData[currentServer] = "";

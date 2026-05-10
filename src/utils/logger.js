@@ -23,15 +23,15 @@ function createLogger() {
 
     // Base pino configuration
     const baseConfig = {
-        level: process.env.LOG_LEVEL || "info",
-        timestamp: pino.stdTimeFunctions.isoTime,
-        redact: {
-            paths: redactPaths,
-            censor: "**REDACTED**"
-        },
         formatters: {
             level: (label) => ({ level: label, levelNum: label === "info" ? 30 : label === "warn" ? 40 : label === "error" ? 50 : 20 })
-        }
+        },
+        level: process.env.LOG_LEVEL || "info",
+        redact: {
+            censor: "**REDACTED**",
+            paths: redactPaths
+        },
+        timestamp: pino.stdTimeFunctions.isoTime
     };
 
     // Add pretty printing for development
@@ -39,14 +39,14 @@ function createLogger() {
         return pino({
             ...baseConfig,
             transport: {
-                target: "pino-pretty",
                 options: {
                     colorize: true,
-                    translateTime: "SYS:yyyy-mm-dd HH:MM:ss.l o",
+                    customColors: "info:green,warn:yellow,error:red,debug:gray",
                     ignore: "pid,hostname",
                     messageFormat: "({ts}) {level}: {msg}",
-                    customColors: "info:green,warn:yellow,error:red,debug:gray"
-                }
+                    translateTime: "SYS:yyyy-mm-dd HH:MM:ss.l o"
+                },
+                target: "pino-pretty"
             }
         });
     }

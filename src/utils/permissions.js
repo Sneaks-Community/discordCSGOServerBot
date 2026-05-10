@@ -60,8 +60,8 @@ export function validateChannelForSend(channel) {
     
     if (!result.hasPermissions) {
         return {
-            valid: false,
-            error: `Missing permissions: ${result.missing.join(", ")}`
+            error: `Missing permissions: ${result.missing.join(", ")}`,
+            valid: false
         };
     }
     
@@ -82,8 +82,8 @@ export function validateChannelForEdit(channel) {
     
     if (!result.hasPermissions) {
         return {
-            valid: false,
-            error: `Missing permissions: ${result.missing.join(", ")}`
+            error: `Missing permissions: ${result.missing.join(", ")}`,
+            valid: false
         };
     }
     

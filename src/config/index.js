@@ -3,8 +3,8 @@
  * Handles config loading and validation from environment variables
  */
 
-import { config, CONFIG_VALUES, REQUIRED_PERMISSIONS } from "./config.js";
 import { configLogger, error } from "../utils/logger.js";
+import { config, CONFIG_VALUES, REQUIRED_PERMISSIONS } from "./config.js";
 
 export { config, CONFIG_VALUES, REQUIRED_PERMISSIONS };
 
@@ -82,5 +82,5 @@ export function validateConfig() {
         process.exit(1);
     }
 
-    return { warnings, errors };
+    return { errors, warnings };
 }

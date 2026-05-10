@@ -3,11 +3,11 @@
  * Handles /players, /map, and /keywords commands
  */
 
-import { isServerDataEmpty, getServerData, getServerByKeyword } from "../services/serverService.js";
+import serverObject from "../../servers.json" with { type: "json" };
 import { playerListEmbed, makeServerList } from "../embeds/playerEmbeds.js";
 import { makeMapEmbed, makeOfflineEmbed } from "../embeds/serverEmbeds.js";
+import { isServerDataEmpty, getServerData, getServerByKeyword } from "../services/serverService.js";
 import { getMapImage } from "../utils/mapUtils.js";
-import serverObject from "../../servers.json" with { type: "json" };
 
 /**
  * Handle /players slash command
@@ -71,12 +71,7 @@ export async function handleSlashMap(interaction) {
         return interaction.reply({ embeds: [embed] });
     }
 
-    let embed;
-    if (server.online) {
-        embed = makeMapEmbed(server.map, server);
-    } else {
-        embed = makeOfflineEmbed(server.name);
-    }
+    const embed = server.online ? makeMapEmbed(server.map, server) : makeOfflineEmbed(server.name);
 
     await interaction.reply({ embeds: [embed] });
 }

@@ -5,17 +5,17 @@
 
 import Discord, { GatewayIntentBits } from "discord.js";
 
+import { setFollowLogChannel } from "./commands/followCommands.js";
+import { registerSlashCommands, handleInteraction } from "./commands/index.js";
 import { config, CONFIG_VALUES, validateConfig } from "./config/index.js";
 import { initDB, closeDB, unfollowAll } from "./db/index.js";
-import { registerSlashCommands, handleInteraction } from "./commands/index.js";
-import { setFollowLogChannel } from "./commands/followCommands.js";
-import { refresh, getServerData, updateServerData } from "./services/serverService.js";
+import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { startCleanupIntervals } from "./services/cacheService.js";
 import { notifyUsers, initNotificationService } from "./services/notificationService.js";
-import { makeEmbed } from "./embeds/serverEmbeds.js";
+import { refresh, getServerData, updateServerData } from "./services/serverService.js";
+import { botLogger, error, warn } from "./utils/logger.js";
 import { validateChannelForEdit, validateChannelForSend } from "./utils/permissions.js";
 import { withRetry } from "./utils/retry.js";
-import { botLogger, error, warn } from "./utils/logger.js";
 
 // Store interval references for cleanup during shutdown
 let embedInterval = null;
@@ -66,15 +66,15 @@ bot.on("ready", async () => {
     const guild = bot.guilds.cache.get(config.logging?.guildID);
     if (guild) {
         logChannel = guild.channels.cache.get(config.logging?.channelID);
-        if (!logChannel) {
-            warn(`Log channel ${config.logging?.channelID} not found in guild ${config.logging?.guildID}`);
-        } else {
+        if (logChannel) {
             // Validate bot has required permissions in log channel
             const permCheck = validateChannelForSend(logChannel);
             if (!permCheck.valid) {
                 warn(`Log channel ${config.logging?.channelID} permission issue: ${permCheck.error}`);
                 logChannel = null; // Disable logging if permissions are missing
             }
+        } else {
+            warn(`Log channel ${config.logging?.channelID} not found in guild ${config.logging?.guildID}`);
         }
     } else {
         warn(`Guild ${config.logging?.guildID} not found`);
@@ -153,7 +153,7 @@ bot.on("interactionCreate", async (interaction) => {
 /**
  * Graceful shutdown handling
  */
-async function gracefulShutdown(signal) {
+function gracefulShutdown(signal) {
     botLogger.info(`Received ${signal}, shutting down...`);
     
     // Clear intervals to prevent further operations

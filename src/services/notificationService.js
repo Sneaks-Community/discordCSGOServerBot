@@ -6,12 +6,12 @@
 import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
-import { getCachedUser } from "./cacheService.js";
 import { getUsersFollowingMap } from "../db/index.js";
-import { getStatsPage, getMapImage } from "../utils/mapUtils.js";
-import { withRetry } from "../utils/retry.js";
-import { validateChannelForSend } from "../utils/permissions.js";
 import { serviceLogger, warn, error } from "../utils/logger.js";
+import { getStatsPage, getMapImage } from "../utils/mapUtils.js";
+import { validateChannelForSend } from "../utils/permissions.js";
+import { withRetry } from "../utils/retry.js";
+import { getCachedUser } from "./cacheService.js";
 
 // Store bot reference for fallback notifications
 let botInstance = null;
@@ -87,7 +87,7 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
                     `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
                 )
                 .setColor(CONFIG_VALUES.EMBED_COLOR)
-                .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+                .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
                 .setTimestamp(Date.now());
 
             if (stats) dmEmbed.setURL(stats);
@@ -96,8 +96,8 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
 
             // Send the direct message to the user with proper error handling
             await u.send({
-                embeds: [dmEmbed],
-                content: `${map} is now on ${server}!\nsteam://connect/${ip}`
+                content: `${map} is now on ${server}!\nsteam://connect/${ip}`,
+                embeds: [dmEmbed]
             });
 
             // Log the successful notification (without exposing user's full identity)
@@ -106,7 +106,7 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
                 .setColor(CONFIG_VALUES.EMBED_COLOR)
                 .setTimestamp(Date.now())
                 .setDescription(`Notification sent to user <@${user.discord_id}> for map ${map}`)
-                .setAuthor({ name: u.tag, iconURL: u.displayAvatarURL() })
+                .setAuthor({ iconURL: u.displayAvatarURL(), name: u.tag })
                 .setThumbnail(u.displayAvatarURL());
 
             if (logChannel) {
@@ -140,7 +140,7 @@ async function sendFallbackNotification(map, server, serverObj, ip, stats, mapIm
             `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
         )
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
 
     if (stats) backupEmbed.setURL(stats);
@@ -163,9 +163,9 @@ async function sendFallbackNotification(map, server, serverObj, ip, stats, mapIm
             if (!permCheck.valid) {
                 throw new Error(`Fallback channel permission error: ${permCheck.error}`);
             }
-            channel.send({
-                embeds: [backupEmbed],
-                content: fallbackContent
+            await channel.send({
+                content: fallbackContent,
+                embeds: [backupEmbed]
             });
         });
     } catch (fallbackError) {

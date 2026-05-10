@@ -6,12 +6,12 @@
 import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
-import { checkRateLimit } from "../services/cacheService.js";
-import { validateMapName } from "../utils/validation.js";
 import { followMap, unfollowMap, getUserFollows, isFollowingMap, unfollowAll } from "../db/index.js";
-import { getStatsPage } from "../utils/mapUtils.js";
 import { createFollowLogEmbed } from "../embeds/notificationEmbeds.js";
+import { checkRateLimit } from "../services/cacheService.js";
 import { commandLogger } from "../utils/logger.js";
+import { getStatsPage } from "../utils/mapUtils.js";
+import { validateMapName } from "../utils/validation.js";
 
 // Will be set by bot.js
 let logChannel = null;
@@ -112,11 +112,7 @@ export async function handleSlashListfollows(interaction) {
     let list = "";
     for (const follow of follows) {
         const stats = getStatsPage(follow.map_name);
-        if (stats) {
-            list += `[${follow.map_name}](${stats})\n`;
-        } else {
-            list += `${follow.map_name}\n`;
-        }
+        list += stats ? `[${follow.map_name}](${stats})\n` : `${follow.map_name}\n`;
     }
 
     const embed = new EmbedBuilder()

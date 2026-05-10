@@ -25,8 +25,8 @@ export function createFollowLogEmbed(action, user, map) {
         )
         .setThumbnail(user.displayAvatarURL())
         .setAuthor({
-            name: user.tag,
-            iconURL: user.displayAvatarURL()
+            iconURL: user.displayAvatarURL(),
+            name: user.tag
         });
 
     return embed;

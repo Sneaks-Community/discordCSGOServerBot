@@ -19,7 +19,7 @@ export function makeEmbed(serverData) {
         .setTitle("Server List")
         .setDescription("This list is updated every 1.5 minutes.")
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
 
     // Iterate through the servers and add server details to the embed
@@ -27,9 +27,9 @@ export function makeEmbed(serverData) {
         if (!server.online) {
             // If the server is offline, add a field indicating it's not available
             embed.addFields({
+                inline: true,
                 name: server.name,
-                value: "**Server is not available.**",
-                inline: true
+                value: "**Server is not available.**"
             });
             continue;
         }
@@ -38,11 +38,11 @@ export function makeEmbed(serverData) {
 
         // Add a field for the online server with player, map, and IP details
         embed.addFields({
+            inline: true,
             name: server.name,
             value: `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}\n**__Map:__** ${getWebsite(server.map)}\n**__IP:__** ${
                 server.fullIP
-            }`,
-            inline: true
+            }`
         });
     }
 
@@ -62,7 +62,7 @@ export function makeMapEmbed(mapName, server = null) {
     // Create a new Discord EmbedBuilder instance
     const embed = new EmbedBuilder()
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
 
     // Set the embed URL if a stats page is available
@@ -94,7 +94,7 @@ export function makeOfflineEmbed(serverName) {
     return new EmbedBuilder()
         .setTitle(`${serverName} is currently unavailable.`)
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now())
         .setImage(CONFIG_VALUES.OFFLINE_SERVER_IMAGE);
 }

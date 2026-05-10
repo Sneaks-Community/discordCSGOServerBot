@@ -21,12 +21,12 @@ export function playerListEmbed(server) {
         embed = new EmbedBuilder()
             .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/_/g, "\\_"))
             .setColor(CONFIG_VALUES.EMBED_COLOR)
-            .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+            .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
             .setTimestamp(Date.now());
 
         // Generate a list of player names
         let list = server.players.map((player) => player.name).join("\n");
-        let botList = server.bots.map((bot) => bot.name).join("\n");
+        const botList = server.bots.map((bot) => bot.name).join("\n");
         list += botList;
 
         // Escape special characters for Discord and remove connecting players
@@ -42,7 +42,7 @@ export function playerListEmbed(server) {
         embed = new EmbedBuilder()
             .setTitle(`${server.name} is currently unavailable.`)
             .setColor(CONFIG_VALUES.EMBED_COLOR)
-            .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+            .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
             .setTimestamp(Date.now())
             .setImage(CONFIG_VALUES.OFFLINE_SERVER_IMAGE);
     }
@@ -57,20 +57,16 @@ export function playerListEmbed(server) {
  */
 export function makeServerList(serverData) {
     // Create a server list embed for public commands
-    let embed = new EmbedBuilder()
+    const embed = new EmbedBuilder()
         .setTitle("Please specify what server you want to check.")
         .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ text: "Last Updated", iconURL: CONFIG_VALUES.FALLBACK_AVATAR })
+        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
 
     // Generate the server list
-    let list = Object.values(serverData)
+    const list = Object.values(serverData)
         .map((server) => {
-            if (server.online) {
-                return `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}`;
-            } else {
-                return `${server.index}: **__${server.name}__**: is currently unavailable.`;
-            }
+            return server.online ? `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}` : `${server.index}: **__${server.name}__**: is currently unavailable.`;
         })
         .join("\n");
 

@@ -10,23 +10,23 @@ import { config } from "../config/index.js";
  * Uses optional config URLs with fallbacks
  */
 export const MAP_CONFIG = {
-    surf: {
-        prefixes: ["surf_"],
-        statsUrl: (map) => config.mapUrls?.surf?.stats || `https://snksrv.com/surfstats/?view=map&name=${map}`,
-        imageUrl: (map) => config.mapUrls?.surf?.image || `https://bans.snksrv.com/images/maps/${map}.jpg`,
-        displayFormat: (map) => `[${map}](https://snksrv.com/surfstats/?view=map&name=${map})`
+    bhop: {
+        displayFormat: (map) => `[${map}](https://snksrv.com/bhopstats/index.php?map=${map})`,
+        imageUrl: (map) => config.mapUrls?.bhop?.image || `https://bans.snksrv.com/images/maps/${map}.jpg`,
+        prefixes: ["bhop"],
+        statsUrl: (map) => config.mapUrls?.bhop?.stats || `https://snksrv.com/bhopstats/index.php?map=${map}`
     },
     kz: {
-        prefixes: ["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"],
-        statsUrl: (map) => config.mapUrls?.kz?.stats || `https://snksrv.com/kzstats/#/maps/${map}/`,
+        displayFormat: (map) => `[${map}](https://snksrv.com/kzstats/#/maps/${map}/)`,
         imageUrl: (map) => config.mapUrls?.kz?.image || `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/${map}.jpg`,
-        displayFormat: (map) => `[${map}](https://snksrv.com/kzstats/#/maps/${map}/)`
+        prefixes: ["bkz_", "kz_", "kzpro_", "skz_", "vnl_", "xc_"],
+        statsUrl: (map) => config.mapUrls?.kz?.stats || `https://snksrv.com/kzstats/#/maps/${map}/`
     },
-    bhop: {
-        prefixes: ["bhop"],
-        statsUrl: (map) => config.mapUrls?.bhop?.stats || `https://snksrv.com/bhopstats/index.php?map=${map}`,
-        imageUrl: (map) => config.mapUrls?.bhop?.image || `https://bans.snksrv.com/images/maps/${map}.jpg`,
-        displayFormat: (map) => `[${map}](https://snksrv.com/bhopstats/index.php?map=${map})`
+    surf: {
+        displayFormat: (map) => `[${map}](https://snksrv.com/surfstats/?view=map&name=${map})`,
+        imageUrl: (map) => config.mapUrls?.surf?.image || `https://bans.snksrv.com/images/maps/${map}.jpg`,
+        prefixes: ["surf_"],
+        statsUrl: (map) => config.mapUrls?.surf?.stats || `https://snksrv.com/surfstats/?view=map&name=${map}`
     }
 };
 

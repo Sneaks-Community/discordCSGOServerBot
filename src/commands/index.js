@@ -6,11 +6,11 @@
 import { SlashCommandBuilder, REST, Routes } from "discord.js";
 
 import { config } from "../config/index.js";
-import { handleSlashPlayers, handleSlashMap, handleSlashKeywords } from "./playerCommands.js";
-import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
-import { handleSlashCheck, handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser, handleSlashMem } from "./adminCommands.js";
-import { handleSlashHelp, handleSlashPing, handleSlashVersion } from "./utilityCommands.js";
 import { commandLogger } from "../utils/logger.js";
+import { handleSlashCheck, handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser, handleSlashMem } from "./adminCommands.js";
+import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
+import { handleSlashPlayers, handleSlashMap, handleSlashKeywords } from "./playerCommands.js";
+import { handleSlashHelp, handleSlashPing, handleSlashVersion } from "./utilityCommands.js";
 
 // Admin role ID from config
 const adminRoleId = config.security?.adminRoleId || "";
@@ -49,27 +49,27 @@ const adminCommands = new Map([
  */
 function getCommandDefinitions() {
     return [
-        { name: "players", description: "Show players on a server", admin: false,
+        { admin: false, description: "Show players on a server", name: "players",
             options: opt => opt.setName("server").setDescription("Server keyword or name").setRequired(false) },
-        { name: "map", description: "Show current map on a server or map stats", admin: false,
+        { admin: false, description: "Show current map on a server or map stats", name: "map",
             options: opt => opt.setName("server").setDescription("Server keyword or map name").setRequired(false) },
-        { name: "keywords", description: "List all available server keywords", admin: false },
-        { name: "follow", description: "Follow a map to receive DM notifications", admin: false,
+        { admin: false, description: "List all available server keywords", name: "keywords" },
+        { admin: false, description: "Follow a map to receive DM notifications", name: "follow",
             options: opt => opt.setName("map").setDescription("Map name to follow").setRequired(true) },
-        { name: "unfollow", description: "Stop following a map", admin: false,
+        { admin: false, description: "Stop following a map", name: "unfollow",
             options: opt => opt.setName("map").setDescription("Map name to unfollow (or 'all' for all maps)").setRequired(true) },
-        { name: "listfollows", description: "List all maps you are following", admin: false },
-        { name: "help", description: "Show list of available commands", admin: false },
-        { name: "ping", description: "Check bot latency", admin: false },
-        { name: "version", description: "Show bot version", admin: false },
-        { name: "check", description: "Check server status by IP, domain, or keyword (Admin only)", admin: true,
+        { admin: false, description: "List all maps you are following", name: "listfollows" },
+        { admin: false, description: "Show list of available commands", name: "help" },
+        { admin: false, description: "Check bot latency", name: "ping" },
+        { admin: false, description: "Show bot version", name: "version" },
+        { admin: true, description: "Check server status by IP, domain, or keyword (Admin only)", name: "check",
             options: opt => opt.setName("server").setDescription("Server IP address, domain name (e.g., example.com:27015), or keyword").setRequired(true) },
-        { name: "listallfollows", description: "List all users and their followed maps (Admin only)", admin: true },
-        { name: "testnotify", description: "Test map notification system (Admin only)", admin: true,
+        { admin: true, description: "List all users and their followed maps (Admin only)", name: "listallfollows" },
+        { admin: true, description: "Test map notification system (Admin only)", name: "testnotify",
             options: opt => opt.setName("map").setDescription("Map name to test").setRequired(true) },
-        { name: "removeuser", description: "Remove all follows for a user (Admin only)", admin: true,
+        { admin: true, description: "Remove all follows for a user (Admin only)", name: "removeuser",
             options: opt => opt.setName("userid").setDescription("Discord user ID").setRequired(true) },
-        { name: "mem", description: "Show memory usage (Admin only)", admin: true }
+        { admin: true, description: "Show memory usage (Admin only)", name: "mem" }
     ];
 }
 
@@ -137,7 +137,7 @@ export async function registerSlashCommands(bot) {
  * @param {string} username - The username of the user
  */
 function logAdminCommandAttempt(commandName, userId, username) {
-    commandLogger.info({ userId, username, command: commandName }, `Admin command attempt by non-admin user`);
+    commandLogger.info({ command: commandName, userId, username }, "Admin command attempt by non-admin user");
 }
 
 /**
@@ -167,7 +167,7 @@ export async function handleInteraction(interaction, bot, Discord, logChannel) {
                 logAdminCommandAttempt(commandName, userId, username);
                 return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
             }
-            commandLogger.info({ userId, username, command: commandName }, `Admin command executed`);
+            commandLogger.info({ command: commandName, userId, username }, "Admin command executed");
             const handler = adminCommands.get(commandName);
             // Some handlers need extra params
             if (commandName === "testnotify") {
