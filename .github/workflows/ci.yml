@@ -2,13 +2,16 @@ name: CI
 
 on:
   push:
-    branches: [ master, refactor ]
+    branches: [ master ]
   pull_request:
-    branches: [ master, refactor ]
+    branches: [ master ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
   build-and-test:
@@ -16,16 +19,40 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
 
     - name: Setup Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v6
       with:
-        node-version: '24'
-        cache: 'npm'
+          node-version-file: '.nvmrc'
+          cache: 'npm'
 
     - name: Install dependencies
-      run: npm install
+      run: npm ci
 
-    - name: Run linter
+    - name: Lint
       run: npm run lint
+
+    - name: npm audit (fail on high vulnerabilities)
+      run: npm audit --audit-level=high
+
+  docker-build:
+    name: Docker Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build Docker image (production stage)
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          push: false
+          target: production
+          tags: discordcsgobot:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
