@@ -6,3 +6,4 @@ notes.txt
 db.sqlite
 plans/
 *.backup
+servers.json
