@@ -6,6 +6,7 @@
 import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
+import { escapeForDiscord, escapeList } from "../utils/discordEscape.js";
 import { getWebsite } from "../utils/mapUtils.js";
 
 /**
@@ -18,29 +19,27 @@ export function playerListEmbed(server) {
 
     if (server.online) {
         // Create an embed for the online server using EmbedBuilder
+        // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
         embed = new EmbedBuilder()
-            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${server.name} on ${server.map}`.replace(/_/g, "\\_"))
+            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${escapeForDiscord(server.name)} on ${escapeForDiscord(server.map)}`)
             .setColor(CONFIG_VALUES.EMBED_COLOR)
             .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
             .setTimestamp(Date.now());
 
-        // Generate a list of player names
-        let list = server.players.map((player) => player.name).join("\n");
-        const botList = server.bots.map((bot) => bot.name).join("\n");
-        list += botList;
-
-        // Escape special characters for Discord and remove connecting players
-        list = list
-            .replace(/`/g, "'")
-            .replace(/\*/g, "\\*")
-            .replace(/_/g, "\\_")
-            .replace(/undefined\n/g, "");
+        // Generate a list of player names and escape them properly
+        // Use centralized escapeList which applies escapeForDiscord to each item
+        const allPlayerNames = [
+            ...server.players.map((player) => player.name),
+            ...server.bots.map((bot) => bot.name)
+        ];
+        const list = escapeList(allPlayerNames);
 
         embed.setDescription(list);
     } else {
         // Create an embed for the offline server
+        // Use centralized escapeForDiscord for server name
         embed = new EmbedBuilder()
-            .setTitle(`${server.name} is currently unavailable.`)
+            .setTitle(`${escapeForDiscord(server.name)} is currently unavailable.`)
             .setColor(CONFIG_VALUES.EMBED_COLOR)
             .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
             .setTimestamp(Date.now())
@@ -63,10 +62,11 @@ export function makeServerList(serverData) {
         .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
 
-    // Generate the server list
+    // Generate the server list with proper escaping
     const list = Object.values(serverData)
         .map((server) => {
-            return server.online ? `${server.index}: **__${server.name}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}` : `${server.index}: **__${server.name}__**: is currently unavailable.`;
+            const escapedName = escapeForDiscord(server.name);
+            return server.online ? `${server.index}: **__${escapedName}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}` : `${server.index}: **__${escapedName}__**: is currently unavailable.`;
         })
         .join("\n");
 

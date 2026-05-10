@@ -6,6 +6,7 @@
 import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
+import { escapeForDiscord } from "../utils/discordEscape.js";
 import { getWebsite, getMapImage, getStatsPage } from "../utils/mapUtils.js";
 
 /**
@@ -28,7 +29,7 @@ export function makeEmbed(serverData) {
             // If the server is offline, add a field indicating it's not available
             embed.addFields({
                 inline: true,
-                name: server.name,
+                name: escapeForDiscord(server.name),
                 value: "**Server is not available.**"
             });
             continue;
@@ -37,12 +38,11 @@ export function makeEmbed(serverData) {
         if (!server.show) continue; // Skip servers that shouldn't be displayed
 
         // Add a field for the online server with player, map, and IP details
+        // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
         embed.addFields({
             inline: true,
-            name: server.name,
-            value: `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}\n**__Map:__** ${getWebsite(server.map)}\n**__IP:__** ${
-                server.fullIP
-            }`
+            name: escapeForDiscord(server.name),
+            value: `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}\n**__Map:__** ${getWebsite(server.map)}\n**__IP:__** ${escapeForDiscord(server.fullIP)}`
         });
     }
 
@@ -76,10 +76,11 @@ export function makeMapEmbed(mapName, server = null) {
     }
 
     // Set the embed title based on whether a server is provided
+    // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
     if (server) {
-        embed.setTitle(`${server.name} is currently on ${mapName}`.replace(/_/g, "\\_"));
+        embed.setTitle(`${escapeForDiscord(server.name)} is currently on ${escapeForDiscord(mapName)}`);
     } else {
-        embed.setTitle(`${mapName} stats`.replace(/_/g, "\\_"));
+        embed.setTitle(`${escapeForDiscord(mapName)} stats`);
     }
 
     return embed;
@@ -91,8 +92,9 @@ export function makeMapEmbed(mapName, server = null) {
  * @returns {EmbedBuilder} - The Discord embed
  */
 export function makeOfflineEmbed(serverName) {
+    // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
     return new EmbedBuilder()
-        .setTitle(`${serverName} is currently unavailable.`)
+        .setTitle(`${escapeForDiscord(serverName)} is currently unavailable.`)
         .setColor(CONFIG_VALUES.EMBED_COLOR)
         .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now())

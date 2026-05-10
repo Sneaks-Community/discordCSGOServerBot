@@ -10,8 +10,10 @@ import { getAllFollows, hasMap, unfollowAll } from "../db/index.js";
 import { checkRateLimit } from "../services/cacheService.js";
 import { notifyUsers } from "../services/notificationService.js";
 import { getInfo, getServerByKeyword } from "../services/serverService.js";
+import { escapeForDiscord, escapeList } from "../utils/discordEscape.js";
 import { getMapImage, getStatsPage } from "../utils/mapUtils.js";
 import { validateServerInput } from "../utils/validation.js";
+import { validateWithZod, discordIdSchema, mapNameSchema } from "../utils/zodValidator.js";
 
 /**
  * Handle /check slash command (Admin only)
@@ -60,33 +62,23 @@ async function checkServer(server) {
     const image = getMapImage(serverInfo.map);
 
     // Create the embed with the server data
+    // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
     const embed = new EmbedBuilder()
         .setTitle(
-            `${serverInfo.numPlayers} (${serverInfo.numBots}) / ${serverInfo.maxPlayers} players connected to ${serverInfo.name} on ${serverInfo.map}`.replace(
-                /_/g,
-                "\\_"
-            )
+            `${serverInfo.numPlayers} (${serverInfo.numBots}) / ${serverInfo.maxPlayers} players connected to ${escapeForDiscord(serverInfo.name)} on ${escapeForDiscord(serverInfo.map)}`
         )
         .setColor(CONFIG_VALUES.EMBED_COLOR)
         .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
     if (image) embed.setImage(image);
 
-    // Create a list of players and bots
-    let list = "";
-    for (const player of serverInfo.players) {
-        list += `${player.name}\n`;
-    }
-    for (const bot of serverInfo.bots) {
-        list += `${bot.name}\n`;
-    }
-
-    // Sanitize the list for Discord and remove undefined entries
-    list = list
-        .replace(/`/g, "'")
-        .replace(/\*/g, "\\*")
-        .replace(/_/g, "\\_")
-        .replace(/undefined\n/g, "");
+    // Create a list of player and bot names with proper escaping
+    // Use centralized escapeList which applies escapeForDiscord to each item (escapes backslashes FIRST)
+    const allPlayerNames = [
+        ...serverInfo.players.map((player) => player.name),
+        ...serverInfo.bots.map((bot) => bot.name)
+    ];
+    const list = escapeList(allPlayerNames);
 
     // Set the list as the embed description
     embed.setDescription(list);
@@ -135,33 +127,23 @@ async function checkIP(input, validation) {
     const image = getMapImage(serverInfo.map);
 
     // Create the embed with the server data
+    // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
     const embed = new EmbedBuilder()
         .setTitle(
-            `${serverInfo.numPlayers} (${serverInfo.numBots}) / ${serverInfo.maxPlayers} players connected to ${serverInfo.name} on ${serverInfo.map}`.replace(
-                /_/g,
-                "\\_"
-            )
+            `${serverInfo.numPlayers} (${serverInfo.numBots}) / ${serverInfo.maxPlayers} players connected to ${escapeForDiscord(serverInfo.name)} on ${escapeForDiscord(serverInfo.map)}`
         )
         .setColor(CONFIG_VALUES.EMBED_COLOR)
         .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
     if (image) embed.setImage(image);
 
-    // Create a list of players and bots
-    let list = "";
-    for (const player of serverInfo.players) {
-        list += `${player.name}\n`;
-    }
-    for (const bot of serverInfo.bots) {
-        list += `${bot.name}\n`;
-    }
-
-    // Sanitize the list for Discord and remove undefined entries
-    list = list
-        .replace(/`/g, "'")
-        .replace(/\*/g, "\\*")
-        .replace(/_/g, "\\_")
-        .replace(/undefined\n/g, "");
+    // Create a list of player and bot names with proper escaping
+    // Use centralized escapeList which applies escapeForDiscord to each item (escapes backslashes FIRST)
+    const allPlayerNames = [
+        ...serverInfo.players.map((player) => player.name),
+        ...serverInfo.bots.map((bot) => bot.name)
+    ];
+    const list = escapeList(allPlayerNames);
 
     // Set the list as the embed description
     embed.setDescription(list);
@@ -208,18 +190,25 @@ export async function handleSlashListallfollows(interaction) {
  * @param {Object} logChannel - Log channel for notifications
  */
 export async function handleSlashTestnotify(interaction, bot, logChannel) {
-    const map = interaction.options.getString("map").toLowerCase();
+    const map = interaction.options.getString("map");
   
     if (!map) {
         return interaction.reply({ content: "Please enter a valid map name.", ephemeral: true });
     }
 
-    if (!(await hasMap(map))) {
+    // Validate map name using Zod v4 schema
+    const mapValidation = validateWithZod(mapNameSchema, map, "Map name");
+    if (!mapValidation.valid) {
+        return interaction.reply({ content: mapValidation.error, ephemeral: true });
+    }
+    const sanitizedMap = mapValidation.data;
+
+    if (!(await hasMap(sanitizedMap))) {
         return interaction.reply({ content: "No one is following this map.", ephemeral: true });
     }
 
-    await notifyUsers(map, { ip: "0.0.0.0:27015", nick: "Test Server" }, bot, logChannel);
-    await interaction.reply({ content: `Notification sent for map: ${map}`, ephemeral: true });
+    await notifyUsers(sanitizedMap, { ip: "0.0.0.0:27015", nick: "Test Server" }, bot, logChannel);
+    await interaction.reply({ content: `Notification sent for map: ${sanitizedMap}`, ephemeral: true });
 }
 
 /**
@@ -233,7 +222,13 @@ export async function handleSlashRemoveuser(interaction) {
         return interaction.reply({ content: "Please enter a valid user ID.", ephemeral: true });
     }
 
-    await unfollowAll(userID);
+    // Validate Discord ID using Zod v4 schema
+    const userIdValidation = validateWithZod(discordIdSchema, userID, "User ID");
+    if (!userIdValidation.valid) {
+        return interaction.reply({ content: userIdValidation.error, ephemeral: true });
+    }
+
+    await unfollowAll(userIdValidation.data);
     await interaction.reply({ content: `Removed all maps from user <@${userID}>.`, ephemeral: true });
 }
 

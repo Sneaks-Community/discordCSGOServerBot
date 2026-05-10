@@ -9,9 +9,10 @@ import { CONFIG_VALUES } from "../config/index.js";
 import { followMap, unfollowMap, getUserFollows, isFollowingMap, unfollowAll } from "../db/index.js";
 import { createFollowLogEmbed } from "../embeds/notificationEmbeds.js";
 import { checkRateLimit } from "../services/cacheService.js";
+import { escapeForDiscord } from "../utils/discordEscape.js";
 import { commandLogger } from "../utils/logger.js";
 import { getStatsPage } from "../utils/mapUtils.js";
-import { validateMapName } from "../utils/validation.js";
+import { validateWithZod, mapNameSchema, discordIdSchema } from "../utils/zodValidator.js";
 
 // Will be set by bot.js
 let logChannel = null;
@@ -29,30 +30,39 @@ export function setFollowLogChannel(channel) {
  * @param {Object} interaction - Discord interaction object
  * @param {Object} Discord - Discord.js library for mention patterns
  */
-export async function handleSlashFollow(interaction, Discord) {
-    const map = interaction.options.getString("map").toLowerCase();
+export async function handleSlashFollow(interaction, _Discord) {
+    const rawMap = interaction.options.getString("map");
 
-    const rateLimitResult = checkRateLimit(interaction.user.id, "follow", CONFIG_VALUES.FOLLOW_RATE_LIMIT_PER_MINUTE);
+    // Validate Discord ID first
+    const userIdValidation = validateWithZod(discordIdSchema, interaction.user.id, "User ID");
+    if (!userIdValidation.valid) {
+        return interaction.reply({ content: userIdValidation.error, ephemeral: true });
+    }
+    const sanitizedUserId = userIdValidation.data;
+
+    const rateLimitResult = checkRateLimit(sanitizedUserId, "follow", CONFIG_VALUES.FOLLOW_RATE_LIMIT_PER_MINUTE);
     if (!rateLimitResult.allowed) {
         return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before following another map.`, ephemeral: true });
     }
 
-    const validation = validateMapName(map, Discord);
-    if (!validation.valid) {
-        return interaction.reply({ content: validation.error, ephemeral: true });
+    // Validate map name using Zod v4 schema (includes lowercase transform)
+    const mapValidation = validateWithZod(mapNameSchema, rawMap, "Map name");
+    if (!mapValidation.valid) {
+        return interaction.reply({ content: mapValidation.error, ephemeral: true });
     }
+    const sanitizedMap = mapValidation.data;
 
-    if (await isFollowingMap(interaction.user.id, map)) {
+    if (await isFollowingMap(sanitizedUserId, sanitizedMap)) {
         return interaction.reply({ content: "You are already following this map.", ephemeral: true });
     }
 
-    await followMap(interaction.user.id, map);
+    await followMap(sanitizedUserId, sanitizedMap);
 
-    await interaction.reply({ content: `You are now following ${map}. You will be notified when the map comes on a server.`, ephemeral: true });
+    await interaction.reply({ content: `You are now following ${sanitizedMap}. You will be notified when the map comes on a server.`, ephemeral: true });
 
-    commandLogger.info(`${interaction.user.tag} followed map ${map}`);
+    commandLogger.info(`${interaction.user.tag} followed map ${sanitizedMap}`);
 
-    const logEmbed = createFollowLogEmbed("Followed", interaction.user, map);
+    const logEmbed = createFollowLogEmbed("Followed", interaction.user, sanitizedMap);
 
     if (logChannel) {
         logChannel.send({ embeds: [logEmbed] });
@@ -64,34 +74,44 @@ export async function handleSlashFollow(interaction, Discord) {
  * @param {Object} interaction - Discord interaction object
  * @param {Object} Discord - Discord.js library for mention patterns
  */
-export async function handleSlashUnfollow(interaction, Discord) {
-    const map = interaction.options.getString("map").toLowerCase();
+export async function handleSlashUnfollow(interaction, _Discord) {
+    const rawMap = interaction.options.getString("map");
 
-    const rateLimitResult = checkRateLimit(interaction.user.id, "unfollow", CONFIG_VALUES.UNFOLLOW_RATE_LIMIT_PER_MINUTE);
+    // Validate Discord ID first
+    const userIdValidation = validateWithZod(discordIdSchema, interaction.user.id, "User ID");
+    if (!userIdValidation.valid) {
+        return interaction.reply({ content: userIdValidation.error, ephemeral: true });
+    }
+    const sanitizedUserId = userIdValidation.data;
+
+    const rateLimitResult = checkRateLimit(sanitizedUserId, "unfollow", CONFIG_VALUES.UNFOLLOW_RATE_LIMIT_PER_MINUTE);
     if (!rateLimitResult.allowed) {
         return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before unfollowing another map.`, ephemeral: true });
     }
 
-    const validation = validateMapName(map, Discord);
-    if (!validation.valid) {
-        return interaction.reply({ content: validation.error, ephemeral: true });
-    }
-
-    if (map === "all") {
-        await unfollowAll(interaction.user.id);
+    // "all" is a special keyword that bypasses map name validation
+    if (rawMap === "all") {
+        await unfollowAll(sanitizedUserId);
         await interaction.reply({ content: "You are no longer following any maps.", ephemeral: true });
         commandLogger.info(`${interaction.user.tag} unfollowed all maps`);
     } else {
-        if (!(await isFollowingMap(interaction.user.id, map))) {
+        // Validate map name using Zod v4 schema (includes lowercase transform)
+        const mapValidation = validateWithZod(mapNameSchema, rawMap, "Map name");
+        if (!mapValidation.valid) {
+            return interaction.reply({ content: mapValidation.error, ephemeral: true });
+        }
+        const sanitizedMap = mapValidation.data;
+
+        if (!(await isFollowingMap(sanitizedUserId, sanitizedMap))) {
             return interaction.reply({ content: "You are not following this map. Use `/listfollows` to see a list of maps you are following.", ephemeral: true });
         }
 
-        await unfollowMap(interaction.user.id, map);
-        await interaction.reply({ content: `You are no longer following ${map}.`, ephemeral: true });
-        commandLogger.info(`${interaction.user.tag} unfollowed map ${map}`);
+        await unfollowMap(sanitizedUserId, sanitizedMap);
+        await interaction.reply({ content: `You are no longer following ${sanitizedMap}.`, ephemeral: true });
+        commandLogger.info(`${interaction.user.tag} unfollowed map ${sanitizedMap}`);
     }
 
-    const logEmbed = createFollowLogEmbed("Unfollowed", interaction.user, map);
+    const logEmbed = createFollowLogEmbed(rawMap === "all" ? "Unfollowed" : "Unfollowed", interaction.user, rawMap === "all" ? "all" : rawMap);
 
     if (logChannel) {
         logChannel.send({ embeds: [logEmbed] });
@@ -103,7 +123,14 @@ export async function handleSlashUnfollow(interaction, Discord) {
  * @param {Object} interaction - Discord interaction object
  */
 export async function handleSlashListfollows(interaction) {
-    const follows = await getUserFollows(interaction.user.id);
+    // Validate Discord ID
+    const userIdValidation = validateWithZod(discordIdSchema, interaction.user.id, "User ID");
+    if (!userIdValidation.valid) {
+        return interaction.reply({ content: userIdValidation.error, ephemeral: true });
+    }
+    const sanitizedUserId = userIdValidation.data;
+
+    const follows = await getUserFollows(sanitizedUserId);
   
     if (follows.length === 0) {
         return interaction.reply({ content: "You are not following any maps.", ephemeral: true });
@@ -112,7 +139,7 @@ export async function handleSlashListfollows(interaction) {
     let list = "";
     for (const follow of follows) {
         const stats = getStatsPage(follow.map_name);
-        list += stats ? `[${follow.map_name}](${stats})\n` : `${follow.map_name}\n`;
+        list += stats ? `[${escapeForDiscord(follow.map_name)}](${stats})\n` : `${escapeForDiscord(follow.map_name)}\n`;
     }
 
     const embed = new EmbedBuilder()

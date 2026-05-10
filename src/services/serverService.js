@@ -9,6 +9,7 @@ import pLimit from "p-limit";
 import serverObject from "../../servers.json" with { type: "json" };
 import { CONFIG_VALUES } from "../config/index.js";
 import { serviceLogger } from "../utils/logger.js";
+import { validateWithZod, playerNameSchema } from "../utils/zodValidator.js";
 
 // Server data state management
 let _serverData = {};
@@ -89,19 +90,43 @@ export async function getInfo(server, index) {
     let data;
 
     if (valid) {
+        // Sanitize player names from game server using Zod v4 schema
+        // This prevents Discord markdown injection and ensures data integrity
+        const sanitizedPlayers = res.players
+            .map((player) => {
+                const result = validateWithZod(playerNameSchema, player.name, "Player name");
+                if (!result.valid) {
+                    serviceLogger.warn(`Invalid player name detected, using 'Unknown': ${result.error}`);
+                    return { ...player, name: "Unknown" };
+                }
+                return { ...player, name: result.data };
+            })
+            .filter((player) => player.name && player.name !== "Unknown");
+
+        // Sanitize bot names similarly
+        const sanitizedBots = res.bots
+            .map((bot) => {
+                const result = validateWithZod(playerNameSchema, bot.name, "Bot name");
+                if (!result.valid) {
+                    return { ...bot, name: "Unknown Bot" };
+                }
+                return { ...bot, name: result.data };
+            })
+            .filter((bot) => bot.name && bot.name !== "Unknown Bot");
+
         // If the server is valid, populate the data object with server information
         data = {
-            bots: res.bots, // Bots array {name, score, time}
+            bots: sanitizedBots, // Bots array {name, score, time}
             fullIP: res.connect, // String with ip:port
             index: index,
             keywords: server.keywords, // array of keywords for --players command
             map: res.map, // Current map
             maxPlayers: res.maxplayers,
             name: server.nick, // Short nickname
-            numBots: res.bots.length, // int (gamedig v5.x API)
-            numPlayers: res.players.length, // int (gamedig v5.x API)
+            numBots: sanitizedBots.length, // int (gamedig v5.x API)
+            numPlayers: sanitizedPlayers.length, // int (gamedig v5.x API)
             online: true,
-            players: res.players, // Players array {name, score, time}
+            players: sanitizedPlayers, // Players array {name, score, time}
             show: server.show // bool to print server in embed
         };
     } else {

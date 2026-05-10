@@ -197,7 +197,7 @@ Add your CS:GO servers to `servers.json`:
 
 ## Docker Deployment
 
-The bot can be run in a Docker container for easy deployment. The Docker image uses a multi-stage build with `node:22-alpine` for a minimal footprint (~100MB).
+The bot can be run in a Docker container for easy deployment. The Docker image uses a multi-stage build with `node:24-alpine` for a minimal footprint (~100MB).
 
 ### Quick Start with Docker Compose
 

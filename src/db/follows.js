@@ -1,25 +1,27 @@
 /**
  * Database follow operations
  * Handles all follow/unfollow database operations
+ *
+ * Uses Zod v4 schemas for validation and parameterized queries for SQL injection prevention.
  */
 
 import { dbLogger } from "../utils/logger.js";
+import { validateWithZod, discordIdSchema, mapNameSchema } from "../utils/zodValidator.js";
 import { getDB } from "./connection.js";
-import { validateDiscordId, validateMapNameInput } from "./validation.js";
 
 /**
- * Helper to validate and execute database operations
- * @param {Function} validateFn - Validation function
+ * Helper to validate and execute database operations using Zod v4 schemas
+ * @param {z.ZodType} schema - Zod v4 schema to validate against
  * @param {any} value - Value to validate
- * @param {string} errorPrefix - Prefix for error messages
- * @returns {Object} Validation result
+ * @param {string} operationName - Name of the operation for error messages
+ * @returns {any} Validated and transformed value
  */
-function validateOrThrow(validateFn, value, errorPrefix) {
-    const result = validateFn(value);
+function validateOrThrow(schema, value, operationName) {
+    const result = validateWithZod(schema, value, operationName);
     if (!result.valid) {
-        throw new Error(`${errorPrefix}: ${result.error}`);
+        throw new Error(`${operationName}: ${result.error}`);
     }
-    return result;
+    return result.data;
 }
 
 /**
@@ -65,8 +67,9 @@ function performQuery(sql, params, operationName, single = false) {
  * @param {string} map_name - The map name to follow
  */
 export function followMap(discord_id, map_name) {
-    const mapValidation = validateOrThrow(validateMapNameInput, map_name, "followMap");
-    execStmt("INSERT INTO players_follow VALUES (?, ?)", [discord_id, mapValidation.sanitized], "followMap");
+    const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "followMap/discord_id");
+    const validatedMapName = validateOrThrow(mapNameSchema, map_name, "followMap/map_name");
+    execStmt("INSERT INTO players_follow VALUES (?, ?)", [validatedDiscordId, validatedMapName], "followMap");
 }
 
 /**
@@ -75,8 +78,9 @@ export function followMap(discord_id, map_name) {
  * @param {string} map_name - The map name to unfollow
  */
 export function unfollowMap(discord_id, map_name) {
-    const mapValidation = validateOrThrow(validateMapNameInput, map_name, "unfollowMap");
-    execStmt("DELETE FROM players_follow WHERE discord_id = ? AND map_name = ?", [discord_id, mapValidation.sanitized], "unfollowMap");
+    const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "unfollowMap/discord_id");
+    const validatedMapName = validateOrThrow(mapNameSchema, map_name, "unfollowMap/map_name");
+    execStmt("DELETE FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "unfollowMap");
 }
 
 /**
@@ -93,8 +97,8 @@ export function getAllFollows() {
  * @returns {Array} - Array of objects with map_name property
  */
 export function getUserFollows(discord_id) {
-    validateOrThrow(validateDiscordId, discord_id, "getUserFollows");
-    return performQuery("SELECT map_name FROM players_follow WHERE discord_id = ?", [discord_id], "getUserFollows");
+    const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "getUserFollows/discord_id");
+    return performQuery("SELECT map_name FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "getUserFollows");
 }
 
 /**
@@ -104,8 +108,9 @@ export function getUserFollows(discord_id) {
  * @returns {Object|null} - Row object if following, null otherwise
  */
 export function isFollowingMap(discord_id, map_name) {
-    const mapValidation = validateOrThrow(validateMapNameInput, map_name, "isFollowingMap");
-    return performQuery("SELECT * FROM players_follow WHERE discord_id = ? AND map_name = ?", [discord_id, mapValidation.sanitized], "isFollowingMap", true);
+    const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "isFollowingMap/discord_id");
+    const validatedMapName = validateOrThrow(mapNameSchema, map_name, "isFollowingMap/map_name");
+    return performQuery("SELECT * FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "isFollowingMap", true);
 }
 
 /**
@@ -114,8 +119,8 @@ export function isFollowingMap(discord_id, map_name) {
  * @returns {Array} - Array of objects with discord_id property
  */
 export function getUsersFollowingMap(map_name) {
-    const mapValidation = validateOrThrow(validateMapNameInput, map_name, "getUsersFollowingMap");
-    return performQuery("SELECT discord_id FROM players_follow WHERE map_name = ?", [mapValidation.sanitized], "getUsersFollowingMap");
+    const validatedMapName = validateOrThrow(mapNameSchema, map_name, "getUsersFollowingMap/map_name");
+    return performQuery("SELECT discord_id FROM players_follow WHERE map_name = ?", [validatedMapName], "getUsersFollowingMap");
 }
 
 /**
@@ -124,8 +129,8 @@ export function getUsersFollowingMap(map_name) {
  * @returns {Object|null} - Row object if exists, null otherwise
  */
 export function hasMap(map_name) {
-    const mapValidation = validateOrThrow(validateMapNameInput, map_name, "hasMap");
-    return performQuery("SELECT * FROM players_follow WHERE map_name = ?", [mapValidation.sanitized], "hasMap", true);
+    const validatedMapName = validateOrThrow(mapNameSchema, map_name, "hasMap/map_name");
+    return performQuery("SELECT * FROM players_follow WHERE map_name = ?", [validatedMapName], "hasMap", true);
 }
 
 /**
@@ -133,6 +138,6 @@ export function hasMap(map_name) {
  * @param {string} discord_id - The Discord user ID
  */
 export function unfollowAll(discord_id) {
-    validateOrThrow(validateDiscordId, discord_id, "unfollowAll");
-    execStmt("DELETE FROM players_follow WHERE discord_id = ?", [discord_id], "unfollowAll");
+    const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "unfollowAll/discord_id");
+    execStmt("DELETE FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "unfollowAll");
 }

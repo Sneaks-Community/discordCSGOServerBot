@@ -1,8 +1,4 @@
-# =============================================================================
-# Discord CS:GO Server Bot - Dockerfile
-# Multi-stage build for minimal production image
-# =============================================================================
-ARG NODE_VERSION=22
+ARG NODE_VERSION=24
 # -----------------------------------------------------------------------------
 # Stage 1: Builder - Install dependencies and compile native modules
 # -----------------------------------------------------------------------------

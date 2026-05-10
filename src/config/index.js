@@ -71,12 +71,10 @@ export function validateConfig() {
 
     // Exit on errors
     if (errors.length > 0) {
-        error("\n========================================");
         error("CRITICAL CONFIGURATION ERRORS:");
         for (const err of errors) {
             error(`  - ${err}`);
         }
-        error("========================================\n");
         error("Please set the required environment variables.");
         error("See .env.example for reference.");
         process.exit(1);
