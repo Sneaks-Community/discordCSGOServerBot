@@ -3,7 +3,7 @@
 A Discord bot that monitors Counter-Strike: Global Offensive (and other supported) servers, provides real-time server status updates, and notifies users when specific maps appear on followed servers.
 
 ![Version](https://img.shields.io/badge/version-7.0.0-blue)
-![Node](https://img.shields.io/badge/node-%3E%3D20-blue)
+![Node](https://img.shields.io/badge/node-%3E%3D24-blue)
 ![Docker](https://img.shields.io/badge/docker-ready-blue)
 
 ## Features
@@ -16,9 +16,7 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 - **Multi-Game Mode Support**: Supports Surf, KZ (kreedz climb), and Bhop map prefixes
 - **Slash Commands**: Modern Discord interaction using slash commands with autocomplete support
 - **Rate Limiting**: Built-in rate limiting to prevent abuse (configurable per command)
-- **IP Validation**: Secure IP address/FQDN validation with private IP blocking
 - **Automatic Cleanup**: Automatically removes user follows when they leave the server
-- **Caching System**: User and map image caching to reduce API calls
 - **Retry Logic**: Exponential backoff for failed server queries
 
 ### Public Commands
@@ -46,12 +44,6 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 | `/removeuser <userID>` | Remove all map follows for a specific user (admin only) |
 
 ## Configuration
-
-### Prerequisites
-
-- **Node.js**: Version 20 or higher
-- **Discord Bot Token**: Create a bot application at [Discord Developer Portal](https://discord.com/developers/applications)
-- **SQLite**: Required for map follow data persistence (handled by `better-sqlite3` package)
 
 ### Setup Instructions
 
@@ -164,7 +156,7 @@ Add your CS:GO servers to `servers.json`:
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `ip` | string | Yes | Server IP and port (e.g., `127.0.0.1:27015`) |
+| `ip` | string | Yes | Server IP/FQDN and port (e.g., `127.0.0.1:27015`) |
 | `nick` | string | Yes | Display name shown in embeds |
 | `show` | boolean | Yes | Whether to display server in public commands |
 | `protocol` | string | No | Game protocol (default: `csgo`) - see list [here](https://github.com/gamedig/node-gamedig/blob/master/GAMES_LIST.md)|
@@ -174,7 +166,7 @@ Add your CS:GO servers to `servers.json`:
 
 ### System Requirements
 
-- **Node.js** v20.x or higher
+- **Node.js** v24.x or higher
 - **Docker** (optional, for containerized deployment)
 
 ### Discord Bot Requirements
@@ -276,48 +268,3 @@ git pull
 # Rebuild and restart
 docker-compose up -d --build
 ```
-
-### Troubleshooting Docker Issues
-
-- **Container won't start**: Check that `DISCORD_TOKEN` is set in your `.env` file
-- **Commands not working**: Ensure slash commands have propagated (may take a few minutes)
-- **Database errors**: Check volume permissions and disk space
-- **Permission denied**: Ensure the `bot-data` volume exists and is accessible
-
-## Troubleshooting
-
-### Bot won't start
-
-First and foremost, **review all logs**.
-
-- Verify your Discord token is correct and has proper permissions
-- Check that `.env` file exists and contains `DISCORD_TOKEN`
-- Ensure all required environment variables are set
-
-### Commands not appearing
-
-- The bot uses slash commands - type `/` in any channel the bot has access to
-- The bot must be invited to your server with proper permissions
-- Slash commands may take a few minutes to propagate after the bot starts
-- Try using `/help` to see available commands
-
-### Map notifications not working
-
-- Verify `follow.timeoutSeconds` is set appropriately
-- Check that the bot can send DMs to users
-- Ensure map names match the expected format (alphanumeric, underscores, hyphens)
-- Make sure you have `/follow` set for the maps you want notifications for
-
-### Server status not updating
-
-- Check server IP and port in `servers.json`
-- Verify the server is accessible from your network
-- Review logs for GameDig query errors
-
-## Author
-
-**Frumpy7**
-
-## Support
-
-For issues and feature requests, please visit the [GitHub Issues](https://github.com/Sneaks-Community/discordCSGOServerBot/issues) page.
