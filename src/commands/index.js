@@ -131,6 +131,16 @@ export async function registerSlashCommands(bot) {
 }
 
 /**
+ * Audit log helper for admin command attempts
+ * @param {string} commandName - The command that was attempted
+ * @param {string} userId - The user ID that attempted the command
+ * @param {string} username - The username of the user
+ */
+function logAdminCommandAttempt(commandName, userId, username) {
+    commandLogger.info({ userId, username, command: commandName }, `Admin command attempt by non-admin user`);
+}
+
+/**
  * Handle slash command interactions
  * @param {Object} interaction - Discord interaction object
  * @param {Object} bot - Discord bot client
@@ -140,15 +150,24 @@ export async function registerSlashCommands(bot) {
 export async function handleInteraction(interaction, bot, Discord, logChannel) {
     if (!interaction.isChatInputCommand()) return;
 
+    // Ensure interaction is from a guild (not DM)
+    if (!interaction.guild) {
+        return interaction.reply({ content: "This bot is only available in servers.", ephemeral: true });
+    }
+
     const { commandName } = interaction;
     const isAdmin = adminRoleId && interaction.member?.roles?.cache?.has(adminRoleId);
+    const userId = interaction.user?.id || "unknown";
+    const username = interaction.user?.username || "unknown";
 
     try {
         // Check admin commands first (requires auth)
         if (adminCommands.has(commandName)) {
             if (!isAdmin) {
+                logAdminCommandAttempt(commandName, userId, username);
                 return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
             }
+            commandLogger.info({ userId, username, command: commandName }, `Admin command executed`);
             const handler = adminCommands.get(commandName);
             // Some handlers need extra params
             if (commandName === "testnotify") {
