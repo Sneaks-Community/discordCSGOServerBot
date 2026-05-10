@@ -65,7 +65,8 @@ function toMs(seconds) {
  */
 const baseConfig = {
     discord: {
-        token: process.env.DISCORD_TOKEN || ""
+        token: process.env.DISCORD_TOKEN || "",
+        guildID: process.env.DISCORD_GUILD_ID || ""
     },
     security: {
         adminUserIds: parseArray(process.env.ADMIN_USER_IDS)

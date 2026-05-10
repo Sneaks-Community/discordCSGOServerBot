@@ -5,6 +5,7 @@
 
 import { getDB } from "./connection.js";
 import { validateDiscordId, validateMapNameInput } from "./validation.js";
+import { dbLogger } from "../utils/logger.js";
 
 /**
  * Helper to validate and execute database operations
@@ -34,7 +35,7 @@ function execStmt(sql, params, operationName) {
     try {
         return stmt.run(...params);
     } catch (err) {
-        console.error(`Database error in ${operationName}:`, err);
+        dbLogger.error(`Database error in ${operationName}:`, err);
         throw err;
     }
 }
@@ -53,7 +54,7 @@ function performQuery(sql, params, operationName, single = false) {
     try {
         return single ? stmt.get(...params) : stmt.all(...params);
     } catch (err) {
-        console.error(`Database error in ${operationName}:`, err);
+        dbLogger.error(`Database error in ${operationName}:`, err);
         throw err;
     }
 }

@@ -4,6 +4,7 @@
  */
 
 import { CONFIG_VALUES } from "../config/index.js";
+import { serviceLogger } from "../utils/logger.js";
 
 // User cache for reducing API calls
 const userCache = new Map();
@@ -76,7 +77,7 @@ export function cleanupUserCache() {
     }
     
     if (cleaned > 0) {
-        console.log(`User cache cleanup: removed ${cleaned} entries, current size: ${userCache.size}`);
+        serviceLogger.info(`User cache cleanup: removed ${cleaned} entries, current size: ${userCache.size}`);
     }
 }
 
@@ -168,7 +169,7 @@ export function cleanupRateLimits() {
     }
     
     if (cleaned > 0) {
-        console.log(`Rate limit cleanup: removed ${cleaned} users, current size: ${userActionRateLimits.size}`);
+        serviceLogger.info(`Rate limit cleanup: removed ${cleaned} users, current size: ${userActionRateLimits.size}`);
     }
 }
 

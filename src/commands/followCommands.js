@@ -11,6 +11,7 @@ import { validateMapName } from "../utils/validation.js";
 import { followMap, unfollowMap, getUserFollows, isFollowingMap, unfollowAll } from "../db/index.js";
 import { getStatsPage } from "../utils/mapUtils.js";
 import { createFollowLogEmbed } from "../embeds/notificationEmbeds.js";
+import { commandLogger } from "../utils/logger.js";
 
 // Will be set by bot.js
 let logChannel = null;
@@ -49,7 +50,7 @@ export async function handleSlashFollow(interaction, Discord) {
 
     await interaction.reply({ content: `You are now following ${map}. You will be notified when the map comes on a server.`, ephemeral: true });
 
-    console.log(`${interaction.user.tag} followed map ${map}`);
+    commandLogger.info(`${interaction.user.tag} followed map ${map}`);
 
     const logEmbed = createFollowLogEmbed("Followed", interaction.user, map);
 
@@ -79,7 +80,7 @@ export async function handleSlashUnfollow(interaction, Discord) {
     if (map === "all") {
         await unfollowAll(interaction.user.id);
         await interaction.reply({ content: "You are no longer following any maps.", ephemeral: true });
-        console.log(`${interaction.user.tag} unfollowed all maps`);
+        commandLogger.info(`${interaction.user.tag} unfollowed all maps`);
     } else {
         if (!(await isFollowingMap(interaction.user.id, map))) {
             return interaction.reply({ content: "You are not following this map. Use `/listfollows` to see a list of maps you are following.", ephemeral: true });
@@ -87,7 +88,7 @@ export async function handleSlashUnfollow(interaction, Discord) {
 
         await unfollowMap(interaction.user.id, map);
         await interaction.reply({ content: `You are no longer following ${map}.`, ephemeral: true });
-        console.log(`${interaction.user.tag} unfollowed map ${map}`);
+        commandLogger.info(`${interaction.user.tag} unfollowed map ${map}`);
     }
 
     const logEmbed = createFollowLogEmbed("Unfollowed", interaction.user, map);

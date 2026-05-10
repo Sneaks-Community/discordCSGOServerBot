@@ -10,6 +10,7 @@ import { handleSlashPlayers, handleSlashMap, handleSlashKeywords } from "./playe
 import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
 import { handleSlashCheck, handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser, handleSlashMem } from "./adminCommands.js";
 import { handleSlashHelp, handleSlashPing, handleSlashVersion } from "./utilityCommands.js";
+import { commandLogger } from "../utils/logger.js";
 
 // Admin user IDs from config
 const allowedDevs = config.security?.adminUserIds || [];
@@ -115,17 +116,17 @@ export async function registerSlashCommands(bot) {
                 Routes.applicationGuildCommands(applicationId, config.discord.guildID),
                 { body: slashCommands }
             );
-            console.log(`Successfully registered ${slashCommands.length} guild slash commands`);
+            commandLogger.info(`Successfully registered ${slashCommands.length} guild slash commands`);
         } else {
             await rest.put(
                 Routes.applicationCommands(applicationId),
                 { body: slashCommands }
             );
-            console.log(`Successfully registered ${slashCommands.length} global slash commands`);
+            commandLogger.info(`Successfully registered ${slashCommands.length} global slash commands`);
         }
-    } catch (error) {
-        console.error("Error registering slash commands:", error);
-        throw error;
+    } catch (err) {
+        commandLogger.error("Error registering slash commands:", err);
+        throw err;
     }
 }
 
@@ -168,8 +169,8 @@ export async function handleInteraction(interaction, bot, Discord, logChannel) {
 
         // Unknown command
         await interaction.reply({ content: "Unknown command.", ephemeral: true });
-    } catch (error) {
-        console.error(`Error handling slash command ${commandName}:`, error);
+    } catch (err) {
+        commandLogger.error(`Error handling slash command ${commandName}:`, err);
         const replyMethod = interaction.replied || interaction.deferred ? "editReply" : "reply";
         await interaction[replyMethod]({ content: "An error occurred while processing your command.", ephemeral: true }).catch(() => {});
     }

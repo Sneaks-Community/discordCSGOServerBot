@@ -11,6 +11,7 @@ import { getUsersFollowingMap } from "../db/index.js";
 import { getStatsPage, getMapImage } from "../utils/mapUtils.js";
 import { withRetry } from "../utils/retry.js";
 import { validateChannelForSend } from "../utils/permissions.js";
+import { serviceLogger, warn, error } from "../utils/logger.js";
 
 // Store bot reference for fallback notifications
 let botInstance = null;
@@ -49,7 +50,7 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
         try {
             u = await getCachedUser(user.discord_id, bot);
         } catch (fetchError) {
-            console.warn(`Failed to fetch user ${user.discord_id}:`, fetchError.message);
+            warn(`Failed to fetch user ${user.discord_id}:`, fetchError.message);
             u = null;
         }
 
@@ -111,11 +112,11 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
             if (logChannel) {
                 logChannel.send({ embeds: [logEmbed] });
             }
-            console.log(`Sent notification to ${u.tag} about ${map}`);
+            serviceLogger.info(`Sent notification to ${u.tag} about ${map}`);
         } catch (e) {
             // Handle failed DM (user may have DMs disabled or other issues)
             const userId = u?.id || user.discord_id;
-            console.warn(`Failed to send DM to user <@${userId}> about ${map}:`, e.message);
+            warn(`Failed to send DM to user <@${userId}> about ${map}:`, e.message);
 
             // Send fallback notification to log channel (without user mention)
             await sendFallbackNotification(map, server, serverObj, ip, stats, mapImage);
@@ -168,6 +169,6 @@ async function sendFallbackNotification(map, server, serverObj, ip, stats, mapIm
             });
         });
     } catch (fallbackError) {
-        console.error(`Failed to send fallback notification for ${map}:`, fallbackError);
+        error(`Failed to send fallback notification for ${map}:`, fallbackError);
     }
 }

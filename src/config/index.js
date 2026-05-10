@@ -4,6 +4,7 @@
  */
 
 import { config, CONFIG_VALUES, REQUIRED_PERMISSIONS } from "./config.js";
+import { configLogger, error } from "../utils/logger.js";
 
 export { config, CONFIG_VALUES, REQUIRED_PERMISSIONS };
 
@@ -70,19 +71,19 @@ export function validateConfig() {
 
     // Log warnings
     for (const warning of warnings) {
-        console.warn(`Configuration warning: ${warning}`);
+        configLogger.warn(warning);
     }
 
     // Exit on errors
     if (errors.length > 0) {
-        console.error("\n========================================");
-        console.error("CRITICAL CONFIGURATION ERRORS:");
-        for (const error of errors) {
-            console.error(`  - ${error}`);
+        error("\n========================================");
+        error("CRITICAL CONFIGURATION ERRORS:");
+        for (const err of errors) {
+            error(`  - ${err}`);
         }
-        console.error("========================================\n");
-        console.error("Please set the required environment variables.");
-        console.error("See .env.example for reference.");
+        error("========================================\n");
+        error("Please set the required environment variables.");
+        error("See .env.example for reference.");
         process.exit(1);
     }
 

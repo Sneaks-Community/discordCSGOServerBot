@@ -15,6 +15,11 @@ import { notifyUsers, initNotificationService } from "./services/notificationSer
 import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { validateChannelForEdit, validateChannelForSend } from "./utils/permissions.js";
 import { withRetry } from "./utils/retry.js";
+import { botLogger, error, warn } from "./utils/logger.js";
+
+// Store interval references for cleanup during shutdown
+let embedInterval = null;
+let mapCheckInterval = null;
 
 // Create bot client with v14 intents
 const bot = new Discord.Client({
@@ -43,12 +48,9 @@ export async function initBot() {
     // Initialize notification service with bot instance
     initNotificationService(bot);
 
-    // Get token after validation
-    const token = config.discord.token.trim();
-
-    // Login to Discord
-    bot.login(token).catch(err => {
-        console.error("Failed to login to Discord:", err.message);
+    // Login to Discord (token is redacted by Pino automatically)
+    bot.login().catch(err => {
+        error("Failed to login to Discord:", err.message);
         process.exit(1);
     });
 }
@@ -57,7 +59,7 @@ export async function initBot() {
  * Bot ready event handler
  */
 bot.on("ready", async () => {
-    console.log("Started as " + bot.user.tag);
+    botLogger.info("Started as " + bot.user.tag);
     bot.user.setActivity("/follow <map> in #bot-commands");
 
     // Initialize logChannel with config values
@@ -65,17 +67,17 @@ bot.on("ready", async () => {
     if (guild) {
         logChannel = guild.channels.cache.get(config.logging?.channelID);
         if (!logChannel) {
-            console.warn(`Log channel ${config.logging?.channelID} not found in guild ${config.logging?.guildID}`);
+            warn(`Log channel ${config.logging?.channelID} not found in guild ${config.logging?.guildID}`);
         } else {
             // Validate bot has required permissions in log channel
             const permCheck = validateChannelForSend(logChannel);
             if (!permCheck.valid) {
-                console.warn(`Log channel ${config.logging?.channelID} permission issue: ${permCheck.error}`);
+                warn(`Log channel ${config.logging?.channelID} permission issue: ${permCheck.error}`);
                 logChannel = null; // Disable logging if permissions are missing
             }
         }
     } else {
-        console.warn(`Guild ${config.logging?.guildID} not found`);
+        warn(`Guild ${config.logging?.guildID} not found`);
     }
 
     // Set log channel for follow commands
@@ -87,11 +89,11 @@ bot.on("ready", async () => {
     // Start the interval function
     await intervalFunction();
 
-    // Start embed update loop
-    setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
+    // Start embed update loop (store reference for cleanup)
+    embedInterval = setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
 
-    // Start map change notification loop
-    setInterval(() => updateServerData(notifyUsers), CONFIG_VALUES.MAP_CHECK_INTERVAL_MS);
+    // Start map change notification loop (store reference for cleanup)
+    mapCheckInterval = setInterval(() => updateServerData(notifyUsers), CONFIG_VALUES.MAP_CHECK_INTERVAL_MS);
 
     // Start cleanup intervals for cache and rate limits
     startCleanupIntervals();
@@ -104,7 +106,7 @@ async function intervalFunction() {
     try {
         await refresh();
     } catch (error) {
-        console.error("Failed to refresh server data:", error);
+        error("Failed to refresh server data:", error);
         return; // Skip embed update if refresh fails
     }
     
@@ -125,10 +127,10 @@ async function intervalFunction() {
                     }
                     
                     const message = await channel.messages.fetch(e.messageID);
-                    await message.edit({ content: "‎", embeds: [embed] });
+                    await message.edit({ content: "\u200B", embeds: [embed] });
                 });
             } catch (error) {
-                console.error(`Failed to update embed in channel ${e.channelID} after retries:`, error);
+                error(`Failed to update embed in channel ${e.channelID} after retries:`, error);
             }
         })
     );
@@ -151,26 +153,40 @@ bot.on("interactionCreate", async (interaction) => {
 /**
  * Graceful shutdown handling
  */
-process.on("SIGINT", async () => {
-    console.log("Received SIGINT, shutting down...");
+async function gracefulShutdown(signal) {
+    botLogger.info(`Received ${signal}, shutting down...`);
+    
+    // Clear intervals to prevent further operations
+    if (embedInterval) {
+        clearInterval(embedInterval);
+        embedInterval = null;
+    }
+    if (mapCheckInterval) {
+        clearInterval(mapCheckInterval);
+        mapCheckInterval = null;
+    }
+    
     try {
         closeDB();
+        botLogger.info("Shutdown complete.");
         process.exit(0);
-    } catch (error) {
-        console.error("Shutdown error:", error);
+    } catch (shutdownError) {
+        error("Shutdown error:", shutdownError);
         process.exit(1);
     }
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
+// Global error handlers for unhandled promise rejections and exceptions
+process.on("unhandledRejection", (error) => {
+    error("Unhandled promise rejection:", error);
 });
 
-process.on("SIGTERM", async () => {
-    console.log("Received SIGTERM, shutting down...");
-    try {
-        closeDB();
-        process.exit(0);
-    } catch (error) {
-        console.error("Shutdown error:", error);
-        process.exit(1);
-    }
+process.on("uncaughtException", (error) => {
+    error("Uncaught exception:", error);
+    process.exit(1);
 });
 
 export { bot, logChannel };

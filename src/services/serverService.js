@@ -8,6 +8,7 @@ import pLimit from "p-limit";
 
 import { CONFIG_VALUES } from "../config/index.js";
 import serverObject from "../../servers.json" with { type: "json" };
+import { serviceLogger } from "../utils/logger.js";
 
 // Server data state management
 let _serverData = {};
@@ -80,7 +81,8 @@ export async function getInfo(server, index) {
         host: ip,
         port: port,
         maxRetries: CONFIG_VALUES.GAMEDIG_MAX_RETRIES
-    }).catch(() => {
+    }).catch((err) => {
+        serviceLogger.error(`GameDig query failed for ${server.ip}:`, err.message);
         valid = false;
     });
 
@@ -131,8 +133,8 @@ export async function refresh() {
                 try {
                     const data = await getInfo(server, index + 1);
                     return [name, data];
-                } catch (error) {
-                    console.error(`Failed to query ${name}:`, error);
+                } catch (err) {
+                    serviceLogger.error(`Failed to query ${name}:`, err);
                     // Return minimal data on error
                     return [name, { online: false, name: server.nick, keywords: server.keywords, index: index + 1 }];
                 }

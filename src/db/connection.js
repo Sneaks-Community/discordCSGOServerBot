@@ -5,6 +5,8 @@
 
 import Database from "better-sqlite3";
 
+import { dbLogger } from "../utils/logger.js";
+
 let db = null;
 
 /**
@@ -22,7 +24,7 @@ function getDatabasePath() {
  */
 export async function initDB() {
     const dbPath = getDatabasePath();
-    console.log(`Initializing database at: ${dbPath}`);
+    dbLogger.info(`Initializing database at: ${dbPath}`);
     db = new Database(dbPath);
     // Enable WAL mode for better concurrency
     db.pragma("journal_mode = WAL");
