@@ -31,7 +31,6 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 | `/listfollows` | Display all maps you are currently following |
 | `/help` | Show a list of all available commands |
 | `/ping` | Check bot latency |
-| `/version` | Display the bot version |
 
 ### Administrator Commands
 

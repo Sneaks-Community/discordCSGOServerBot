@@ -1,11 +1,10 @@
 /**
  * Utility slash command handlers
- * Handles /help, /ping, and /version commands
+ * Handles /help and /ping commands
  */
 
 import { EmbedBuilder } from "discord.js";
 
-import pkg from "../../package.json" with { type: "json" };
 import { CONFIG_VALUES } from "../config/index.js";
 
 /**
@@ -24,8 +23,7 @@ export async function handleSlashHelp(interaction) {
             { name: "/follow <map>", value: "Follow a map to receive DM notifications" },
             { name: "/unfollow <map|all>", value: "Stop following a map or all maps" },
             { name: "/listfollows", value: "List all maps you are following" },
-            { name: "/ping", value: "Check bot latency" },
-            { name: "/version", value: "Show bot version" }
+            { name: "/ping", value: "Check bot latency" }
         );
 
     await interaction.reply({ embeds: [embed] });
@@ -37,12 +35,4 @@ export async function handleSlashHelp(interaction) {
  */
 export async function handleSlashPing(interaction) {
     await interaction.reply({ content: "🏓 Pong!", ephemeral: true });
-}
-
-/**
- * Handle /version slash command
- * @param {Object} interaction - Discord interaction object
- */
-export async function handleSlashVersion(interaction) {
-    await interaction.reply({ content: pkg.version, ephemeral: true });
 }

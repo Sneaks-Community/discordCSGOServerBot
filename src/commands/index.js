@@ -10,7 +10,7 @@ import { commandLogger } from "../utils/logger.js";
 import { handleSlashCheck, handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser, handleSlashMem } from "./adminCommands.js";
 import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
 import { handleSlashPlayers, handleSlashMap, handleSlashKeywords } from "./playerCommands.js";
-import { handleSlashHelp, handleSlashPing, handleSlashVersion } from "./utilityCommands.js";
+import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
 
 // Admin role ID from config
 const adminRoleId = config.security?.adminRoleId || "";
@@ -27,8 +27,7 @@ const publicCommands = new Map([
     ["unfollow", handleSlashUnfollow],
     ["listfollows", handleSlashListfollows],
     ["help", handleSlashHelp],
-    ["ping", handleSlashPing],
-    ["version", handleSlashVersion]
+    ["ping", handleSlashPing]
 ]);
 
 /**
@@ -61,7 +60,6 @@ function getCommandDefinitions() {
         { admin: false, description: "List all maps you are following", name: "listfollows" },
         { admin: false, description: "Show list of available commands", name: "help" },
         { admin: false, description: "Check bot latency", name: "ping" },
-        { admin: false, description: "Show bot version", name: "version" },
         { admin: true, description: "Check server status by IP, domain, or keyword (Admin only)", name: "check",
             options: opt => opt.setName("server").setDescription("Server IP address, domain name (e.g., example.com:27015), or keyword").setRequired(true) },
         { admin: true, description: "List all users and their followed maps (Admin only)", name: "listallfollows" },
