@@ -21,16 +21,11 @@ export function validateConfig() {
         errors.push("DISCORD_TOKEN environment variable is missing or empty");
     }
 
-    // Critical: Security admin IDs
-    if (!config.security?.adminUserIds || !Array.isArray(config.security.adminUserIds) || config.security.adminUserIds.length === 0) {
-        warnings.push("ADMIN_USER_IDS environment variable is missing or empty - admin commands will be inaccessible");
-    } else {
-        // Validate each admin ID format
-        for (const id of config.security.adminUserIds) {
-            if (typeof id !== "string" || !/^\d{17,19}$/.test(id)) {
-                warnings.push(`Invalid admin user ID format: "${id}" - should be 17-19 digits`);
-            }
-        }
+    // Critical: Security admin role ID
+    if (!config.security?.adminRoleId || typeof config.security.adminRoleId !== "string" || config.security.adminRoleId.trim() === "") {
+        warnings.push("ADMIN_ROLE_ID environment variable is missing or empty - admin commands will be inaccessible");
+    } else if (!/^\d{17,19}$/.test(config.security.adminRoleId)) {
+        warnings.push(`Invalid admin role ID format: "${config.security.adminRoleId}" - should be 17-19 digits`);
     }
 
     // Important: Logging configuration

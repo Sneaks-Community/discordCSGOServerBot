@@ -93,7 +93,7 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `DISCORD_TOKEN` | Yes | - | Your Discord bot token |
-| `ADMIN_USER_IDS` | Recommended | - | Comma-separated Discord user IDs with admin access |
+| `ADMIN_ROLE_ID` | Recommended | - | Discord role ID with admin access |
 | `LOGGING_ENABLED` | No | `true` | Enable/disable logging |
 | `LOG_GUILD_ID` | No | - | Guild ID for logging bot activities |
 | `LOG_CHANNEL_ID` | No | - | Channel ID for logging bot activities |
@@ -253,7 +253,7 @@ All configuration options can be set via environment variables. See `.env.exampl
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `DISCORD_TOKEN` | Yes | Your Discord bot token |
-| `ADMIN_USER_IDS` | Yes | Comma-separated Discord user IDs |
+| `ADMIN_ROLE_ID` | No | Discord role ID with admin access |
 | `LOG_GUILD_ID` | No | Guild ID for logging |
 | `LOG_CHANNEL_ID` | No | Channel ID for logging |
 | `FALLBACK_GUILD_ID` | No | Fallback guild for DMs |

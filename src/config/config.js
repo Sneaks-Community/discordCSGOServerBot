@@ -69,7 +69,7 @@ const baseConfig = {
         guildID: process.env.DISCORD_GUILD_ID || ""
     },
     security: {
-        adminUserIds: parseArray(process.env.ADMIN_USER_IDS)
+        adminRoleId: process.env.ADMIN_ROLE_ID || ""
     },
     logging: {
         enabled: parseBoolean(process.env.LOGGING_ENABLED, true),

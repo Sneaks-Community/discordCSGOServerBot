@@ -12,8 +12,8 @@ import { handleSlashCheck, handleSlashListallfollows, handleSlashTestnotify, han
 import { handleSlashHelp, handleSlashPing, handleSlashVersion } from "./utilityCommands.js";
 import { commandLogger } from "../utils/logger.js";
 
-// Admin user IDs from config
-const allowedDevs = config.security?.adminUserIds || [];
+// Admin role ID from config
+const adminRoleId = config.security?.adminRoleId || "";
 
 /**
  * Public command handlers map - O(1) lookup
@@ -141,7 +141,7 @@ export async function handleInteraction(interaction, bot, Discord, logChannel) {
     if (!interaction.isChatInputCommand()) return;
 
     const { commandName } = interaction;
-    const isAdmin = allowedDevs.includes(interaction.user.id);
+    const isAdmin = adminRoleId && interaction.member?.roles?.cache?.has(adminRoleId);
 
     try {
         // Check admin commands first (requires auth)
