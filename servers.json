@@ -3,6 +3,7 @@
         "ip": "216.52.143.73:27015",
         "nick": "Beginner Surf",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "beg",
             "beginner",
@@ -13,6 +14,7 @@
         "ip": "74.91.113.236:27015",
         "nick": "Easy Surf",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "ez",
             "easy",
@@ -23,6 +25,7 @@
         "ip": "74.91.113.133:27015",
         "nick": "Advanced Surf",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "adv",
             "advanced",
@@ -33,6 +36,7 @@
         "ip": "74.91.113.133:27017",
         "nick": "Top 100/VIP Surf",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "top100",
             "top 100",
@@ -44,6 +48,7 @@
         "ip": "162.248.92.83:27015",
         "nick": "KZ Climb",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "kz",
             "kz climb"
@@ -53,6 +58,7 @@
         "ip": "162.248.92.83:27017",
         "nick": "GOKZ Climb",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "gokz",
             "gokz climb"
@@ -62,6 +68,7 @@
         "ip": "162.248.92.83:27025",
         "nick": "Top 100/VIP KZ",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "vip kz",
             "top 100 kz",
@@ -72,6 +79,7 @@
         "ip": "162.248.92.80:27015",
         "nick": "Bhop",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "bhop"
         ]
@@ -80,6 +88,7 @@
         "ip": "162.248.92.80:27019",
         "nick": "Top 50/VIP Bhop",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "vipbhop",
             "top50bhop",
@@ -90,6 +99,7 @@
         "ip": "72.5.195.31:27015",
         "nick": "Retakes #1",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "re1",
             "retakes1",
@@ -100,6 +110,7 @@
         "ip": "72.5.195.31:27017",
         "nick": "Retakes #2",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "re2",
             "retakes2",
@@ -110,6 +121,7 @@
         "ip": "72.5.195.31:27023",
         "nick": "Retakes #3",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "re3",
             "retakes3",
@@ -120,6 +132,7 @@
         "ip": "74.91.119.186:27015",
         "nick": "1v1 Arenas #1",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "1v11",
             "arenas1",
@@ -130,6 +143,7 @@
         "ip": "74.91.119.186:27017",
         "nick": "1v1 Arenas #2",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "1v12",
             "arenas2",
@@ -140,6 +154,7 @@
         "ip": "74.91.113.198:27015",
         "nick": "Minigames",
         "show": true,
+        "protocol": "csgo",
         "keywords": [
             "mini",
             "minigames"
