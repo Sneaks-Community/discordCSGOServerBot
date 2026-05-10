@@ -31,7 +31,12 @@ export function initDB() {
     
     // Use a transaction for atomic initialization
     const initTransaction = db.transaction(() => {
-        // Create table called players_follow with columns for discord_id, map_name, and a unique index on conflict replace
+        // Create table players_follow with columns for discord_id, map_name
+        // ON CONFLICT REPLACE: if a duplicate (discord_id, map_name) pair is inserted,
+        // the old row is deleted and a new one is inserted. This is intentional for
+        // the follow system -- if a user re-follows a map, we want a clean record.
+        // Note: This changes the rowid on conflict, but there are no foreign keys
+        // referencing this table, so no cascading issues occur.
         db.exec(`
             CREATE TABLE IF NOT EXISTS players_follow (
                 discord_id TEXT,

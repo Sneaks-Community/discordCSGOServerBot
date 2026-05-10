@@ -13,8 +13,7 @@ import { validateWithZod, playerNameSchema } from "../utils/zodValidator.js";
 
 // Server data state management
 let _serverData = {};
-const _isRefreshing = false;
-let _lastRefreshTime = 0;
+let _isRefreshing = false;
 
 // Track old data for map change notifications
 const oldData = {};
@@ -47,7 +46,6 @@ export function isServerDataEmpty() {
  */
 export function setServerData(newData) {
     _serverData = { ...newData };
-    _lastRefreshTime = Date.now();
 }
 
 /**
@@ -147,27 +145,37 @@ export async function getInfo(server, index) {
  * @returns {Promise<void>}
  */
 export async function refresh() {
-    const serverEntries = Object.entries(serverObject);
-  
-    // Create a limiter for concurrent server queries
-    const limit = pLimit(CONFIG_VALUES.MAX_CONCURRENT_SERVER_QUERIES);
-  
-    const results = await Promise.all(
-        serverEntries.map(([name, server], index) => 
-            limit(async () => {
-                try {
-                    const data = await getInfo(server, index + 1);
-                    return [name, data];
-                } catch (err) {
-                    serviceLogger.error(`Failed to query ${name}:`, err);
-                    // Return minimal data on error
-                    return [name, { index: index + 1, keywords: server.keywords, name: server.nick, online: false }];
-                }
-            })
-        )
-    );
+    if (_isRefreshing) {
+        serviceLogger.debug("Skipping refresh -- already in progress");
+        return;
+    }
 
-    setServerData(Object.fromEntries(results));
+    _isRefreshing = true;
+    try {
+        const serverEntries = Object.entries(serverObject);
+    
+        // Create a limiter for concurrent server queries
+        const limit = pLimit(CONFIG_VALUES.MAX_CONCURRENT_SERVER_QUERIES);
+    
+        const results = await Promise.all(
+            serverEntries.map(([name, server], index) =>
+                limit(async () => {
+                    try {
+                        const data = await getInfo(server, index + 1);
+                        return [name, data];
+                    } catch (err) {
+                        serviceLogger.error(`Failed to query ${name}:`, err);
+                        // Return minimal data on error
+                        return [name, { index: index + 1, keywords: server.keywords, name: server.nick, online: false }];
+                    }
+                })
+            )
+        );
+    
+        setServerData(Object.fromEntries(results));
+    } finally {
+        _isRefreshing = false;
+    }
 }
 
 /**

@@ -174,9 +174,25 @@ export function cleanupRateLimits() {
 }
 
 /**
+ * Store cleanup interval references for proper shutdown
+ * @type {NodeJS.Timeout[]}
+ */
+let cleanupIntervalRefs = [];
+
+/**
  * Start cleanup intervals for cache and rate limits
+ * @returns {NodeJS.Timeout[]} Array of interval IDs for external cleanup
  */
 export function startCleanupIntervals() {
-    setInterval(cleanupUserCache, 300000); // 5 minutes
-    setInterval(cleanupRateLimits, 300000); // 5 minutes
+    cleanupIntervalRefs.push(setInterval(cleanupUserCache, 300000)); // 5 minutes
+    cleanupIntervalRefs.push(setInterval(cleanupRateLimits, 300000)); // 5 minutes
+    return cleanupIntervalRefs;
+}
+
+/**
+ * Clear all cleanup intervals
+ */
+export function clearCleanupIntervals() {
+    cleanupIntervalRefs.forEach(id => clearInterval(id));
+    cleanupIntervalRefs = [];
 }

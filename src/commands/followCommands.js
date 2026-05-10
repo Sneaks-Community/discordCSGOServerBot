@@ -28,9 +28,8 @@ export function setFollowLogChannel(channel) {
 /**
  * Handle /follow slash command
  * @param {Object} interaction - Discord interaction object
- * @param {Object} Discord - Discord.js library for mention patterns
  */
-export async function handleSlashFollow(interaction, _Discord) {
+export async function handleSlashFollow(interaction) {
     const rawMap = interaction.options.getString("map");
 
     // Validate Discord ID first
@@ -65,16 +64,17 @@ export async function handleSlashFollow(interaction, _Discord) {
     const logEmbed = createFollowLogEmbed("Followed", interaction.user, sanitizedMap);
 
     if (logChannel) {
-        logChannel.send({ embeds: [logEmbed] });
+        logChannel.send({ embeds: [logEmbed] }).catch(err => {
+            commandLogger.error("Failed to send follow log:", err);
+        });
     }
 }
 
 /**
  * Handle /unfollow slash command
  * @param {Object} interaction - Discord interaction object
- * @param {Object} Discord - Discord.js library for mention patterns
  */
-export async function handleSlashUnfollow(interaction, _Discord) {
+export async function handleSlashUnfollow(interaction) {
     const rawMap = interaction.options.getString("map");
 
     // Validate Discord ID first
@@ -114,7 +114,9 @@ export async function handleSlashUnfollow(interaction, _Discord) {
     const logEmbed = createFollowLogEmbed(rawMap === "all" ? "Unfollowed" : "Unfollowed", interaction.user, rawMap === "all" ? "all" : rawMap);
 
     if (logChannel) {
-        logChannel.send({ embeds: [logEmbed] });
+        logChannel.send({ embeds: [logEmbed] }).catch(err => {
+            commandLogger.error("Failed to send unfollow log:", err);
+        });
     }
 }
 

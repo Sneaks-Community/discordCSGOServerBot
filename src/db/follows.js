@@ -33,6 +33,7 @@ function validateOrThrow(schema, value, operationName) {
  */
 function execStmt(sql, params, operationName) {
     const db = getDB();
+    if (!db) throw new Error("Database not initialized");
     const stmt = db.prepare(sql);
     try {
         return stmt.run(...params);
@@ -52,6 +53,7 @@ function execStmt(sql, params, operationName) {
  */
 function performQuery(sql, params, operationName, single = false) {
     const db = getDB();
+    if (!db) throw new Error("Database not initialized");
     const stmt = db.prepare(sql);
     try {
         return single ? stmt.get(...params) : stmt.all(...params);

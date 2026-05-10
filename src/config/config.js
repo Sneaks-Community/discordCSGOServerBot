@@ -4,16 +4,6 @@
  */
 
 /**
- * Parse a comma-separated string into an array
- * @param {string} value - Comma-separated string
- * @returns {string[]} Array of trimmed values
- */
-function _parseArray(value) {
-    if (!value || typeof value !== "string") return [];
-    return value.split(",").map(s => s.trim()).filter(Boolean);
-}
-
-/**
  * Parse a JSON string into an object/array
  * @param {string} value - JSON string
  * @param {object|array} defaultValue - Default value if parsing fails
@@ -122,6 +112,7 @@ const baseConfig = {
         adminRoleId: process.env.ADMIN_ROLE_ID || ""
     },
     serverUpdate: {
+        defaultPort: parseInt_(process.env.SERVER_DEFAULT_PORT, 27015),
         intervalSeconds: parseInt_(process.env.SERVER_UPDATE_INTERVAL, 90),
         mapCheckIntervalSeconds: parseInt_(process.env.MAP_CHECK_INTERVAL, 91),
         maxConcurrentQueries: parseInt_(process.env.MAX_CONCURRENT_QUERIES, 10)

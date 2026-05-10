@@ -10,7 +10,7 @@ import { registerSlashCommands, handleInteraction } from "./commands/index.js";
 import { config, CONFIG_VALUES, validateConfig } from "./config/index.js";
 import { initDB, closeDB, unfollowAll } from "./db/index.js";
 import { makeEmbed } from "./embeds/serverEmbeds.js";
-import { startCleanupIntervals } from "./services/cacheService.js";
+import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheService.js";
 import { notifyUsers, initNotificationService } from "./services/notificationService.js";
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
 import { botLogger, error, warn } from "./utils/logger.js";
@@ -29,7 +29,8 @@ const bot = new Discord.Client({
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.DirectMessageReactions
-    ]
+    ],
+    token: config.discord.token
 });
 
 // Log channel for notifications
@@ -165,6 +166,9 @@ function gracefulShutdown(signal) {
         clearInterval(mapCheckInterval);
         mapCheckInterval = null;
     }
+    
+    // Clear cleanup intervals for cache and rate limits
+    clearCleanupIntervals();
     
     try {
         closeDB();

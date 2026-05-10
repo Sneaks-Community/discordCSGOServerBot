@@ -16,6 +16,11 @@ import { getCachedUser } from "./cacheService.js";
 // Store bot reference for fallback notifications
 let botInstance = null;
 
+// Track notification rate to prevent spam (module-level to persist across calls)
+const notificationRateLimit = new Map();
+const NOTIFICATION_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute window
+const NOTIFICATION_MAX_PER_USER = 1; // Max 1 notification per user per minute
+
 /**
  * Initialize the notification service with bot instance
  * @param {Object} bot - The Discord bot client
@@ -23,6 +28,24 @@ let botInstance = null;
 export function initNotificationService(bot) {
     botInstance = bot;
 }
+
+/**
+ * Clean up expired notification rate limit entries
+ */
+function cleanupNotificationRateLimit() {
+    const now = Date.now();
+    for (const [userId, timestamps] of notificationRateLimit.entries()) {
+        const valid = timestamps.filter(ts => now - ts < NOTIFICATION_RATE_LIMIT_WINDOW_MS);
+        if (valid.length === 0) {
+            notificationRateLimit.delete(userId);
+        } else {
+            notificationRateLimit.set(userId, valid);
+        }
+    }
+}
+
+// Clean up expired entries every 5 minutes
+setInterval(cleanupNotificationRateLimit, 300000);
 
 /**
  * Send notifications to users following a map
@@ -35,11 +58,6 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
     const server = serverObj?.nick ?? "unknown server";
     const ip = serverObj?.ip ?? "unknown IP";
     const users = await getUsersFollowingMap(map);
-
-    // Track notification rate to prevent spam
-    const notificationRateLimit = new Map();
-    const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute window
-    const MAX_NOTIFICATIONS_PER_USER = 1; // Max 1 notification per user per minute
 
     for (const user of users) {
         const stats = getStatsPage(map);
@@ -69,9 +87,9 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
             const userNotifications = notificationRateLimit.get(user.discord_id);
       
             // Filter out notifications older than the rate limit window
-            const recentNotifications = userNotifications.filter(timestamp => now - timestamp < RATE_LIMIT_WINDOW_MS);
+            const recentNotifications = userNotifications.filter(timestamp => now - timestamp < NOTIFICATION_RATE_LIMIT_WINDOW_MS);
       
-            if (recentNotifications.length >= MAX_NOTIFICATIONS_PER_USER) {
+            if (recentNotifications.length >= NOTIFICATION_MAX_PER_USER) {
                 // Skip notification to prevent spam
                 continue;
             }
@@ -110,7 +128,9 @@ export async function notifyUsers(map, serverObj, bot, logChannel) {
                 .setThumbnail(u.displayAvatarURL());
 
             if (logChannel) {
-                logChannel.send({ embeds: [logEmbed] });
+                logChannel.send({ embeds: [logEmbed] }).catch(err => {
+                    warn("Failed to send notification log:", err);
+                });
             }
             serviceLogger.info(`Sent notification to ${u.tag} about ${map}`);
         } catch (e) {

@@ -45,12 +45,9 @@ export default [
       semi: ["error", "always"],
 
       // ── Core Best Practices ──────────────────────────────────────
-      "no-unused-vars": ["warn", {
-        argsIgnorePattern: "^_",
-        varsIgnorePattern: "^_",
-        caughtErrors: "all",
-        caughtErrorsIgnorePattern: "^_"
-      }],
+      "no-unused-vars": "error",
+      "no-undef": "error",
+      "no-eval": "error",
       "no-console": "error",
       "no-prototype-builtins": "error",
       "prefer-const": "error",
