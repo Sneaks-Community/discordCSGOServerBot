@@ -1,6 +1,5 @@
 import eslint from "@eslint/js";
 import nPlugin from "eslint-plugin-n";
-import importPlugin from "eslint-plugin-import";
 import unicornPlugin from "eslint-plugin-unicorn";
 import perfectionistPlugin from "eslint-plugin-perfectionist";
 
@@ -19,7 +18,6 @@ export default [
   {
     plugins: {
       n: nPlugin,
-      import: importPlugin,
       unicorn: unicornPlugin,
       perfectionist: perfectionistPlugin
     },
