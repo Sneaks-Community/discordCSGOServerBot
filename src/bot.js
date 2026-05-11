@@ -21,6 +21,9 @@ import { withRetry } from "./utils/retry.js";
 let embedInterval = null;
 let mapCheckInterval = null;
 
+// Track connection state for reconnection handling
+let isDisconnected = false;
+
 // Create bot client with v14 intents
 const bot = new Discord.Client({
     intents: [
@@ -109,6 +112,11 @@ bot.on("ready", async () => {
  * Interval function to refresh server data and update embeds
  */
 async function intervalFunction() {
+    if (isDisconnected) {
+        botLogger.warn("Skipping interval update - bot is disconnected");
+        return;
+    }
+    
     try {
         await refresh();
     } catch (error) {
@@ -154,6 +162,38 @@ bot.on("guildMemberRemove", async (member) => {
  */
 bot.on("interactionCreate", async (interaction) => {
     await handleInteraction(interaction, bot, Discord, logChannel);
+});
+
+/**
+ * Handle disconnection from Discord
+ */
+bot.on("disconnect", () => {
+    botLogger.warn("Disconnected from Discord, pausing intervals...");
+    isDisconnected = true;
+    
+    // Clear intervals to prevent stale operations during disconnection
+    if (embedInterval) {
+        clearInterval(embedInterval);
+        embedInterval = null;
+    }
+    if (mapCheckInterval) {
+        clearInterval(mapCheckInterval);
+        mapCheckInterval = null;
+    }
+});
+
+/**
+ * Handle reconnection to Discord
+ */
+bot.on("reconnect", () => {
+    botLogger.info("Reconnected to Discord, refreshing data...");
+    isDisconnected = false;
+    
+    // Restart intervals and force a full refresh
+    intervalFunction();
+    
+    embedInterval = setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
+    mapCheckInterval = setInterval(() => updateServerData(notifyUsers), CONFIG_VALUES.MAP_CHECK_INTERVAL_MS);
 });
 
 /**
