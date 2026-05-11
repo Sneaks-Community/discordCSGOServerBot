@@ -4,6 +4,10 @@
   "description": "Server info bot",
   "main": "src/index.js",
   "type": "module",
+  "files": [
+    "src/**/*",
+    "servers.json"
+  ],
   "scripts": {
     "start": "node src/index.js",
     "lint": "eslint .",

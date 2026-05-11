@@ -60,44 +60,49 @@ export async function initBot() {
  * Bot ready event handler
  */
 bot.on("ready", async () => {
-    botLogger.info("Started as " + bot.user.tag);
-    bot.user.setActivity("/follow <map> in #bot-commands");
+    try {
+        botLogger.info("Started as " + bot.user.tag);
+        bot.user.setActivity("/follow <map> in #bot-commands");
 
-    // Initialize logChannel with config values
-    const guild = bot.guilds.cache.get(config.logging?.guildID);
-    if (guild) {
-        logChannel = guild.channels.cache.get(config.logging?.channelID);
-        if (logChannel) {
-            // Validate bot has required permissions in log channel
-            const permCheck = validateChannelForSend(logChannel);
-            if (!permCheck.valid) {
-                warn(`Log channel ${config.logging?.channelID} permission issue: ${permCheck.error}`);
-                logChannel = null; // Disable logging if permissions are missing
+        // Initialize logChannel with config values
+        const guild = bot.guilds.cache.get(config.logging?.guildID);
+        if (guild) {
+            logChannel = guild.channels.cache.get(config.logging?.channelID);
+            if (logChannel) {
+                // Validate bot has required permissions in log channel
+                const permCheck = validateChannelForSend(logChannel);
+                if (!permCheck.valid) {
+                    warn(`Log channel ${config.logging?.channelID} permission issue: ${permCheck.error}`);
+                    logChannel = null; // Disable logging if permissions are missing
+                }
+            } else {
+                warn(`Log channel ${config.logging?.channelID} not found in guild ${config.logging?.guildID}`);
             }
         } else {
-            warn(`Log channel ${config.logging?.channelID} not found in guild ${config.logging?.guildID}`);
+            warn(`Guild ${config.logging?.guildID} not found`);
         }
-    } else {
-        warn(`Guild ${config.logging?.guildID} not found`);
+
+        // Set log channel for follow commands
+        setFollowLogChannel(logChannel);
+
+        // Register slash commands
+        await registerSlashCommands(bot);
+
+        // Start the interval function
+        await intervalFunction();
+
+        // Start embed update loop (store reference for cleanup)
+        embedInterval = setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
+
+        // Start map change notification loop (store reference for cleanup)
+        mapCheckInterval = setInterval(() => updateServerData(notifyUsers), CONFIG_VALUES.MAP_CHECK_INTERVAL_MS);
+
+        // Start cleanup intervals for cache and rate limits
+        startCleanupIntervals();
+    } catch (err) {
+        botLogger.error(err, "Failed during ready initialization");
+        process.exit(1);
     }
-
-    // Set log channel for follow commands
-    setFollowLogChannel(logChannel);
-
-    // Register slash commands
-    await registerSlashCommands(bot);
-
-    // Start the interval function
-    await intervalFunction();
-
-    // Start embed update loop (store reference for cleanup)
-    embedInterval = setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
-
-    // Start map change notification loop (store reference for cleanup)
-    mapCheckInterval = setInterval(() => updateServerData(notifyUsers), CONFIG_VALUES.MAP_CHECK_INTERVAL_MS);
-
-    // Start cleanup intervals for cache and rate limits
-    startCleanupIntervals();
 });
 
 /**
