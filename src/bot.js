@@ -11,7 +11,7 @@ import { config, CONFIG_VALUES, validateConfig } from "./config/index.js";
 import { initDB, closeDB, unfollowAll } from "./db/index.js";
 import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheService.js";
-import { notifyUsers, initNotificationService } from "./services/notificationService.js";
+import { notifyUsers, initNotificationService, setNotificationLogChannel } from "./services/notificationService.js";
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
 import { botLogger, error, warn } from "./utils/logger.js";
 import { validateChannelForEdit, validateChannelForSend } from "./utils/permissions.js";
@@ -85,8 +85,9 @@ bot.on("ready", async () => {
             warn(`Guild ${config.logging?.guildID} not found`);
         }
 
-        // Set log channel for follow commands
+        // Set log channel for follow commands and notifications
         setFollowLogChannel(logChannel);
+        setNotificationLogChannel(logChannel);
 
         // Register slash commands
         await registerSlashCommands(bot);

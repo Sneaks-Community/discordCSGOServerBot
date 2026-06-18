@@ -16,6 +16,9 @@ import { getCachedUser } from "./cacheService.js";
 // Store bot reference for fallback notifications
 let botInstance = null;
 
+// Store log channel reference for notification success logs (set from bot.js once ready)
+let notificationLogChannel = null;
+
 // Track notification rate to prevent spam (module-level to persist across calls)
 const notificationRateLimit = new Map();
 const NOTIFICATION_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute window
@@ -27,6 +30,14 @@ const NOTIFICATION_MAX_PER_USER = 1; // Max 1 notification per user per minute
  */
 export function initNotificationService(bot) {
     botInstance = bot;
+}
+
+/**
+ * Set the log channel used for notification success logs
+ * @param {Object} channel - The Discord log channel
+ */
+export function setNotificationLogChannel(channel) {
+    notificationLogChannel = channel;
 }
 
 /**
@@ -51,10 +62,10 @@ setInterval(cleanupNotificationRateLimit, 300000);
  * Send notifications to users following a map
  * @param {string} map - The map name
  * @param {Object} serverObj - The server object with player info
- * @param {Object} bot - The Discord bot client
- * @param {Object} logChannel - The log channel for notifications
+ * @param {Object} [bot] - The Discord bot client (defaults to the instance set via initNotificationService)
+ * @param {Object} [logChannel] - The log channel for success logs (defaults to the channel set via setNotificationLogChannel)
  */
-export async function notifyUsers(map, serverObj, bot, logChannel) {
+export async function notifyUsers(map, serverObj, bot = botInstance, logChannel = notificationLogChannel) {
     const server = serverObj?.nick ?? "unknown server";
     const ip = serverObj?.ip ?? "unknown IP";
     const users = await getUsersFollowingMap(map);
