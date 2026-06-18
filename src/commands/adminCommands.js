@@ -7,13 +7,14 @@ import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
 import { getAllFollows, hasMap, unfollowAll } from "../db/index.js";
+import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js";
 import { checkRateLimit } from "../services/cacheService.js";
 import { notifyUsers } from "../services/notificationService.js";
 import { getInfo, getServerByKeyword } from "../services/serverService.js";
 import { escapeForDiscord, escapeList } from "../utils/discordEscape.js";
 import { getMapImage, getStatsPage } from "../utils/mapUtils.js";
 import { validateServerInput } from "../utils/validation.js";
-import { validateWithZod, discordIdSchema, mapNameSchema } from "../utils/zodValidator.js";
+import { validateWithZod } from "../utils/zodValidator.js";
 
 /**
  * Handle /check slash command (Admin only)

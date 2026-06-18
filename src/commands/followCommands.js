@@ -8,11 +8,12 @@ import { EmbedBuilder } from "discord.js";
 import { CONFIG_VALUES } from "../config/index.js";
 import { followMap, unfollowMap, getUserFollows, isFollowingMap, unfollowAll } from "../db/index.js";
 import { createFollowLogEmbed } from "../embeds/notificationEmbeds.js";
+import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js";
 import { checkRateLimit } from "../services/cacheService.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
 import { commandLogger } from "../utils/logger.js";
 import { getStatsPage } from "../utils/mapUtils.js";
-import { validateWithZod, mapNameSchema, discordIdSchema } from "../utils/zodValidator.js";
+import { validateWithZod } from "../utils/zodValidator.js";
 
 // Will be set by bot.js
 let logChannel = null;

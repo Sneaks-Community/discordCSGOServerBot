@@ -8,8 +8,9 @@ import pLimit from "p-limit";
 
 import serverObject from "../../servers.json" with { type: "json" };
 import { CONFIG_VALUES } from "../config/index.js";
+import { playerNameSchema } from "../schemas/validationSchemas.js";
 import { serviceLogger } from "../utils/logger.js";
-import { validateWithZod, playerNameSchema } from "../utils/zodValidator.js";
+import { validateWithZod } from "../utils/zodValidator.js";
 
 // Server data state management
 let _serverData = {};

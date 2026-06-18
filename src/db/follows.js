@@ -5,8 +5,9 @@
  * Uses Zod v4 schemas for validation and parameterized queries for SQL injection prevention.
  */
 
+import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js";
 import { dbLogger } from "../utils/logger.js";
-import { validateWithZod, discordIdSchema, mapNameSchema } from "../utils/zodValidator.js";
+import { validateWithZod } from "../utils/zodValidator.js";
 import { getDB } from "./connection.js";
 
 /**
