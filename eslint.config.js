@@ -48,6 +48,7 @@ export default [
       "no-eval": "error",
       "no-console": "error",
       "no-prototype-builtins": "error",
+      "no-shadow": "error",
       "prefer-const": "error",
       "require-await": "warn",
 
