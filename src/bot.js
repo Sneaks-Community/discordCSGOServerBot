@@ -120,8 +120,8 @@ async function intervalFunction() {
     
     try {
         await refresh();
-    } catch (error) {
-        error("Failed to refresh server data:", error);
+    } catch (err) {
+        error("Failed to refresh server data:", err);
         return; // Skip embed update if refresh fails
     }
     
@@ -144,8 +144,8 @@ async function intervalFunction() {
                     const message = await channel.messages.fetch(e.messageID);
                     await message.edit({ content: "\u200B", embeds: [embed] });
                 });
-            } catch (error) {
-                error(`Failed to update embed in channel ${e.channelID} after retries:`, error);
+            } catch (err) {
+                error(`Failed to update embed in channel ${e.channelID} after retries:`, err);
             }
         })
     );
@@ -230,12 +230,12 @@ process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 // Global error handlers for unhandled promise rejections and exceptions
-process.on("unhandledRejection", (error) => {
-    error("Unhandled promise rejection:", error);
+process.on("unhandledRejection", (reason) => {
+    error("Unhandled promise rejection:", reason);
 });
 
-process.on("uncaughtException", (error) => {
-    error("Uncaught exception:", error);
+process.on("uncaughtException", (err) => {
+    error("Uncaught exception:", err);
     process.exit(1);
 });
 
