@@ -114,7 +114,23 @@ export function validateServerInput(input, keywordToServer) {
     // Check if it's a valid FQDN
     const fqdnResult = validateFQDN(trimmed);
     if (fqdnResult.valid) {
-        return { type: "fqdn", valid: true, value: { hostname: fqdnResult.hostname, port: fqdnResult.port } };
+        const host = fqdnResult.hostname;
+
+        // Security: an "IP:port" input is parsed here as an FQDN, because validateIPv4
+        // only matches a bare dotted-quad. Re-apply the private-range guard to the host
+        // so a private IP cannot bypass it simply by appending a port.
+        const hostIpCheck = validateIPv4(host);
+        if (hostIpCheck.valid && hostIpCheck.isPrivate) {
+            return { error: "Private IP addresses are not allowed for security reasons", valid: false };
+        }
+
+        // Security: block loopback hostnames (resolve to 127.0.0.1 / ::1).
+        const lowerHost = host.toLowerCase();
+        if (lowerHost === "localhost" || lowerHost.endsWith(".localhost")) {
+            return { error: "Loopback/internal hostnames are not allowed for security reasons", valid: false };
+        }
+
+        return { type: "fqdn", valid: true, value: { hostname: host, port: fqdnResult.port } };
     }
 
     // Return error with guidance
