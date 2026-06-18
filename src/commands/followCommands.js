@@ -12,7 +12,6 @@ import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js"
 import { checkRateLimit } from "../services/cacheService.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
 import { commandLogger } from "../utils/logger.js";
-import { getStatsPage } from "../utils/mapUtils.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
 // Will be set by bot.js
@@ -141,8 +140,7 @@ export async function handleSlashListfollows(interaction) {
 
     let list = "";
     for (const follow of follows) {
-        const stats = getStatsPage(follow.map_name);
-        list += stats ? `[${escapeForDiscord(follow.map_name)}](${stats})\n` : `${escapeForDiscord(follow.map_name)}\n`;
+        list += `${escapeForDiscord(follow.map_name)}\n`;
     }
 
     const embed = new EmbedBuilder()

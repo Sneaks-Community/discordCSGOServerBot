@@ -13,7 +13,6 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 - **Real-time Server Monitoring**: Automatically queries game servers at a configurable interval to update server status
 - **Embed Channel**: Automatically updates a channel message with rich embed of all configured servers and their status
 - **Map Notifications**: Receive DM alerts when followed maps appear on monitored servers
-- **Multi-Game Mode Support**: Supports Surf, KZ (kreedz climb), and Bhop map prefixes
 - **Slash Commands**: Modern Discord interaction using slash commands with autocomplete support
 - **Rate Limiting**: Built-in rate limiting to prevent abuse (configurable per command)
 - **Automatic Cleanup**: Automatically removes user follows when they leave the server
@@ -24,7 +23,6 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 | Command | Description |
 |---------|-------------|
 | `/players` | Display currently connected players on a specified server |
-| `/map` | Show the current map on a server or display map statistics |
 | `/keywords` | List all available server keywords for searching |
 | `/follow` | Follow a map to receive DM notifications when it appears on a server |
 | `/unfollow` | Stop following a specific map or all maps |
@@ -97,43 +95,22 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | `MAX_CONCURRENT_QUERIES` | No | `10` | Maximum concurrent server queries |
 | `FOLLOW_TIMEOUT` | No | `30` | Timeout for follow/unfollow actions (seconds) |
 | `USER_CACHE_TTL` | No | `300` | User cache TTL (seconds) |
-| `MAP_IMAGE_CACHE_TTL` | No | `86400` | Map image cache TTL (seconds) |
 | `RETRY_MAX_RETRIES` | No | `3` | Maximum retry attempts for failed operations |
 | `RETRY_BASE_DELAY` | No | `1` | Base delay for exponential backoff (seconds) |
 | `GAMEDIG_MAX_RETRIES` | No | `4` | Maximum retries for GameDig queries |
 | `FALLBACK_AVATAR_URL` | No | `https://i.imgur.com/cBiDnMi.png` | Fallback avatar URL |
 | `OFFLINE_SERVER_IMAGE` | No | `https://i.imgur.com/WnS0Biz.png` | Offline server image URL |
-| `MAP_URLS_SURF_STATS` | No | `https://snksrv.com/surfstats/` | Surf stats URL |
-| `MAP_URLS_SURF_IMAGE` | No | `https://bans.snksrv.com/images/maps/` | Surf map image URL |
-| `MAP_URLS_KZ_STATS` | No | `https://snksrv.com/kzstats/#/maps/` | KZ stats URL |
-| `MAP_URLS_KZ_IMAGE` | No | `https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/` | KZ map image URL |
-| `MAP_URLS_BHOP_STATS` | No | `https://snksrv.com/bhopstats/index.php?map=` | Bhop stats URL |
-| `MAP_URLS_BHOP_IMAGE` | No | `https://bans.snksrv.com/images/maps/` | Bhop map image URL |
+| `MAP_IMAGE_BASE_URL` | No | `https://bans.snksrv.com/images/maps/` | Base URL for map images (`<base><mapname>.jpg`); leave blank to disable |
 | `RATE_LIMIT_FOLLOW_PER_MINUTE` | No | `5` | Max follow commands per minute per user |
 | `RATE_LIMIT_UNFOLLOW_PER_MINUTE` | No | `5` | Max unfollow commands per minute per user |
 | `RATE_LIMIT_IP_CHECK_PER_MINUTE` | No | `10` | Max IP check commands per minute per user |
 
-## Supported Game Modes
+## Map Images
 
-The bot supports the following CS:GO game modes with automatic map detection:
-
-### Surf Maps
-
-- **Prefix**: `surf_`
-- **Default Stats URL**: [snksrv.com/surfstats](https://snksrv.com/surfstats/)
-- **Example**: `surf_beginner`
-
-### KZ (Climb) Maps
-
-- **Prefixes**: `kz_`, `bkz_`, `kzpro_`, `skz_`, `vnl_`, `xc_`
-- **Default Stats URL**: [snksrv.com/kzstats](https://snksrv.com/kzstats/)
-- **Example**: `kz_asylum`
-
-### Bhop (Bunnyhop) Maps
-
-- **Prefix**: `bhop`
-- **Default Stats URL**: [snksrv.com/bhopstats](https://snksrv.com/bhopstats/)
-- **Example**: `bhop_strix`
+Embeds and notifications show a map thumbnail pulled from `MAP_IMAGE_BASE_URL` as
+`<MAP_IMAGE_BASE_URL><mapname>.jpg` for every map. If the configured host has no
+image for a given map, the embed simply renders without one. Set `MAP_IMAGE_BASE_URL`
+to your own image host, or leave it blank to disable map images entirely.
 
 ## Server Configuration
 

@@ -9,7 +9,7 @@ import { config } from "../config/index.js";
 import { commandLogger } from "../utils/logger.js";
 import { handleSlashCheck, handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser, handleSlashMem } from "./adminCommands.js";
 import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
-import { handleSlashPlayers, handleSlashMap, handleSlashKeywords } from "./playerCommands.js";
+import { handleSlashPlayers, handleSlashKeywords } from "./playerCommands.js";
 import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
 
 // Admin role ID from config
@@ -21,7 +21,6 @@ const adminRoleId = config.security?.adminRoleId || "";
  */
 const publicCommands = new Map([
     ["players", handleSlashPlayers],
-    ["map", handleSlashMap],
     ["keywords", handleSlashKeywords],
     ["follow", handleSlashFollow],
     ["unfollow", handleSlashUnfollow],
@@ -50,8 +49,6 @@ function getCommandDefinitions() {
     return [
         { admin: false, description: "Show players on a server", name: "players",
             options: opt => opt.setName("server").setDescription("Server keyword or name").setRequired(false) },
-        { admin: false, description: "Show current map on a server or map stats", name: "map",
-            options: opt => opt.setName("server").setDescription("Server keyword or map name").setRequired(false) },
         { admin: false, description: "List all available server keywords", name: "keywords" },
         { admin: false, description: "Follow a map to receive DM notifications", name: "follow",
             options: opt => opt.setName("map").setDescription("Map name to follow").setRequired(true) },

@@ -18,7 +18,6 @@ export async function handleSlashHelp(interaction) {
         .setTimestamp(Date.now())
         .addFields(
             { name: "/players [server]", value: "Show players on a server" },
-            { name: "/map [server]", value: "Show current map on a server or map stats" },
             { name: "/keywords", value: "List all available server keywords" },
             { name: "/follow <map>", value: "Follow a map to receive DM notifications" },
             { name: "/unfollow <map|all>", value: "Stop following a map or all maps" },

@@ -5,9 +5,7 @@
 
 import serverObject from "../../servers.json" with { type: "json" };
 import { playerListEmbed, makeServerList } from "../embeds/playerEmbeds.js";
-import { makeMapEmbed, makeOfflineEmbed } from "../embeds/serverEmbeds.js";
 import { isServerDataEmpty, getServerData, getServerByKeyword } from "../services/serverService.js";
-import { getMapImage } from "../utils/mapUtils.js";
 
 /**
  * Handle /players slash command
@@ -33,46 +31,6 @@ export async function handleSlashPlayers(interaction) {
     }
 
     const embed = playerListEmbed(server);
-    await interaction.reply({ embeds: [embed] });
-}
-
-/**
- * Handle /map slash command
- * @param {Object} interaction - Discord interaction object
- */
-export async function handleSlashMap(interaction) {
-    if (isServerDataEmpty()) {
-        return interaction.reply({ content: "Please Wait. The bot is starting.", ephemeral: true });
-    }
-
-    const serverInput = interaction.options.getString("server");
-  
-    if (!serverInput) {
-        const serverData = getServerData();
-        const embed = makeServerList(serverData);
-        return interaction.reply({ embeds: [embed] });
-    }
-
-    const server = getServerByKeyword(serverInput.toLowerCase());
-  
-    if (!server) {
-        const isMap = getMapImage(serverInput);
-        let res;
-    
-        if (isMap) {
-            res = await fetch(isMap, { method: "HEAD" });
-        }
-    
-        if (!isMap || !res?.ok) {
-            return interaction.reply({ content: "Please choose a valid server/map.", ephemeral: true });
-        }
-    
-        const embed = makeMapEmbed(serverInput);
-        return interaction.reply({ embeds: [embed] });
-    }
-
-    const embed = server.online ? makeMapEmbed(server.map, server) : makeOfflineEmbed(server.name);
-
     await interaction.reply({ embeds: [embed] });
 }
 

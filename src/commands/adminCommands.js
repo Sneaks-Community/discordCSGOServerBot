@@ -12,7 +12,7 @@ import { checkRateLimit } from "../services/cacheService.js";
 import { notifyUsers } from "../services/notificationService.js";
 import { getInfo, getServerByKeyword } from "../services/serverService.js";
 import { escapeForDiscord, escapeList } from "../utils/discordEscape.js";
-import { getMapImage, getStatsPage } from "../utils/mapUtils.js";
+import { getMapImage } from "../utils/mapUtils.js";
 import { validateServerInput } from "../utils/validation.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
@@ -171,8 +171,7 @@ export async function handleSlashListallfollows(interaction) {
 
     let list = "";
     for (const follow of follows) {
-        const stats = getStatsPage(follow.map_name);
-        list += stats ? `<@${follow.discord_id}>: [${follow.map_name}](${stats})\n` : `<@${follow.discord_id}>: ${follow.map_name}\n`;
+        list += `<@${follow.discord_id}>: ${follow.map_name}\n`;
     }
 
     const embed = new EmbedBuilder()

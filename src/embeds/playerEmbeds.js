@@ -7,7 +7,6 @@ import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
 import { escapeForDiscord, escapeList } from "../utils/discordEscape.js";
-import { getWebsite } from "../utils/mapUtils.js";
 
 /**
  * Create a player list embed for a server
@@ -66,7 +65,7 @@ export function makeServerList(serverData) {
     const list = Object.values(serverData)
         .map((server) => {
             const escapedName = escapeForDiscord(server.name);
-            return server.online ? `${server.index}: **__${escapedName}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${getWebsite(server.map)}` : `${server.index}: **__${escapedName}__**: is currently unavailable.`;
+            return server.online ? `${server.index}: **__${escapedName}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${escapeForDiscord(server.map)}` : `${server.index}: **__${escapedName}__**: is currently unavailable.`;
         })
         .join("\n");
 

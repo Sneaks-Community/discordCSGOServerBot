@@ -55,7 +55,6 @@ function toMs(seconds) {
  */
 const baseConfig = {
     cache: {
-        mapImageCacheTTLSeconds: parseInt_(process.env.MAP_IMAGE_CACHE_TTL, 86400),
         userCacheTTLSeconds: parseInt_(process.env.USER_CACHE_TTL, 300)
     },
     discord: {
@@ -85,20 +84,7 @@ const baseConfig = {
         enabled: parseBoolean(process.env.LOGGING_ENABLED, true),
         guildID: process.env.LOG_GUILD_ID || ""
     },
-    mapUrls: {
-        bhop: {
-            image: process.env.MAP_URLS_BHOP_IMAGE || "https://bans.snksrv.com/images/maps/",
-            stats: process.env.MAP_URLS_BHOP_STATS || "https://snksrv.com/bhopstats/index.php?map="
-        },
-        kz: {
-            image: process.env.MAP_URLS_KZ_IMAGE || "https://raw.githubusercontent.com/KZGlobalTeam/map-images/public/images/",
-            stats: process.env.MAP_URLS_KZ_STATS || "https://snksrv.com/kzstats/#/maps/"
-        },
-        surf: {
-            image: process.env.MAP_URLS_SURF_IMAGE || "https://bans.snksrv.com/images/maps/",
-            stats: process.env.MAP_URLS_SURF_STATS || "https://snksrv.com/surfstats/"
-        }
-    },
+    mapImageBaseUrl: process.env.MAP_IMAGE_BASE_URL ?? "https://bans.snksrv.com/images/maps/",
     rateLimit: {
         followPerMinute: parseInt_(process.env.RATE_LIMIT_FOLLOW_PER_MINUTE, 5),
         ipCheckPerMinute: parseInt_(process.env.RATE_LIMIT_IP_CHECK_PER_MINUTE, 10),
@@ -131,7 +117,6 @@ export const CONFIG_VALUES = {
     IP_CHECK_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.ipCheckPerMinute,
     MAP_CHECK_INTERVAL_MS: toMs(baseConfig.serverUpdate.mapCheckIntervalSeconds),
     MAP_FOLLOW_TIMEOUT_MS: toMs(baseConfig.follow.timeoutSeconds),
-    MAP_IMAGE_CACHE_TTL: toMs(baseConfig.cache.mapImageCacheTTLSeconds),
     MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
     OFFLINE_SERVER_IMAGE: baseConfig.images.offlineServer,
     RETRY_BASE_DELAY_MS: toMs(baseConfig.retry.baseDelaySeconds),

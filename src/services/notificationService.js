@@ -8,7 +8,7 @@ import { EmbedBuilder } from "discord.js";
 import { CONFIG_VALUES, config } from "../config/index.js";
 import { getUsersFollowingMap } from "../db/index.js";
 import { serviceLogger, warn, error } from "../utils/logger.js";
-import { getStatsPage, getMapImage } from "../utils/mapUtils.js";
+import { getMapImage } from "../utils/mapUtils.js";
 import { validateChannelForSend } from "../utils/permissions.js";
 import { withRetry } from "../utils/retry.js";
 import { getCachedUser } from "./cacheService.js";
@@ -71,7 +71,6 @@ export async function notifyUsers(map, serverObj, bot = botInstance, logChannel 
     const users = await getUsersFollowingMap(map);
 
     for (const user of users) {
-        const stats = getStatsPage(map);
         const mapImage = getMapImage(map);
 
         // Fetch user first to ensure we have a valid reference
@@ -86,7 +85,7 @@ export async function notifyUsers(map, serverObj, bot = botInstance, logChannel 
         try {
             if (!u) {
                 // User fetch failed, send fallback notification to log channel
-                await sendFallbackNotification(map, server, serverObj, ip, stats, mapImage);
+                await sendFallbackNotification(map, server, serverObj, ip, mapImage);
                 continue;
             }
 
@@ -119,8 +118,6 @@ export async function notifyUsers(map, serverObj, bot = botInstance, logChannel 
                 .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
                 .setTimestamp(Date.now());
 
-            if (stats) dmEmbed.setURL(stats);
-
             if (mapImage) dmEmbed.setImage(mapImage);
 
             // Send the direct message to the user with proper error handling
@@ -150,7 +147,7 @@ export async function notifyUsers(map, serverObj, bot = botInstance, logChannel 
             warn(`Failed to send DM to user <@${userId}> about ${map}:`, e.message);
 
             // Send fallback notification to log channel (without user mention)
-            await sendFallbackNotification(map, server, serverObj, ip, stats, mapImage);
+            await sendFallbackNotification(map, server, serverObj, ip, mapImage);
         }
     }
 }
@@ -161,10 +158,9 @@ export async function notifyUsers(map, serverObj, bot = botInstance, logChannel 
  * @param {string} server - The server name
  * @param {Object} serverObj - The server object
  * @param {string} ip - The server IP
- * @param {string|false} stats - Stats URL
  * @param {string|false} mapImage - Map image URL
  */
-async function sendFallbackNotification(map, server, serverObj, ip, stats, mapImage) {
+async function sendFallbackNotification(map, server, serverObj, ip, mapImage) {
     const backupEmbed = new EmbedBuilder()
         .setTitle(`${map} is now on ${server}`)
         .setDescription(
@@ -174,7 +170,6 @@ async function sendFallbackNotification(map, server, serverObj, ip, stats, mapIm
         .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
 
-    if (stats) backupEmbed.setURL(stats);
     if (mapImage) backupEmbed.setImage(mapImage);
 
     const fallbackContent = `${map} is now on ${server}!\nsteam://connect/${ip}`;
