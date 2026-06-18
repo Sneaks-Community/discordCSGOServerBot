@@ -23,25 +23,6 @@ export function escapeForDiscord(text) {
 }
 
 /**
- * Escape text for use in Discord embed titles.
- * Titles support bold, italic, underline, and other formatting.
- * @param {string} text - The text to escape
- * @returns {string} The escaped text
- */
-export function escapeTitle(text) {
-    return escapeForDiscord(text);
-}
-
-/**
- * Escape text for use in Discord embed descriptions and field values.
- * @param {string} text - The text to escape
- * @returns {string} The escaped text
- */
-export function escapeDescription(text) {
-    return escapeForDiscord(text);
-}
-
-/**
  * Escape a list of items (e.g., player names) for Discord embed description.
  * Filters out empty, undefined, and null values.
  * @param {string[]} items - Array of strings to escape and join

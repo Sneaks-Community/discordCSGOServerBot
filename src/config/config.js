@@ -150,16 +150,6 @@ export const REQUIRED_PERMISSIONS = {
     VIEW_CHANNEL: "ViewChannel"
 };
 
-/**
- * Validate required configuration values
- * @throws {Error} If required config is missing
- */
-export function validateConfig() {
-    if (!baseConfig.discord.token) {
-        throw new Error("DISCORD_TOKEN is required");
-    }
-}
-
 // Export the base config as the primary config
 export const config = baseConfig;
 
