@@ -26,7 +26,7 @@
   "homepage": "https://github.com/Sneaks-Community/discordCSGOServerBot#readme",
   "dependencies": {
     "better-sqlite3": "^12.11.1",
-    "discord.js": "^14.26.4",
+    "discord.js": "^14.26.5",
     "gamedig": "^5.3.3",
     "p-limit": "^7.3.0",
     "pino": "^10.3.1",
