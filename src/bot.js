@@ -23,15 +23,13 @@ let mapCheckInterval = null;
 // Create bot client with v14 intents
 const bot = new Discord.Client({
     intents: [
+        // Populates guilds/channels/roles caches, which the fallback notification
+        // lookup and every permission check read, and makes interaction.guild resolve.
         GatewayIntentBits.Guilds,
         // Privileged: required for guildMemberRemove (follow cleanup). Must also be
         // enabled as "Server Members Intent" in the Discord Developer Portal, or
         // login fails with "Used disallowed intents".
-        GatewayIntentBits.GuildMembers,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMessageReactions,
-        GatewayIntentBits.DirectMessages,
-        GatewayIntentBits.DirectMessageReactions
+        GatewayIntentBits.GuildMembers
     ]
 });
 

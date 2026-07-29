@@ -144,22 +144,20 @@ Add your CS:GO servers to `servers.json`:
 
 ### Discord Bot Requirements
 
-- **Bot Permissions**:
-  - Send Messages
+- **OAuth2 Scopes**: `bot` and `applications.commands`
+
+- **Bot Permissions**, needed in every channel listed in `EMBEDS` and in the fallback
+  notification channel:
+  - View Channel
+  - Send Messages (fallback notification channel only)
   - Embed Links
-  - Read Message History
-  - Add Reactions
-  - Send Messages in Threads
-  - Use External Emojis
-  - Use Application Commands
+  - Read Message History (embed channels only, to fetch the message being edited)
+
+  Direct messages to followers need no permission.
 
 - **Required Intents**:
   - Guilds
   - GuildMembers (privileged)
-  - GuildMessages
-  - GuildMessageReactions
-  - DirectMessages
-  - DirectMessageReactions
 
   GuildMembers is a privileged intent and powers the automatic follow cleanup when a
   member leaves. Enable **Server Members Intent** under Bot → Privileged Gateway Intents
