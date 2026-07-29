@@ -28,14 +28,6 @@ export function validateConfig() {
         warnings.push(`Invalid admin role ID format: "${config.security.adminRoleId}" - should be 17-19 digits`);
     }
 
-    // Important: Logging configuration
-    if (!config.logging?.guildID || typeof config.logging.guildID !== "string" || config.logging.guildID.trim() === "") {
-        warnings.push("LOG_GUILD_ID environment variable is missing - logging will be disabled");
-    }
-    if (!config.logging?.channelID || typeof config.logging.channelID !== "string" || config.logging.channelID.trim() === "") {
-        warnings.push("LOG_CHANNEL_ID environment variable is missing - logging will be disabled");
-    }
-
     // Important: Fallback notification configuration
     if (!config.fallback?.guildID || typeof config.fallback.guildID !== "string" || config.fallback.guildID.trim() === "") {
         warnings.push("FALLBACK_GUILD_ID environment variable is missing - fallback notifications will be disabled");

@@ -139,9 +139,8 @@ function logAdminCommandAttempt(commandName, userId, username) {
  * Handle slash command interactions
  * @param {Object} interaction - Discord interaction object
  * @param {Object} bot - Discord bot client
- * @param {Object} logChannel - Log channel for notifications
  */
-export async function handleInteraction(interaction, bot, logChannel) {
+export async function handleInteraction(interaction, bot) {
     if (!interaction.isChatInputCommand()) return;
 
     // Ensure interaction is from a guild (not DM)
@@ -165,7 +164,7 @@ export async function handleInteraction(interaction, bot, logChannel) {
             const handler = adminCommands.get(commandName);
             // Some handlers need extra params
             if (commandName === "testnotify") {
-                return await handler(interaction, bot, logChannel);
+                return await handler(interaction, bot);
             }
             return await handler(interaction);
         }

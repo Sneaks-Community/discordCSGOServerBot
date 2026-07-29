@@ -83,10 +83,7 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 |----------|----------|---------|-------------|
 | `DISCORD_TOKEN` | Yes | - | Your Discord bot token |
 | `ADMIN_ROLE_ID` | Recommended | - | Discord role ID with admin access |
-| `LOGGING_ENABLED` | No | `true` | Enable/disable logging |
-| `LOG_LEVEL` | No | `info` | Console verbosity: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent`. |
-| `LOG_GUILD_ID` | No | - | Guild ID for logging bot activities |
-| `LOG_CHANNEL_ID` | No | - | Channel ID for logging bot activities |
+| `LOG_LEVEL` | No | `info` | stdout verbosity: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent`. |
 | `FALLBACK_GUILD_ID` | No | - | Fallback guild ID for DM failures |
 | `FALLBACK_CHANNEL_ID` | No | - | Fallback channel ID for DM failures |
 | `EMBEDS` | No | `[]` | JSON array of embed configs: `[{"channelID":"xxx","messageID":"yyy"}]` |
@@ -94,7 +91,6 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | `SERVER_UPDATE_INTERVAL` | No | `90` | Server status update interval (seconds) |
 | `MAP_CHECK_INTERVAL` | No | `91` | Map change check interval (seconds) |
 | `MAX_CONCURRENT_QUERIES` | No | `10` | Maximum concurrent server queries |
-| `FOLLOW_TIMEOUT` | No | `30` | Timeout for follow/unfollow actions (seconds) |
 | `USER_CACHE_TTL` | No | `300` | User cache TTL (seconds) |
 | `RETRY_MAX_RETRIES` | No | `3` | Maximum retry attempts for failed operations |
 | `RETRY_BASE_DELAY` | No | `1` | Base delay for exponential backoff (seconds) |
@@ -233,8 +229,7 @@ All configuration options can be set via environment variables. See `.env.exampl
 |----------|----------|-------------|
 | `DISCORD_TOKEN` | Yes | Your Discord bot token |
 | `ADMIN_ROLE_ID` | No | Discord role ID with admin access |
-| `LOG_GUILD_ID` | No | Guild ID for logging |
-| `LOG_CHANNEL_ID` | No | Channel ID for logging |
+| `LOG_LEVEL` | No | stdout log verbosity |
 | `FALLBACK_GUILD_ID` | No | Fallback guild for DMs |
 | `FALLBACK_CHANNEL_ID` | No | Fallback channel for DMs |
 | `EMBEDS` | No | JSON array of embed configs |

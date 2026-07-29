@@ -7,23 +7,11 @@ import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
 import { followMap, unfollowMap, getUserFollows, isFollowingMap, unfollowAll } from "../db/index.js";
-import { createFollowLogEmbed } from "../embeds/notificationEmbeds.js";
 import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js";
 import { checkRateLimit } from "../services/cacheService.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
 import { commandLogger } from "../utils/logger.js";
 import { validateWithZod } from "../utils/zodValidator.js";
-
-// Will be set by bot.js
-let logChannel = null;
-
-/**
- * Set the log channel for follow commands
- * @param {Object} channel - The Discord log channel
- */
-export function setFollowLogChannel(channel) {
-    logChannel = channel;
-}
 
 /**
  * Handle /follow slash command
@@ -59,15 +47,7 @@ export async function handleSlashFollow(interaction) {
 
     await interaction.reply({ content: `You are now following ${sanitizedMap}. You will be notified when the map comes on a server.`, ephemeral: true });
 
-    commandLogger.info(`${interaction.user.tag} followed map ${sanitizedMap}`);
-
-    const logEmbed = createFollowLogEmbed("Followed", interaction.user, sanitizedMap);
-
-    if (logChannel) {
-        logChannel.send({ embeds: [logEmbed] }).catch(err => {
-            commandLogger.error({ err }, "Failed to send follow log");
-        });
-    }
+    commandLogger.info({ map: sanitizedMap, userId: sanitizedUserId, username: interaction.user.tag }, "User followed map");
 }
 
 /**
@@ -93,7 +73,7 @@ export async function handleSlashUnfollow(interaction) {
     if (rawMap === "all") {
         await unfollowAll(sanitizedUserId);
         await interaction.reply({ content: "You are no longer following any maps.", ephemeral: true });
-        commandLogger.info(`${interaction.user.tag} unfollowed all maps`);
+        commandLogger.info({ userId: sanitizedUserId, username: interaction.user.tag }, "User unfollowed all maps");
     } else {
         // Validate map name using Zod v4 schema (includes lowercase transform)
         const mapValidation = validateWithZod(mapNameSchema, rawMap, "Map name");
@@ -108,15 +88,7 @@ export async function handleSlashUnfollow(interaction) {
 
         await unfollowMap(sanitizedUserId, sanitizedMap);
         await interaction.reply({ content: `You are no longer following ${sanitizedMap}.`, ephemeral: true });
-        commandLogger.info(`${interaction.user.tag} unfollowed map ${sanitizedMap}`);
-    }
-
-    const logEmbed = createFollowLogEmbed("Unfollowed", interaction.user, rawMap);
-
-    if (logChannel) {
-        logChannel.send({ embeds: [logEmbed] }).catch(err => {
-            commandLogger.error({ err }, "Failed to send unfollow log");
-        });
+        commandLogger.info({ map: sanitizedMap, userId: sanitizedUserId, username: interaction.user.tag }, "User unfollowed map");
     }
 }
 

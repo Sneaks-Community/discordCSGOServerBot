@@ -5,16 +5,15 @@
 
 import Discord, { Events, GatewayIntentBits } from "discord.js";
 
-import { setFollowLogChannel } from "./commands/followCommands.js";
 import { registerSlashCommands, handleInteraction } from "./commands/index.js";
 import { config, CONFIG_VALUES, validateConfig } from "./config/index.js";
 import { initDB, closeDB, unfollowAll } from "./db/index.js";
 import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheService.js";
-import { notifyUsers, initNotificationService, setNotificationLogChannel } from "./services/notificationService.js";
+import { notifyUsers, initNotificationService } from "./services/notificationService.js";
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
 import { botLogger } from "./utils/logger.js";
-import { validateChannelForEdit, validateChannelForSend } from "./utils/permissions.js";
+import { validateChannelForEdit } from "./utils/permissions.js";
 import { withRetry } from "./utils/retry.js";
 
 // Store interval references for cleanup during shutdown
@@ -35,9 +34,6 @@ const bot = new Discord.Client({
         GatewayIntentBits.DirectMessageReactions
     ]
 });
-
-// Log channel for notifications
-let logChannel = null;
 
 /**
  * Initialize the bot and start all services
@@ -70,34 +66,6 @@ bot.on("ready", async () => {
     try {
         botLogger.info("Started as " + bot.user.tag);
         bot.user.setActivity("/follow <map> in #bot-commands");
-
-        // Initialize logChannel with config values
-        const guild = bot.guilds.cache.get(config.logging?.guildID);
-        if (guild) {
-            logChannel = guild.channels.cache.get(config.logging?.channelID);
-            if (logChannel) {
-                // Validate bot has required permissions in log channel
-                const permCheck = validateChannelForSend(logChannel);
-                if (!permCheck.valid) {
-                    botLogger.warn(
-                        { channelId: config.logging?.channelID, reason: permCheck.error },
-                        "Log channel permission check failed; disabling channel logging"
-                    );
-                    logChannel = null; // Disable logging if permissions are missing
-                }
-            } else {
-                botLogger.warn(
-                    { channelId: config.logging?.channelID, guildId: config.logging?.guildID },
-                    "Log channel not found in guild"
-                );
-            }
-        } else {
-            botLogger.warn({ guildId: config.logging?.guildID }, "Logging guild not found");
-        }
-
-        // Set log channel for follow commands and notifications
-        setFollowLogChannel(logChannel);
-        setNotificationLogChannel(logChannel);
 
         // Register slash commands
         await registerSlashCommands(bot);
@@ -179,7 +147,7 @@ bot.on("guildMemberRemove", (member) => {
  * Handle slash command interactions
  */
 bot.on("interactionCreate", async (interaction) => {
-    await handleInteraction(interaction, bot, logChannel);
+    await handleInteraction(interaction, bot);
 });
 
 /**

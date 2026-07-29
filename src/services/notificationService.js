@@ -18,9 +18,6 @@ import { getCachedUser } from "./cacheService.js";
 // Store bot reference for fallback notifications
 let botInstance = null;
 
-// Store log channel reference for notification success logs (set from bot.js once ready)
-let notificationLogChannel = null;
-
 // Track notification rate to prevent spam (module-level to persist across calls)
 const notificationRateLimit = new Map();
 const NOTIFICATION_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute window
@@ -32,14 +29,6 @@ const NOTIFICATION_MAX_PER_USER = 1; // Max 1 notification per user per minute
  */
 export function initNotificationService(bot) {
     botInstance = bot;
-}
-
-/**
- * Set the log channel used for notification success logs
- * @param {Object} channel - The Discord log channel
- */
-export function setNotificationLogChannel(channel) {
-    notificationLogChannel = channel;
 }
 
 /**
@@ -65,9 +54,8 @@ setInterval(cleanupNotificationRateLimit, 300000);
  * @param {string} map - The map name as reported by the game server
  * @param {Object} serverObj - The server object with player info
  * @param {Object} [bot] - The Discord bot client (defaults to the instance set via initNotificationService)
- * @param {Object} [logChannel] - The log channel for success logs (defaults to the channel set via setNotificationLogChannel)
  */
-export async function notifyUsers(map, serverObj, bot = botInstance, logChannel = notificationLogChannel) {
+export async function notifyUsers(map, serverObj, bot = botInstance) {
     const server = serverObj?.nick ?? "unknown server";
     const ip = serverObj?.ip ?? "unknown IP";
 
@@ -144,21 +132,7 @@ export async function notifyUsers(map, serverObj, bot = botInstance, logChannel 
                 embeds: [dmEmbed]
             });
 
-            // Log the successful notification (without exposing user's full identity)
-            const logEmbed = new EmbedBuilder()
-                .setTitle("Notification sent")
-                .setColor(CONFIG_VALUES.EMBED_COLOR)
-                .setTimestamp(Date.now())
-                .setDescription(`Notification sent to user <@${user.discord_id}> for map ${mapName}`)
-                .setAuthor({ iconURL: u.displayAvatarURL(), name: u.tag })
-                .setThumbnail(u.displayAvatarURL());
-
-            if (logChannel) {
-                logChannel.send({ embeds: [logEmbed] }).catch(err => {
-                    serviceLogger.warn({ err }, "Failed to send notification log");
-                });
-            }
-            serviceLogger.info({ map: mapName, userId: u.id }, "Sent notification");
+            serviceLogger.info({ map: mapName, userId: u.id, username: u.tag }, "Sent notification");
         } catch (e) {
             // Handle failed DM (user may have DMs disabled or other issues)
             const userId = u?.id || user.discord_id;

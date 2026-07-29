@@ -19,17 +19,6 @@ function parseJson(value, defaultValue) {
 }
 
 /**
- * Parse a string to boolean
- * @param {string} value - String value
- * @param {boolean} defaultValue - Default value
- * @returns {boolean} Boolean value
- */
-function parseBoolean(value, defaultValue = false) {
-    if (value === undefined || value === null || value === "") return defaultValue;
-    return value === "true" || value === "1";
-}
-
-/**
  * Parse a string to integer
  * @param {string} value - String value
  * @param {number} defaultValue - Default value
@@ -69,20 +58,12 @@ const baseConfig = {
         channelID: process.env.FALLBACK_CHANNEL_ID || "",
         guildID: process.env.FALLBACK_GUILD_ID || ""
     },
-    follow: {
-        timeoutSeconds: parseInt_(process.env.FOLLOW_TIMEOUT, 30)
-    },
     gamedig: {
         defaultMaxRetries: parseInt_(process.env.GAMEDIG_MAX_RETRIES, 4)
     },
     images: {
         fallbackAvatar: process.env.FALLBACK_AVATAR_URL || "https://i.imgur.com/cBiDnMi.png",
         offlineServer: process.env.OFFLINE_SERVER_IMAGE || "https://i.imgur.com/WnS0Biz.png"
-    },
-    logging: {
-        channelID: process.env.LOG_CHANNEL_ID || "",
-        enabled: parseBoolean(process.env.LOGGING_ENABLED, true),
-        guildID: process.env.LOG_GUILD_ID || ""
     },
     mapImageBaseUrl: process.env.MAP_IMAGE_BASE_URL ?? "https://bans.snksrv.com/images/maps/",
     rateLimit: {
@@ -116,7 +97,6 @@ export const CONFIG_VALUES = {
     GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
     IP_CHECK_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.ipCheckPerMinute,
     MAP_CHECK_INTERVAL_MS: toMs(baseConfig.serverUpdate.mapCheckIntervalSeconds),
-    MAP_FOLLOW_TIMEOUT_MS: toMs(baseConfig.follow.timeoutSeconds),
     MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
     OFFLINE_SERVER_IMAGE: baseConfig.images.offlineServer,
     RETRY_BASE_DELAY_MS: toMs(baseConfig.retry.baseDelaySeconds),

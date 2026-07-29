@@ -189,9 +189,8 @@ export async function handleSlashListallfollows(interaction) {
  * Handle /testnotify slash command (Admin only)
  * @param {Object} interaction - Discord interaction object
  * @param {Object} bot - Discord bot client
- * @param {Object} logChannel - Log channel for notifications
  */
-export async function handleSlashTestnotify(interaction, bot, logChannel) {
+export async function handleSlashTestnotify(interaction, bot) {
     // notifyUsers DMs each follower serially, which can outrun Discord's 3 second
     // reply deadline. Defer up front; every reply on this command is ephemeral, so
     // the flag carries over to each editReply below.
@@ -214,7 +213,7 @@ export async function handleSlashTestnotify(interaction, bot, logChannel) {
         return interaction.editReply({ content: "No one is following this map." });
     }
 
-    await notifyUsers(sanitizedMap, { ip: "0.0.0.0:27015", nick: "Test Server" }, bot, logChannel);
+    await notifyUsers(sanitizedMap, { ip: "0.0.0.0:27015", nick: "Test Server" }, bot);
     await interaction.editReply({ content: `Notification sent for map: ${sanitizedMap}` });
 }
 
