@@ -34,7 +34,6 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 
 | Command | Description |
 |---------|-------------|
-| `/check <server>` | Check server status by IP address (admin only) |
 | `/mem` | Display current memory usage statistics (admin only) |
 | `/listallfollows` | List all users and their followed maps (admin only) |
 | `/testnotify <map>` | Test map notification system (admin only) |
@@ -100,7 +99,6 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | `MAP_IMAGE_BASE_URL` | No | `https://bans.snksrv.com/images/maps/` | Base URL for map images (`<base><mapname>.jpg`); leave blank to disable |
 | `RATE_LIMIT_FOLLOW_PER_MINUTE` | No | `5` | Max follow commands per minute per user |
 | `RATE_LIMIT_UNFOLLOW_PER_MINUTE` | No | `5` | Max unfollow commands per minute per user |
-| `RATE_LIMIT_IP_CHECK_PER_MINUTE` | No | `10` | Max IP check commands per minute per user |
 
 ## Map Images
 

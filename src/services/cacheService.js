@@ -84,7 +84,7 @@ export function cleanupUserCache() {
 /**
  * Check if a user has exceeded their rate limit for a specific action
  * @param {string} userId - The Discord user ID
- * @param {string} action - The action type (follow, unfollow, ipCheck, etc.)
+ * @param {string} action - The action type (follow, unfollow, etc.)
  * @param {number} limit - Maximum actions allowed per minute
  * @returns {Object} - { allowed: boolean, retryAfter: number }
  */

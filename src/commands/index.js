@@ -7,7 +7,7 @@ import { SlashCommandBuilder, REST, Routes, MessageFlags } from "discord.js";
 
 import { config } from "../config/index.js";
 import { commandLogger } from "../utils/logger.js";
-import { handleSlashCheck, handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser, handleSlashMem } from "./adminCommands.js";
+import { handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser, handleSlashMem } from "./adminCommands.js";
 import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
 import { handleSlashPlayers, handleSlashKeywords } from "./playerCommands.js";
 import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
@@ -34,7 +34,6 @@ const publicCommands = new Map([
  * @type {Map<string, Function>}
  */
 const adminCommands = new Map([
-    ["check", handleSlashCheck],
     ["listallfollows", handleSlashListallfollows],
     ["testnotify", handleSlashTestnotify],
     ["removeuser", handleSlashRemoveuser],
@@ -57,8 +56,6 @@ function getCommandDefinitions() {
         { admin: false, description: "List all maps you are following", name: "listfollows" },
         { admin: false, description: "Show list of available commands", name: "help" },
         { admin: false, description: "Check bot latency", name: "ping" },
-        { admin: true, description: "Check server status by IP, domain, or keyword (Admin only)", name: "check",
-            options: opt => opt.setName("server").setDescription("Server IP address, domain name (e.g., example.com:27015), or keyword").setRequired(true) },
         { admin: true, description: "List all users and their followed maps (Admin only)", name: "listallfollows" },
         { admin: true, description: "Test map notification system (Admin only)", name: "testnotify",
             options: opt => opt.setName("map").setDescription("Map name to test").setRequired(true) },

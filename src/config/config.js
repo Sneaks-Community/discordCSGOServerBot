@@ -68,7 +68,6 @@ const baseConfig = {
     mapImageBaseUrl: process.env.MAP_IMAGE_BASE_URL ?? "https://bans.snksrv.com/images/maps/",
     rateLimit: {
         followPerMinute: parseInt_(process.env.RATE_LIMIT_FOLLOW_PER_MINUTE, 5),
-        ipCheckPerMinute: parseInt_(process.env.RATE_LIMIT_IP_CHECK_PER_MINUTE, 10),
         unfollowPerMinute: parseInt_(process.env.RATE_LIMIT_UNFOLLOW_PER_MINUTE, 5)
     },
     retry: {
@@ -79,7 +78,6 @@ const baseConfig = {
         adminRoleId: process.env.ADMIN_ROLE_ID || ""
     },
     serverUpdate: {
-        defaultPort: parseInt_(process.env.SERVER_DEFAULT_PORT, 27015),
         intervalSeconds: parseInt_(process.env.SERVER_UPDATE_INTERVAL, 90),
         mapCheckIntervalSeconds: parseInt_(process.env.MAP_CHECK_INTERVAL, 91),
         maxConcurrentQueries: parseInt_(process.env.MAX_CONCURRENT_QUERIES, 10)
@@ -95,7 +93,6 @@ export const CONFIG_VALUES = {
     FALLBACK_AVATAR: baseConfig.images.fallbackAvatar,
     FOLLOW_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.followPerMinute,
     GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
-    IP_CHECK_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.ipCheckPerMinute,
     MAP_CHECK_INTERVAL_MS: toMs(baseConfig.serverUpdate.mapCheckIntervalSeconds),
     MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
     OFFLINE_SERVER_IMAGE: baseConfig.images.offlineServer,
