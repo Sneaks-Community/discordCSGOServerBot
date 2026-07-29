@@ -33,8 +33,7 @@ const bot = new Discord.Client({
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.DirectMessages,
         GatewayIntentBits.DirectMessageReactions
-    ],
-    token: config.discord.token
+    ]
 });
 
 // Log channel for notifications
@@ -53,10 +52,12 @@ export async function initBot() {
     // Initialize notification service with bot instance
     initNotificationService(bot);
 
-    // Login to Discord. Note: the token is read from process.env.DISCORD_TOKEN by
-    // discord.js itself. Pino's redact paths only scrub matching keys on logged
-    // objects, so never interpolate the token into a log message.
-    bot.login().catch(err => {
+    // Log in with the configured token explicitly. ClientOptions has no `token`
+    // field: discord.js ignores it and otherwise falls back to process.env.DISCORD_TOKEN,
+    // so passing it here is what actually keeps login working if the variable is ever
+    // renamed. Pino's redact paths only scrub matching keys on logged objects, so
+    // never interpolate the token into a log message.
+    bot.login(config.discord.token).catch(err => {
         botLogger.fatal({ err }, "Failed to login to Discord");
         process.exit(1);
     });
