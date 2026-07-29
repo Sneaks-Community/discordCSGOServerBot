@@ -10,6 +10,7 @@ import serverObject from "../../servers.json" with { type: "json" };
 import { CONFIG_VALUES } from "../config/index.js";
 import { playerNameSchema } from "../schemas/validationSchemas.js";
 import { serviceLogger } from "../utils/logger.js";
+import { normalizeMapName } from "../utils/mapUtils.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
 // Server data state management
@@ -119,7 +120,7 @@ export async function getInfo(server, index) {
             fullIP: res.connect, // String with ip:port
             index: index,
             keywords: server.keywords, // array of keywords for --players command
-            map: res.map, // Current map
+            map: normalizeMapName(res.map), // Current map, workshop path stripped to the bare name
             maxPlayers: res.maxplayers,
             name: server.nick, // Short nickname
             numBots: sanitizedBots.length, // int (gamedig v5.x API)
@@ -203,10 +204,18 @@ export async function updateServerData(notifyCallback) {
             currentServerObject["numBots"] = serverData[currentServer].numBots;
             currentServerObject["maxPlayers"] = serverData[currentServer].maxPlayers;
 
-            if (notifyCallback) {
-                await notifyCallback(newMap, currentServerObject);
-            }
+            // Record the change before notifying: if the notification fails, this
+            // server must not re-detect the same map change on every subsequent tick.
             oldData[currentServer] = newMap;
+
+            if (notifyCallback) {
+                try {
+                    await notifyCallback(newMap, currentServerObject);
+                } catch (err) {
+                    // Contained per server so the remaining servers still get notified.
+                    serviceLogger.error({ err, map: newMap, server: currentServer }, "Map change notification failed");
+                }
+            }
         } else if (oldData[currentServer] === "") {
             oldData[currentServer] = currentMap;
         }
