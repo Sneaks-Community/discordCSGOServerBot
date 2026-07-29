@@ -136,6 +136,23 @@ function logAdminCommandAttempt(commandName, userId, username) {
 }
 
 /**
+ * Check whether the invoking member has the admin role.
+ * `interaction.member` is a GuildMember when the guild is cached, but a raw
+ * APIInteractionGuildMember when it is not, and there `roles` is an array of IDs
+ * with no `cache`. Handle both so an admin is never denied over a cache miss.
+ * @param {Object} interaction - Discord interaction object
+ * @returns {boolean} - Whether the member has the admin role
+ */
+function hasAdminRole(interaction) {
+    if (!adminRoleId) return false;
+
+    const roles = interaction.member?.roles;
+    if (!roles) return false;
+
+    return Array.isArray(roles) ? roles.includes(adminRoleId) : roles.cache?.has(adminRoleId) === true;
+}
+
+/**
  * Handle slash command interactions
  * @param {Object} interaction - Discord interaction object
  * @param {Object} bot - Discord bot client
@@ -143,13 +160,15 @@ function logAdminCommandAttempt(commandName, userId, username) {
 export async function handleInteraction(interaction, bot) {
     if (!interaction.isChatInputCommand()) return;
 
-    // Ensure interaction is from a guild (not DM)
-    if (!interaction.guild) {
+    // Ensure interaction is from a guild (not DM). inGuild() tests guildId + member,
+    // so an uncached guild still counts; interaction.guild would be null there and
+    // report a real in-guild command as a DM.
+    if (!interaction.inGuild()) {
         return interaction.reply({ content: "This bot is only available in servers.", flags: MessageFlags.Ephemeral });
     }
 
     const { commandName } = interaction;
-    const isAdmin = adminRoleId && interaction.member?.roles?.cache?.has(adminRoleId);
+    const isAdmin = hasAdminRole(interaction);
     const userId = interaction.user?.id || "unknown";
     const username = interaction.user?.username || "unknown";
 
