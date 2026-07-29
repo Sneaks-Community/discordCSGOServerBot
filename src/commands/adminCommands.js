@@ -3,7 +3,7 @@
  * Handles /check, /listallfollows, /testnotify, /removeuser, and /mem commands
  */
 
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
 import { getAllFollows, hasMap, unfollowAll } from "../db/index.js";
@@ -37,15 +37,21 @@ export async function handleSlashCheck(interaction) {
         return interaction.reply({ content: validation.error, ephemeral: true });
     }
 
+    // Everything above is instant, so it still fits in Discord's 3 second reply
+    // deadline. The GameDig query below does not: an unreachable host works through
+    // GAMEDIG_MAX_RETRIES first. Defer here to trade that deadline for the 15 minute
+    // editReply window. Deferred publicly, to match the public result embed.
+    await interaction.deferReply();
+
     const embed = validation.type === "keyword"
         ? await checkServer(validation.value.server)
         : await checkIP(validation);
 
     if (!embed) {
-        return interaction.reply({ content: "The server is unavailable.", ephemeral: true });
+        return interaction.editReply({ content: "The server is unavailable." });
     }
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
 }
 
 /**
@@ -186,25 +192,30 @@ export async function handleSlashListallfollows(interaction) {
  * @param {Object} logChannel - Log channel for notifications
  */
 export async function handleSlashTestnotify(interaction, bot, logChannel) {
+    // notifyUsers DMs each follower serially, which can outrun Discord's 3 second
+    // reply deadline. Defer up front; every reply on this command is ephemeral, so
+    // the flag carries over to each editReply below.
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+
     const map = interaction.options.getString("map");
-  
+
     if (!map) {
-        return interaction.reply({ content: "Please enter a valid map name.", ephemeral: true });
+        return interaction.editReply({ content: "Please enter a valid map name." });
     }
 
     // Validate map name using Zod v4 schema
     const mapValidation = validateWithZod(mapNameSchema, map, "Map name");
     if (!mapValidation.valid) {
-        return interaction.reply({ content: mapValidation.error, ephemeral: true });
+        return interaction.editReply({ content: mapValidation.error });
     }
     const sanitizedMap = mapValidation.data;
 
     if (!(await hasMap(sanitizedMap))) {
-        return interaction.reply({ content: "No one is following this map.", ephemeral: true });
+        return interaction.editReply({ content: "No one is following this map." });
     }
 
     await notifyUsers(sanitizedMap, { ip: "0.0.0.0:27015", nick: "Test Server" }, bot, logChannel);
-    await interaction.reply({ content: `Notification sent for map: ${sanitizedMap}`, ephemeral: true });
+    await interaction.editReply({ content: `Notification sent for map: ${sanitizedMap}` });
 }
 
 /**
