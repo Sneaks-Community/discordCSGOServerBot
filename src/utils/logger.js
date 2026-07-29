@@ -66,12 +66,8 @@ export const serviceLogger = logger.child({ module: "services" });
 export const configLogger = logger.child({ module: "config" });
 
 // Export convenience methods matching Pino's API
-export const log = logger.info.bind(logger);
-export const info = logger.info.bind(logger);
 export const warn = logger.warn.bind(logger);
 export const error = logger.error.bind(logger);
-export const debug = logger.debug.bind(logger);
-export const fatal = logger.fatal.bind(logger);
 
 // Export the full logger for child creation or advanced usage
 export default logger;

@@ -190,11 +190,6 @@ export async function updateServerData(notifyCallback) {
     for (const currentServer of serverObjectKeys) {
         const currentServerObject = serverObject[currentServer];
 
-        if (!(currentServer in oldData)) {
-            oldData[currentServer] = "";
-            continue;
-        }
-
         if (!serverData[currentServer] || !serverData[currentServer].online) {
             continue;
         }

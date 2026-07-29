@@ -91,7 +91,7 @@ function buildSlashCommands() {
 /**
  * Slash command definitions (JSON format for Discord API)
  */
-export const slashCommands = buildSlashCommands().map(cmd => cmd.toJSON());
+const slashCommands = buildSlashCommands().map(cmd => cmd.toJSON());
 
 /**
  * Register slash commands with Discord
@@ -139,10 +139,9 @@ function logAdminCommandAttempt(commandName, userId, username) {
  * Handle slash command interactions
  * @param {Object} interaction - Discord interaction object
  * @param {Object} bot - Discord bot client
- * @param {Object} Discord - Discord.js library
  * @param {Object} logChannel - Log channel for notifications
  */
-export async function handleInteraction(interaction, bot, Discord, logChannel) {
+export async function handleInteraction(interaction, bot, logChannel) {
     if (!interaction.isChatInputCommand()) return;
 
     // Ensure interaction is from a guild (not DM)
@@ -174,10 +173,6 @@ export async function handleInteraction(interaction, bot, Discord, logChannel) {
         // Check public commands
         if (publicCommands.has(commandName)) {
             const handler = publicCommands.get(commandName);
-            // Some handlers need Discord param
-            if (commandName === "follow" || commandName === "unfollow") {
-                return await handler(interaction, Discord);
-            }
             return await handler(interaction);
         }
 

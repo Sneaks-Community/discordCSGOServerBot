@@ -39,7 +39,7 @@ export async function handleSlashCheck(interaction) {
 
     const embed = validation.type === "keyword"
         ? await checkServer(validation.value.server)
-        : await checkIP(input, validation);
+        : await checkIP(validation);
 
     if (!embed) {
         return interaction.reply({ content: "The server is unavailable.", ephemeral: true });
@@ -89,11 +89,10 @@ async function checkServer(server) {
 
 /**
  * Check a server by IP address or FQDN
- * @param {string} input - The IP or FQDN input
  * @param {Object} validation - The validation result from validateServerInput
  * @returns {Promise<EmbedBuilder|false>} - Discord embed or false if unavailable
  */
-async function checkIP(input, validation) {
+async function checkIP(validation) {
     let ip;
     let port;
 
@@ -102,13 +101,10 @@ async function checkIP(input, validation) {
         ip = validation.value.hostname;
         port = validation.value.port || config.serverUpdate?.defaultPort || "27015";
     } else {
-        // Handle IPv4 with optional port
-        if (input.includes(":")) {
-            [ip, port] = input.split(":");
-        } else {
-            ip = input;
-            port = config.serverUpdate?.defaultPort || "27015";
-        }
+        // Bare IPv4 only: validateServerInput classifies any "ip:port" input as an FQDN
+        // (validateIPv4 matches a dotted quad only), so this branch never carries a port.
+        ip = validation.value.ip;
+        port = config.serverUpdate?.defaultPort || "27015";
     }
 
     // Create a server object with the necessary information for getInfo()

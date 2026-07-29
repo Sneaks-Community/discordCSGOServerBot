@@ -162,7 +162,7 @@ bot.on("guildMemberRemove", async (member) => {
  * Handle slash command interactions
  */
 bot.on("interactionCreate", async (interaction) => {
-    await handleInteraction(interaction, bot, Discord, logChannel);
+    await handleInteraction(interaction, bot, logChannel);
 });
 
 /**
@@ -238,5 +238,3 @@ process.on("uncaughtException", (err) => {
     error("Uncaught exception:", err);
     process.exit(1);
 });
-
-export { bot, logChannel };

@@ -111,7 +111,7 @@ export async function handleSlashUnfollow(interaction) {
         commandLogger.info(`${interaction.user.tag} unfollowed map ${sanitizedMap}`);
     }
 
-    const logEmbed = createFollowLogEmbed(rawMap === "all" ? "Unfollowed" : "Unfollowed", interaction.user, rawMap === "all" ? "all" : rawMap);
+    const logEmbed = createFollowLogEmbed("Unfollowed", interaction.user, rawMap);
 
     if (logChannel) {
         logChannel.send({ embeds: [logEmbed] }).catch(err => {
