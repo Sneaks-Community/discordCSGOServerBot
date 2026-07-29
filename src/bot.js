@@ -28,6 +28,10 @@ let isDisconnected = false;
 const bot = new Discord.Client({
     intents: [
         GatewayIntentBits.Guilds,
+        // Privileged: required for guildMemberRemove (follow cleanup). Must also be
+        // enabled as "Server Members Intent" in the Discord Developer Portal, or
+        // login fails with "Used disallowed intents".
+        GatewayIntentBits.GuildMembers,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.GuildMessageReactions,
         GatewayIntentBits.DirectMessages,
@@ -160,10 +164,22 @@ async function intervalFunction() {
 }
 
 /**
- * Handle guild member remove event - clean up follows when member leaves
+ * Handle guild member remove event - clean up follows when member leaves.
+ * Scoped to the primary guild so that leaving some other shared guild does not
+ * wipe follows; if DISCORD_GUILD_ID is unset, any guild triggers cleanup.
  */
-bot.on("guildMemberRemove", async (member) => {
-    await unfollowAll(member.id);
+bot.on("guildMemberRemove", (member) => {
+    const primaryGuildID = config.discord?.guildID;
+    if (primaryGuildID && member.guild?.id !== primaryGuildID) {
+        return;
+    }
+
+    try {
+        unfollowAll(member.id);
+        botLogger.info({ guildId: member.guild?.id, userId: member.id }, "Removed follows for departed member");
+    } catch (err) {
+        botLogger.error({ err, guildId: member.guild?.id, userId: member.id }, "Failed to remove follows for departed member");
+    }
 });
 
 /**

@@ -15,7 +15,7 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 - **Map Notifications**: Receive DM alerts when followed maps appear on monitored servers
 - **Slash Commands**: Modern Discord interaction using slash commands with autocomplete support
 - **Rate Limiting**: Built-in rate limiting to prevent abuse (configurable per command)
-- **Automatic Cleanup**: Automatically removes user follows when they leave the server
+- **Automatic Cleanup**: Automatically removes user follows when they leave the server (requires the privileged Server Members Intent, see [Discord Bot Requirements](#discord-bot-requirements))
 - **Retry Logic**: Exponential backoff for failed server queries
 
 ### Public Commands
@@ -159,10 +159,20 @@ Add your CS:GO servers to `servers.json`:
 
 - **Required Intents**:
   - Guilds
+  - GuildMembers (privileged)
   - GuildMessages
   - GuildMessageReactions
   - DirectMessages
   - DirectMessageReactions
+
+  GuildMembers is a privileged intent and powers the automatic follow cleanup when a
+  member leaves. Enable **Server Members Intent** under Bot → Privileged Gateway Intents
+  in the [Discord Developer Portal](https://discord.com/developers/applications) before
+  starting the bot, otherwise login fails with `Used disallowed intents`.
+
+  Cleanup is scoped to `DISCORD_GUILD_ID` when that variable is set, so a user leaving
+  another guild the bot shares does not lose their follows. With it unset, leaving any
+  guild the bot is in clears that user's follows.
 
 ## Docker Deployment
 
