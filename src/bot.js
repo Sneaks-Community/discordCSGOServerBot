@@ -3,7 +3,7 @@
  * Main bot module that initializes and runs the Discord client
  */
 
-import Discord, { GatewayIntentBits } from "discord.js";
+import Discord, { Events, GatewayIntentBits } from "discord.js";
 
 import { setFollowLogChannel } from "./commands/followCommands.js";
 import { registerSlashCommands, handleInteraction } from "./commands/index.js";
@@ -20,9 +20,6 @@ import { withRetry } from "./utils/retry.js";
 // Store interval references for cleanup during shutdown
 let embedInterval = null;
 let mapCheckInterval = null;
-
-// Track connection state for reconnection handling
-let isDisconnected = false;
 
 // Create bot client with v14 intents
 const bot = new Discord.Client({
@@ -125,11 +122,6 @@ bot.on("ready", async () => {
  * Interval function to refresh server data and update embeds
  */
 async function intervalFunction() {
-    if (isDisconnected) {
-        botLogger.warn("Skipping interval update - bot is disconnected");
-        return;
-    }
-    
     try {
         await refresh();
     } catch (err) {
@@ -190,35 +182,28 @@ bot.on("interactionCreate", async (interaction) => {
 });
 
 /**
- * Handle disconnection from Discord
+ * Gateway lifecycle logging.
+ *
+ * These are observability only: the intervals keep running through a reconnect on
+ * purpose. Server queries go to the game servers rather than Discord, and embed
+ * edits are REST calls that do not depend on the gateway, are queued by discord.js,
+ * and are already wrapped in withRetry plus a try/catch.
  */
-bot.on("disconnect", () => {
-    botLogger.warn("Disconnected from Discord, pausing intervals...");
-    isDisconnected = true;
-    
-    // Clear intervals to prevent stale operations during disconnection
-    if (embedInterval) {
-        clearInterval(embedInterval);
-        embedInterval = null;
-    }
-    if (mapCheckInterval) {
-        clearInterval(mapCheckInterval);
-        mapCheckInterval = null;
-    }
+bot.on(Events.ShardDisconnect, (event, shardId) => {
+    // Only emitted for unrecoverable close codes; the shard will not come back.
+    botLogger.error({ code: event.code, shardId }, "Shard disconnected and will not reconnect");
 });
 
-/**
- * Handle reconnection to Discord
- */
-bot.on("reconnect", () => {
-    botLogger.info("Reconnected to Discord, refreshing data...");
-    isDisconnected = false;
-    
-    // Restart intervals and force a full refresh
-    intervalFunction();
-    
-    embedInterval = setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
-    mapCheckInterval = setInterval(() => updateServerData(notifyUsers), CONFIG_VALUES.MAP_CHECK_INTERVAL_MS);
+bot.on(Events.ShardReconnecting, (shardId) => {
+    botLogger.warn({ shardId }, "Shard reconnecting to Discord");
+});
+
+bot.on(Events.ShardResume, (shardId, replayedEvents) => {
+    botLogger.info({ replayedEvents, shardId }, "Shard resumed its session");
+});
+
+bot.on(Events.ShardReady, (shardId) => {
+    botLogger.info({ shardId }, "Shard ready");
 });
 
 /**
