@@ -65,7 +65,7 @@ export async function handleSlashFollow(interaction) {
 
     if (logChannel) {
         logChannel.send({ embeds: [logEmbed] }).catch(err => {
-            commandLogger.error("Failed to send follow log:", err);
+            commandLogger.error({ err }, "Failed to send follow log");
         });
     }
 }
@@ -115,7 +115,7 @@ export async function handleSlashUnfollow(interaction) {
 
     if (logChannel) {
         logChannel.send({ embeds: [logEmbed] }).catch(err => {
-            commandLogger.error("Failed to send unfollow log:", err);
+            commandLogger.error({ err }, "Failed to send unfollow log");
         });
     }
 }

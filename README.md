@@ -84,6 +84,7 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | `DISCORD_TOKEN` | Yes | - | Your Discord bot token |
 | `ADMIN_ROLE_ID` | Recommended | - | Discord role ID with admin access |
 | `LOGGING_ENABLED` | No | `true` | Enable/disable logging |
+| `LOG_LEVEL` | No | `info` | Console verbosity: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent`. |
 | `LOG_GUILD_ID` | No | - | Guild ID for logging bot activities |
 | `LOG_CHANNEL_ID` | No | - | Channel ID for logging bot activities |
 | `FALLBACK_GUILD_ID` | No | - | Fallback guild ID for DM failures |

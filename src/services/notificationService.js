@@ -7,7 +7,7 @@ import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
 import { getUsersFollowingMap } from "../db/index.js";
-import { serviceLogger, warn, error } from "../utils/logger.js";
+import { serviceLogger } from "../utils/logger.js";
 import { getMapImage } from "../utils/mapUtils.js";
 import { validateChannelForSend } from "../utils/permissions.js";
 import { withRetry } from "../utils/retry.js";
@@ -78,7 +78,7 @@ export async function notifyUsers(map, serverObj, bot = botInstance, logChannel 
         try {
             u = await getCachedUser(user.discord_id, bot);
         } catch (fetchError) {
-            warn(`Failed to fetch user ${user.discord_id}:`, fetchError.message);
+            serviceLogger.warn({ err: fetchError, userId: user.discord_id }, "Failed to fetch user");
             u = null;
         }
 
@@ -137,14 +137,14 @@ export async function notifyUsers(map, serverObj, bot = botInstance, logChannel 
 
             if (logChannel) {
                 logChannel.send({ embeds: [logEmbed] }).catch(err => {
-                    warn("Failed to send notification log:", err);
+                    serviceLogger.warn({ err }, "Failed to send notification log");
                 });
             }
             serviceLogger.info(`Sent notification to ${u.tag} about ${map}`);
         } catch (e) {
             // Handle failed DM (user may have DMs disabled or other issues)
             const userId = u?.id || user.discord_id;
-            warn(`Failed to send DM to user <@${userId}> about ${map}:`, e.message);
+            serviceLogger.warn({ err: e, map, userId }, "Failed to send DM to user");
 
             // Send fallback notification to log channel (without user mention)
             await sendFallbackNotification(map, server, serverObj, ip, mapImage);
@@ -195,6 +195,6 @@ async function sendFallbackNotification(map, server, serverObj, ip, mapImage) {
             });
         });
     } catch (fallbackError) {
-        error(`Failed to send fallback notification for ${map}:`, fallbackError);
+        serviceLogger.error({ err: fallbackError, map }, "Failed to send fallback notification");
     }
 }

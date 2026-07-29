@@ -13,7 +13,7 @@ import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheService.js";
 import { notifyUsers, initNotificationService, setNotificationLogChannel } from "./services/notificationService.js";
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
-import { botLogger, error, warn } from "./utils/logger.js";
+import { botLogger } from "./utils/logger.js";
 import { validateChannelForEdit, validateChannelForSend } from "./utils/permissions.js";
 import { withRetry } from "./utils/retry.js";
 
@@ -52,9 +52,11 @@ export async function initBot() {
     // Initialize notification service with bot instance
     initNotificationService(bot);
 
-    // Login to Discord (token is redacted by Pino automatically)
+    // Login to Discord. Note: the token is read from process.env.DISCORD_TOKEN by
+    // discord.js itself. Pino's redact paths only scrub matching keys on logged
+    // objects, so never interpolate the token into a log message.
     bot.login().catch(err => {
-        error("Failed to login to Discord:", err.message);
+        botLogger.fatal({ err }, "Failed to login to Discord");
         process.exit(1);
     });
 }
@@ -75,14 +77,20 @@ bot.on("ready", async () => {
                 // Validate bot has required permissions in log channel
                 const permCheck = validateChannelForSend(logChannel);
                 if (!permCheck.valid) {
-                    warn(`Log channel ${config.logging?.channelID} permission issue: ${permCheck.error}`);
+                    botLogger.warn(
+                        { channelId: config.logging?.channelID, reason: permCheck.error },
+                        "Log channel permission check failed; disabling channel logging"
+                    );
                     logChannel = null; // Disable logging if permissions are missing
                 }
             } else {
-                warn(`Log channel ${config.logging?.channelID} not found in guild ${config.logging?.guildID}`);
+                botLogger.warn(
+                    { channelId: config.logging?.channelID, guildId: config.logging?.guildID },
+                    "Log channel not found in guild"
+                );
             }
         } else {
-            warn(`Guild ${config.logging?.guildID} not found`);
+            botLogger.warn({ guildId: config.logging?.guildID }, "Logging guild not found");
         }
 
         // Set log channel for follow commands and notifications
@@ -104,7 +112,7 @@ bot.on("ready", async () => {
         // Start cleanup intervals for cache and rate limits
         startCleanupIntervals();
     } catch (err) {
-        botLogger.error(err, "Failed during ready initialization");
+        botLogger.fatal({ err }, "Failed during ready initialization");
         process.exit(1);
     }
 });
@@ -121,7 +129,7 @@ async function intervalFunction() {
     try {
         await refresh();
     } catch (err) {
-        error("Failed to refresh server data:", err);
+        botLogger.error({ err }, "Failed to refresh server data");
         return; // Skip embed update if refresh fails
     }
     
@@ -145,7 +153,7 @@ async function intervalFunction() {
                     await message.edit({ content: "\u200B", embeds: [embed] });
                 });
             } catch (err) {
-                error(`Failed to update embed in channel ${e.channelID} after retries:`, err);
+                botLogger.error({ channelId: e.channelID, err }, "Failed to update embed after retries");
             }
         })
     );
@@ -221,7 +229,7 @@ function gracefulShutdown(signal) {
         botLogger.info("Shutdown complete.");
         process.exit(0);
     } catch (shutdownError) {
-        error("Shutdown error:", shutdownError);
+        botLogger.fatal({ err: shutdownError }, "Shutdown error");
         process.exit(1);
     }
 }
@@ -229,12 +237,14 @@ function gracefulShutdown(signal) {
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-// Global error handlers for unhandled promise rejections and exceptions
+// Global error handlers for unhandled promise rejections and exceptions.
+// `reason` is not guaranteed to be an Error; Pino's err serializer passes
+// non-Error values through unchanged.
 process.on("unhandledRejection", (reason) => {
-    error("Unhandled promise rejection:", reason);
+    botLogger.error({ err: reason }, "Unhandled promise rejection");
 });
 
 process.on("uncaughtException", (err) => {
-    error("Uncaught exception:", err);
+    botLogger.fatal({ err }, "Uncaught exception");
     process.exit(1);
 });

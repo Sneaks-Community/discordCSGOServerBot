@@ -3,7 +3,7 @@
  * Handles config loading and validation from environment variables
  */
 
-import { configLogger, error } from "../utils/logger.js";
+import { configLogger } from "../utils/logger.js";
 import { config, CONFIG_VALUES, REQUIRED_PERMISSIONS } from "./config.js";
 
 export { config, CONFIG_VALUES, REQUIRED_PERMISSIONS };
@@ -71,12 +71,10 @@ export function validateConfig() {
 
     // Exit on errors
     if (errors.length > 0) {
-        error("CRITICAL CONFIGURATION ERRORS:");
-        for (const err of errors) {
-            error(`  - ${err}`);
-        }
-        error("Please set the required environment variables.");
-        error("See .env.example for reference.");
+        configLogger.fatal(
+            { errors },
+            "Critical configuration errors; set the required environment variables (see .env.example)"
+        );
         process.exit(1);
     }
 

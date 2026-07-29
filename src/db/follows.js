@@ -39,7 +39,7 @@ function execStmt(sql, params, operationName) {
     try {
         return stmt.run(...params);
     } catch (err) {
-        dbLogger.error(`Database error in ${operationName}:`, err);
+        dbLogger.error({ err, operation: operationName }, "Database error");
         throw err;
     }
 }
@@ -59,7 +59,7 @@ function performQuery(sql, params, operationName, single = false) {
     try {
         return single ? stmt.get(...params) : stmt.all(...params);
     } catch (err) {
-        dbLogger.error(`Database error in ${operationName}:`, err);
+        dbLogger.error({ err, operation: operationName }, "Database error");
         throw err;
     }
 }

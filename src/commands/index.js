@@ -120,7 +120,7 @@ export async function registerSlashCommands(bot) {
             commandLogger.info(`Successfully registered ${slashCommands.length} global slash commands`);
         }
     } catch (err) {
-        commandLogger.error("Error registering slash commands:", err);
+        commandLogger.error({ err }, "Error registering slash commands");
         throw err;
     }
 }
@@ -179,7 +179,7 @@ export async function handleInteraction(interaction, bot, logChannel) {
         // Unknown command
         await interaction.reply({ content: "Unknown command.", ephemeral: true });
     } catch (err) {
-        commandLogger.error(`Error handling slash command ${commandName}:`, err);
+        commandLogger.error({ command: commandName, err }, "Error handling slash command");
         const replyMethod = interaction.replied || interaction.deferred ? "editReply" : "reply";
         await interaction[replyMethod]({ content: "An error occurred while processing your command.", ephemeral: true }).catch(() => {});
     }

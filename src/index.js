@@ -4,10 +4,10 @@
  */
 
 import { initBot } from "./bot.js";
-import { error } from "./utils/logger.js";
+import { mainLogger } from "./utils/logger.js";
 
 // Start the bot
 initBot().catch(err => {
-    error("Failed to initialize bot:", err);
+    mainLogger.fatal({ err }, "Failed to initialize bot");
     process.exit(1);
 });

@@ -103,7 +103,24 @@ export default [
       "unicorn/no-useless-undefined": "error",
 
       // ── Legacy rules (superseded by unicorn) ─────────────────────
-      "no-useless-escape": "warn"
+      "no-useless-escape": "warn",
+
+      // ── Pino logging convention (see src/utils/logger.js) ────────
+      // Pino reads the first argument as the message and any further arguments
+      // as printf interpolation values. Without a %s placeholder those extras
+      // are discarded, so `logger.error("Failed:", err)` throws the error and
+      // its stack away. Require the object-first form: logger.error({ err }, "Failed").
+      // Note: if placeholder-style logging is ever adopted, these need an exception.
+      "no-restricted-syntax": ["error",
+        {
+          selector: "CallExpression[callee.property.name=/^(trace|debug|info|warn|error|fatal)$/][arguments.length>1][arguments.0.type=/^(Literal|TemplateLiteral)$/]",
+          message: "Pino discards extra args without a %s placeholder. Use logger.error({ err }, \"message\") instead."
+        },
+        {
+          selector: "CallExpression[callee.name=/^(trace|debug|info|warn|error|fatal)$/][arguments.length>1][arguments.0.type=/^(Literal|TemplateLiteral)$/]",
+          message: "Pino discards extra args without a %s placeholder. Use logger.error({ err }, \"message\") instead."
+        }
+      ]
     }
   }
 ];

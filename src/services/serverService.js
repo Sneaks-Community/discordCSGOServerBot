@@ -82,7 +82,7 @@ export async function getInfo(server, index) {
         port: port,
         type: server.protocol || "csgo"
     }).catch((err) => {
-        serviceLogger.error(`GameDig query failed for ${server.ip}:`, err.message);
+        serviceLogger.error({ err, serverIp: server.ip }, "GameDig query failed");
         valid = false;
     });
 
@@ -165,7 +165,7 @@ export async function refresh() {
                         const data = await getInfo(server, index + 1);
                         return [name, data];
                     } catch (err) {
-                        serviceLogger.error(`Failed to query ${name}:`, err);
+                        serviceLogger.error({ err, server: name }, "Failed to query server");
                         // Return minimal data on error
                         return [name, { index: index + 1, keywords: server.keywords, name: server.nick, online: false }];
                     }

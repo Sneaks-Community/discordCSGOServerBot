@@ -1,9 +1,48 @@
 /**
  * Logger module using Pino with redaction for sensitive data
  * Produces JSON logs in production, pretty-printed logs in development
+ *
+ * Call convention: object first, message second.
+ *     logger.error({ err }, "Failed to refresh server data");
+ * Pino treats a leading string as the message and any further arguments as
+ * printf interpolation values, so `logger.error("Failed:", err)` silently
+ * discards the error and loses its stack. The `no-restricted-syntax` rules in
+ * eslint.config.js enforce the object-first form.
+ *
+ * Always log through one of the exported child loggers so every line carries a
+ * `module` binding; that binding is what makes per-subsystem filtering possible.
  */
 
 import pino from "pino";
+
+// Level names Pino accepts, least to most severe. Pino emits the standard
+// numeric levels itself (trace 10, debug 20, info 30, warn 40, error 50,
+// fatal 60), so no custom level formatter is needed.
+const LOG_LEVELS = new Set(["trace", "debug", "info", "warn", "error", "fatal", "silent"]);
+const DEFAULT_LOG_LEVEL = "info";
+
+/**
+ * Resolve the configured log level from the environment.
+ * Pino throws on an unrecognized level, which would fail at import time before
+ * any logger exists to report why, so fall back to the default instead.
+ * @returns {{ level: string, invalid?: string }} - Resolved level, plus the rejected value if any
+ */
+function resolveLogLevel() {
+    const raw = process.env.LOG_LEVEL;
+
+    if (!raw || raw.trim() === "") {
+        return { level: DEFAULT_LOG_LEVEL };
+    }
+
+    const normalized = raw.trim().toLowerCase();
+    if (!LOG_LEVELS.has(normalized)) {
+        return { invalid: raw, level: DEFAULT_LOG_LEVEL };
+    }
+
+    return { level: normalized };
+}
+
+const { invalid: invalidLogLevel, level: logLevel } = resolveLogLevel();
 
 /**
  * Create a Pino logger with redaction configured
@@ -13,7 +52,8 @@ import pino from "pino";
 function createLogger() {
     const isDevelopment = process.stdout.isTTY;
 
-    // Paths to redact from all log output
+    // Paths to redact from all log output. These match object keys on logged
+    // objects only; they do not scrub tokens interpolated into a message string.
     const redactPaths = [
         "discord.token",
         "discord.token*",
@@ -23,10 +63,7 @@ function createLogger() {
 
     // Base pino configuration
     const baseConfig = {
-        formatters: {
-            level: (label) => ({ level: label, levelNum: label === "info" ? 30 : label === "warn" ? 40 : label === "error" ? 50 : 20 })
-        },
-        level: process.env.LOG_LEVEL || "info",
+        level: logLevel,
         redact: {
             censor: "**REDACTED**",
             paths: redactPaths
@@ -41,7 +78,7 @@ function createLogger() {
             transport: {
                 options: {
                     colorize: true,
-                    customColors: "info:green,warn:yellow,error:red,debug:gray",
+                    customColors: "fatal:red,error:red,warn:yellow,info:green,debug:gray,trace:gray",
                     ignore: "pid,hostname",
                     messageFormat: "({ts}) {level}: {msg}",
                     translateTime: "SYS:yyyy-mm-dd HH:MM:ss.l o"
@@ -64,10 +101,15 @@ export const commandLogger = logger.child({ module: "commands" });
 export const dbLogger = logger.child({ module: "database" });
 export const serviceLogger = logger.child({ module: "services" });
 export const configLogger = logger.child({ module: "config" });
+export const mainLogger = logger.child({ module: "main" });
 
-// Export convenience methods matching Pino's API
-export const warn = logger.warn.bind(logger);
-export const error = logger.error.bind(logger);
+// Surface a bad LOG_LEVEL now that there is a logger to report it with.
+if (invalidLogLevel) {
+    configLogger.warn(
+        { configuredLevel: invalidLogLevel, effectiveLevel: logLevel, validLevels: [...LOG_LEVELS] },
+        "Invalid LOG_LEVEL; falling back to default"
+    );
+}
 
 // Export the full logger for child creation or advanced usage
 export default logger;
