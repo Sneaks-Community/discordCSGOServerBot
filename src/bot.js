@@ -62,7 +62,7 @@ export async function initBot() {
 /**
  * Bot ready event handler
  */
-bot.on("ready", async () => {
+bot.on(Events.ClientReady, async () => {
     try {
         botLogger.info("Started as " + bot.user.tag);
         bot.user.setActivity("/follow <map> in #bot-commands");

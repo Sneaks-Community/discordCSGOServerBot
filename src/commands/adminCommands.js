@@ -25,16 +25,16 @@ export async function handleSlashCheck(interaction) {
 
     const rateLimitResult = checkRateLimit(interaction.user.id, "ipCheck", CONFIG_VALUES.IP_CHECK_RATE_LIMIT_PER_MINUTE);
     if (!rateLimitResult.allowed) {
-        return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before checking another server.`, ephemeral: true });
+        return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before checking another server.`, flags: MessageFlags.Ephemeral });
     }
 
     if (!input) {
-        return interaction.reply({ content: "Please enter a server IP address, domain name, or keyword.", ephemeral: true });
+        return interaction.reply({ content: "Please enter a server IP address, domain name, or keyword.", flags: MessageFlags.Ephemeral });
     }
 
     const validation = validateServerInput(input, getServerByKeyword);
     if (!validation.valid) {
-        return interaction.reply({ content: validation.error, ephemeral: true });
+        return interaction.reply({ content: validation.error, flags: MessageFlags.Ephemeral });
     }
 
     // Everything above is instant, so it still fits in Discord's 3 second reply
@@ -168,7 +168,7 @@ export async function handleSlashListallfollows(interaction) {
     });
 
     if (!follows || follows.length === 0) {
-        return interaction.reply({ content: "There are no users following any maps.", ephemeral: true });
+        return interaction.reply({ content: "There are no users following any maps.", flags: MessageFlags.Ephemeral });
     }
 
     let list = "";
@@ -225,17 +225,17 @@ export async function handleSlashRemoveuser(interaction) {
     const userID = interaction.options.getString("userid");
   
     if (!userID) {
-        return interaction.reply({ content: "Please enter a valid user ID.", ephemeral: true });
+        return interaction.reply({ content: "Please enter a valid user ID.", flags: MessageFlags.Ephemeral });
     }
 
     // Validate Discord ID using Zod v4 schema
     const userIdValidation = validateWithZod(discordIdSchema, userID, "User ID");
     if (!userIdValidation.valid) {
-        return interaction.reply({ content: userIdValidation.error, ephemeral: true });
+        return interaction.reply({ content: userIdValidation.error, flags: MessageFlags.Ephemeral });
     }
 
     await unfollowAll(userIdValidation.data);
-    await interaction.reply({ content: `Removed all maps from user <@${userID}>.`, ephemeral: true });
+    await interaction.reply({ content: `Removed all maps from user <@${userID}>.`, flags: MessageFlags.Ephemeral });
 }
 
 /**
@@ -250,5 +250,5 @@ export async function handleSlashMem(interaction) {
     }
     out += "```";
 
-    await interaction.reply({ content: out, ephemeral: true });
+    await interaction.reply({ content: out, flags: MessageFlags.Ephemeral });
 }

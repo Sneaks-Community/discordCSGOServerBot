@@ -3,6 +3,8 @@
  * Handles /players, /map, and /keywords commands
  */
 
+import { MessageFlags } from "discord.js";
+
 import serverObject from "../../servers.json" with { type: "json" };
 import { playerListEmbed, makeServerList } from "../embeds/playerEmbeds.js";
 import { isServerDataEmpty, getServerData, getServerByKeyword } from "../services/serverService.js";
@@ -13,7 +15,7 @@ import { isServerDataEmpty, getServerData, getServerByKeyword } from "../service
  */
 export async function handleSlashPlayers(interaction) {
     if (isServerDataEmpty()) {
-        return interaction.reply({ content: "Please Wait. The bot is starting.", ephemeral: true });
+        return interaction.reply({ content: "Please Wait. The bot is starting.", flags: MessageFlags.Ephemeral });
     }
 
     const serverInput = interaction.options.getString("server");
@@ -27,7 +29,7 @@ export async function handleSlashPlayers(interaction) {
     const server = getServerByKeyword(serverInput.toLowerCase());
   
     if (!server) {
-        return interaction.reply({ content: "Please enter a valid server.", ephemeral: true });
+        return interaction.reply({ content: "Please enter a valid server.", flags: MessageFlags.Ephemeral });
     }
 
     const embed = playerListEmbed(server);

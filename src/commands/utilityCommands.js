@@ -3,7 +3,7 @@
  * Handles /help and /ping commands
  */
 
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, MessageFlags } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
 
@@ -33,5 +33,5 @@ export async function handleSlashHelp(interaction) {
  * @param {Object} interaction - Discord interaction object
  */
 export async function handleSlashPing(interaction) {
-    await interaction.reply({ content: "🏓 Pong!", ephemeral: true });
+    await interaction.reply({ content: "🏓 Pong!", flags: MessageFlags.Ephemeral });
 }

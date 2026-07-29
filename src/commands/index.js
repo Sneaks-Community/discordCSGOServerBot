@@ -3,7 +3,7 @@
  * Handles command registration and routes interactions to handlers
  */
 
-import { SlashCommandBuilder, REST, Routes } from "discord.js";
+import { SlashCommandBuilder, REST, Routes, MessageFlags } from "discord.js";
 
 import { config } from "../config/index.js";
 import { commandLogger } from "../utils/logger.js";
@@ -145,7 +145,7 @@ export async function handleInteraction(interaction, bot) {
 
     // Ensure interaction is from a guild (not DM)
     if (!interaction.guild) {
-        return interaction.reply({ content: "This bot is only available in servers.", ephemeral: true });
+        return interaction.reply({ content: "This bot is only available in servers.", flags: MessageFlags.Ephemeral });
     }
 
     const { commandName } = interaction;
@@ -158,7 +158,7 @@ export async function handleInteraction(interaction, bot) {
         if (adminCommands.has(commandName)) {
             if (!isAdmin) {
                 logAdminCommandAttempt(commandName, userId, username);
-                return interaction.reply({ content: "You do not have permission to use this command.", ephemeral: true });
+                return interaction.reply({ content: "You do not have permission to use this command.", flags: MessageFlags.Ephemeral });
             }
             commandLogger.info({ command: commandName, userId, username }, "Admin command executed");
             const handler = adminCommands.get(commandName);
@@ -176,10 +176,16 @@ export async function handleInteraction(interaction, bot) {
         }
 
         // Unknown command
-        await interaction.reply({ content: "Unknown command.", ephemeral: true });
+        await interaction.reply({ content: "Unknown command.", flags: MessageFlags.Ephemeral });
     } catch (err) {
         commandLogger.error({ command: commandName, err }, "Error handling slash command");
-        const replyMethod = interaction.replied || interaction.deferred ? "editReply" : "reply";
-        await interaction[replyMethod]({ content: "An error occurred while processing your command.", ephemeral: true }).catch(() => {});
+        const content = "An error occurred while processing your command.";
+        // An already-deferred/replied interaction keeps the ephemerality it was
+        // created with; editReply cannot change it, so the flag is only set here
+        // when this is the interaction's first response.
+        const response = interaction.replied || interaction.deferred
+            ? interaction.editReply({ content })
+            : interaction.reply({ content, flags: MessageFlags.Ephemeral });
+        await response.catch(() => {});
     }
 }
