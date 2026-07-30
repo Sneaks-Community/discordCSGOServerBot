@@ -1,34 +1,26 @@
 /**
- * Configuration module - reads from environment variables
+ * Configuration module - reads from validated environment variables
  * Builds a config object compatible with the previous config.json structure
  */
 
-/**
- * Parse a JSON string into an object/array
- * @param {string} value - JSON string
- * @param {object|array} defaultValue - Default value if parsing fails
- * @returns {object|array} Parsed value or default
- */
-function parseJson(value, defaultValue) {
-    if (!value || typeof value !== "string") return defaultValue;
-    try {
-        return JSON.parse(value);
-    } catch {
-        return defaultValue;
-    }
-}
+import { parseEnv } from "../schemas/envSchema.js";
+
+const { errors, values: env, warnings } = parseEnv();
 
 /**
- * Parse a string to integer
- * @param {string} value - String value
- * @param {number} defaultValue - Default value
- * @returns {number} Integer value
+ * Environment validation failures, in the order the variables are declared.
+ * Reported and acted on by validateConfig(); non-empty means every value below
+ * has fallen back to its default and must not be trusted.
+ * @type {string[]}
  */
-function parseInt_(value, defaultValue) {
-    if (value === undefined || value === null || value === "") return defaultValue;
-    const parsed = parseInt(value, 10);
-    return isNaN(parsed) ? defaultValue : parsed;
-}
+export const ENV_ERRORS = errors;
+
+/**
+ * Optional variables left empty, each naming the feature it disables.
+ * Reported by validateConfig(); harmless, but worth saying out loud at startup.
+ * @type {string[]}
+ */
+export const ENV_WARNINGS = warnings;
 
 /**
  * Convert seconds to milliseconds
@@ -40,47 +32,53 @@ function toMs(seconds) {
 }
 
 /**
- * Build the base configuration object from environment variables
+ * Build the base configuration object from the validated environment.
+ * Every value here has already been range-checked by envSchema, so consumers
+ * can treat them as trusted: numbers are whole and in range, IDs are snowflakes
+ * or empty, and URLs are absolute http(s).
  */
 const baseConfig = {
     cache: {
-        userCacheTTLSeconds: parseInt_(process.env.USER_CACHE_TTL, 300)
+        userCacheTTLSeconds: env.USER_CACHE_TTL
+    },
+    database: {
+        path: env.DATABASE_PATH
     },
     discord: {
-        guildID: process.env.DISCORD_GUILD_ID || "",
-        token: process.env.DISCORD_TOKEN || ""
+        guildID: env.DISCORD_GUILD_ID,
+        token: env.DISCORD_TOKEN
     },
-    embeds: parseJson(process.env.EMBEDS, []),
+    embeds: env.EMBEDS,
     embedsConfig: {
-        color: parseInt_(process.env.EMBED_COLOR, 7980240)
+        color: env.EMBED_COLOR
     },
     fallback: {
-        channelID: process.env.FALLBACK_CHANNEL_ID || "",
-        guildID: process.env.FALLBACK_GUILD_ID || ""
+        channelID: env.FALLBACK_CHANNEL_ID,
+        guildID: env.FALLBACK_GUILD_ID
     },
     gamedig: {
-        defaultMaxRetries: parseInt_(process.env.GAMEDIG_MAX_RETRIES, 4)
+        defaultMaxRetries: env.GAMEDIG_MAX_RETRIES
     },
     images: {
-        fallbackAvatar: process.env.FALLBACK_AVATAR_URL || "https://i.imgur.com/cBiDnMi.png",
-        offlineServer: process.env.OFFLINE_SERVER_IMAGE || "https://i.imgur.com/WnS0Biz.png"
+        fallbackAvatar: env.FALLBACK_AVATAR_URL,
+        offlineServer: env.OFFLINE_SERVER_IMAGE
     },
-    mapImageBaseUrl: process.env.MAP_IMAGE_BASE_URL ?? "https://bans.snksrv.com/images/maps/",
+    mapImageBaseUrl: env.MAP_IMAGE_BASE_URL,
     rateLimit: {
-        followPerMinute: parseInt_(process.env.RATE_LIMIT_FOLLOW_PER_MINUTE, 5),
-        unfollowPerMinute: parseInt_(process.env.RATE_LIMIT_UNFOLLOW_PER_MINUTE, 5)
+        followPerMinute: env.RATE_LIMIT_FOLLOW_PER_MINUTE,
+        unfollowPerMinute: env.RATE_LIMIT_UNFOLLOW_PER_MINUTE
     },
     retry: {
-        baseDelaySeconds: parseInt_(process.env.RETRY_BASE_DELAY, 1),
-        maxRetries: parseInt_(process.env.RETRY_MAX_RETRIES, 3)
+        baseDelaySeconds: env.RETRY_BASE_DELAY,
+        maxRetries: env.RETRY_MAX_RETRIES
     },
     security: {
-        adminRoleId: process.env.ADMIN_ROLE_ID || ""
+        adminRoleId: env.ADMIN_ROLE_ID
     },
     serverUpdate: {
-        intervalSeconds: parseInt_(process.env.SERVER_UPDATE_INTERVAL, 90),
-        mapCheckIntervalSeconds: parseInt_(process.env.MAP_CHECK_INTERVAL, 91),
-        maxConcurrentQueries: parseInt_(process.env.MAX_CONCURRENT_QUERIES, 10)
+        intervalSeconds: env.SERVER_UPDATE_INTERVAL,
+        mapCheckIntervalSeconds: env.MAP_CHECK_INTERVAL,
+        maxConcurrentQueries: env.MAX_CONCURRENT_QUERIES
     }
 };
 

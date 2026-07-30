@@ -1,4 +1,16 @@
 /**
+ * Render the nested part of a Zod issue path as a readable accessor chain.
+ * The first segment is the thing being validated (a server name, an environment
+ * variable) and each caller prefixes it in its own style, so only the remainder
+ * is formatted here.
+ * @param {ReadonlyArray<string|number|symbol>} path - Issue path segments after the first
+ * @returns {string} - e.g. `[0].channelID` or `.keywords[2]`, empty for a top-level issue
+ */
+export function formatZodPathSuffix(path) {
+    return path.map((segment) => (typeof segment === "number" ? `[${segment}]` : `.${String(segment)}`)).join("");
+}
+
+/**
  * Validate input against a Zod v4 schema
  * @param {import('zod').ZodType} schema - Zod schema to validate against
  * @param {unknown} input - Input to validate

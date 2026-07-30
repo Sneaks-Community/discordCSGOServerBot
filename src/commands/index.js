@@ -12,8 +12,8 @@ import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "
 import { handleSlashPlayers, handleSlashKeywords } from "./playerCommands.js";
 import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
 
-// Admin role ID from config
-const adminRoleId = config.security?.adminRoleId || "";
+// Admin role ID from config. envSchema guarantees a snowflake or "" (disabled).
+const adminRoleId = config.security.adminRoleId;
 
 /**
  * Public command handlers map - O(1) lookup
@@ -103,7 +103,7 @@ export async function registerSlashCommands(bot) {
             throw new Error("Unable to get application ID - bot may not be fully initialized");
         }
     
-        if (config.discord?.guildID) {
+        if (config.discord.guildID) {
             await rest.put(
                 Routes.applicationGuildCommands(applicationId, config.discord.guildID),
                 { body: slashCommands }

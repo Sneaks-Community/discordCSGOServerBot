@@ -128,7 +128,7 @@ async function intervalFunction() {
  * wipe follows; if DISCORD_GUILD_ID is unset, any guild triggers cleanup.
  */
 bot.on("guildMemberRemove", (member) => {
-    const primaryGuildID = config.discord?.guildID;
+    const primaryGuildID = config.discord.guildID;
     if (primaryGuildID && member.guild?.id !== primaryGuildID) {
         return;
     }

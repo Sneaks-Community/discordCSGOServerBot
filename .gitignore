@@ -3,7 +3,7 @@ config.json
 .env
 notes.txt
 .vscode
-db.sqlite
+db.sqlite*
 plans/
 *.backup
 servers.json

@@ -7,6 +7,7 @@
 
 import serverObject from "../../servers.json" with { type: "json" };
 import { serversFileSchema } from "../schemas/validationSchemas.js";
+import { formatZodPathSuffix } from "../utils/zodValidator.js";
 
 /**
  * Fields a server entry may define. Anything else is reported as an ignored
@@ -25,9 +26,8 @@ function formatIssue(issue) {
     if (issue.path.length === 0) return issue.message;
 
     const [name, ...rest] = issue.path;
-    const suffix = rest.map((segment) => (typeof segment === "number" ? `[${segment}]` : `.${segment}`)).join("");
 
-    return `servers.json: "${name}"${suffix}: ${issue.message}`;
+    return `servers.json: "${String(name)}"${formatZodPathSuffix(rest)}: ${issue.message}`;
 }
 
 /**

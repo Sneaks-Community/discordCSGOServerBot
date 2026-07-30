@@ -15,31 +15,26 @@
 
 import pino from "pino";
 
-// Level names Pino accepts, least to most severe. Pino emits the standard
-// numeric levels itself (trace 10, debug 20, info 30, warn 40, error 50,
-// fatal 60), so no custom level formatter is needed.
-const LOG_LEVELS = new Set(["trace", "debug", "info", "warn", "error", "fatal", "silent"]);
-const DEFAULT_LOG_LEVEL = "info";
+import { DEFAULT_LOG_LEVEL, LOG_LEVELS, logLevelSchema } from "../schemas/envSchema.js";
 
 /**
  * Resolve the configured log level from the environment.
- * Pino throws on an unrecognized level, which would fail at import time before
- * any logger exists to report why, so fall back to the default instead.
+ * The accepted levels are declared with the rest of the environment contract in
+ * schemas/envSchema.js, but applied here rather than in the fatal validation
+ * path: pino throws on an unrecognized level at import time, before any logger
+ * exists to report why, so an unusable value degrades to the default instead of
+ * stopping the process.
  * @returns {{ level: string, invalid?: string }} - Resolved level, plus the rejected value if any
  */
 function resolveLogLevel() {
     const raw = process.env.LOG_LEVEL;
+    const result = logLevelSchema.safeParse(raw);
 
-    if (!raw || raw.trim() === "") {
-        return { level: DEFAULT_LOG_LEVEL };
+    if (result.success) {
+        return { level: result.data };
     }
 
-    const normalized = raw.trim().toLowerCase();
-    if (!LOG_LEVELS.has(normalized)) {
-        return { invalid: raw, level: DEFAULT_LOG_LEVEL };
-    }
-
-    return { level: normalized };
+    return { invalid: raw, level: DEFAULT_LOG_LEVEL };
 }
 
 const { invalid: invalidLogLevel, level: logLevel } = resolveLogLevel();
@@ -106,7 +101,7 @@ export const mainLogger = logger.child({ module: "main" });
 // Surface a bad LOG_LEVEL now that there is a logger to report it with.
 if (invalidLogLevel) {
     configLogger.warn(
-        { configuredLevel: invalidLogLevel, effectiveLevel: logLevel, validLevels: [...LOG_LEVELS] },
+        { configuredLevel: invalidLogLevel, effectiveLevel: logLevel, validLevels: LOG_LEVELS },
         "Invalid LOG_LEVEL; falling back to default"
     );
 }
