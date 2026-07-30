@@ -8,7 +8,7 @@
 import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js";
 import { dbLogger } from "../utils/logger.js";
 import { validateWithZod } from "../utils/zodValidator.js";
-import { getDB } from "./connection.js";
+import { getStatement } from "./connection.js";
 
 /**
  * Helper to validate and execute database operations using Zod v4 schemas
@@ -26,38 +26,17 @@ function validateOrThrow(schema, value, operationName) {
 }
 
 /**
- * Execute a prepared statement with error handling
+ * Run a statement with error handling, reusing a cached prepared statement
  * @param {string} sql - SQL statement
  * @param {Array} params - Parameters for the statement
  * @param {string} operationName - Name of the operation for error logging
+ * @param {"all" | "get" | "run"} mode - better-sqlite3 method to invoke
  * @returns {any} Result of the operation
  */
-function execStmt(sql, params, operationName) {
-    const db = getDB();
-    if (!db) throw new Error("Database not initialized");
-    const stmt = db.prepare(sql);
+function runStatement(sql, params, operationName, mode) {
+    const stmt = getStatement(sql);
     try {
-        return stmt.run(...params);
-    } catch (err) {
-        dbLogger.error({ err, operation: operationName }, "Database error");
-        throw err;
-    }
-}
-
-/**
- * Query the database with error handling
- * @param {string} sql - SQL statement
- * @param {Array} params - Parameters for the statement
- * @param {string} operationName - Name of the operation for error logging
- * @param {boolean} single - Return single row or all rows
- * @returns {any} Query result
- */
-function performQuery(sql, params, operationName, single = false) {
-    const db = getDB();
-    if (!db) throw new Error("Database not initialized");
-    const stmt = db.prepare(sql);
-    try {
-        return single ? stmt.get(...params) : stmt.all(...params);
+        return stmt[mode](...params);
     } catch (err) {
         dbLogger.error({ err, operation: operationName }, "Database error");
         throw err;
@@ -72,7 +51,7 @@ function performQuery(sql, params, operationName, single = false) {
 export function followMap(discord_id, map_name) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "followMap/discord_id");
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "followMap/map_name");
-    execStmt("INSERT INTO players_follow VALUES (?, ?)", [validatedDiscordId, validatedMapName], "followMap");
+    runStatement("INSERT INTO players_follow VALUES (?, ?)", [validatedDiscordId, validatedMapName], "followMap", "run");
 }
 
 /**
@@ -83,7 +62,7 @@ export function followMap(discord_id, map_name) {
 export function unfollowMap(discord_id, map_name) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "unfollowMap/discord_id");
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "unfollowMap/map_name");
-    execStmt("DELETE FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "unfollowMap");
+    runStatement("DELETE FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "unfollowMap", "run");
 }
 
 /**
@@ -91,7 +70,7 @@ export function unfollowMap(discord_id, map_name) {
  * @returns {Array} - Array of all rows from players_follow
  */
 export function getAllFollows() {
-    return performQuery("SELECT * FROM players_follow", [], "getAllFollows");
+    return runStatement("SELECT * FROM players_follow", [], "getAllFollows", "all");
 }
 
 /**
@@ -101,7 +80,7 @@ export function getAllFollows() {
  */
 export function getUserFollows(discord_id) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "getUserFollows/discord_id");
-    return performQuery("SELECT map_name FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "getUserFollows");
+    return runStatement("SELECT map_name FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "getUserFollows", "all");
 }
 
 /**
@@ -111,7 +90,7 @@ export function getUserFollows(discord_id) {
  */
 export function countUserFollows(discord_id) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "countUserFollows/discord_id");
-    const row = performQuery("SELECT COUNT(*) AS count FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "countUserFollows", true);
+    const row = runStatement("SELECT COUNT(*) AS count FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "countUserFollows", "get");
     return row?.count ?? 0;
 }
 
@@ -124,7 +103,7 @@ export function countUserFollows(discord_id) {
 export function isFollowingMap(discord_id, map_name) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "isFollowingMap/discord_id");
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "isFollowingMap/map_name");
-    return performQuery("SELECT * FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "isFollowingMap", true);
+    return runStatement("SELECT * FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "isFollowingMap", "get");
 }
 
 /**
@@ -134,7 +113,7 @@ export function isFollowingMap(discord_id, map_name) {
  */
 export function getUsersFollowingMap(map_name) {
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "getUsersFollowingMap/map_name");
-    return performQuery("SELECT discord_id FROM players_follow WHERE map_name = ?", [validatedMapName], "getUsersFollowingMap");
+    return runStatement("SELECT discord_id FROM players_follow WHERE map_name = ?", [validatedMapName], "getUsersFollowingMap", "all");
 }
 
 /**
@@ -144,7 +123,7 @@ export function getUsersFollowingMap(map_name) {
  */
 export function hasMap(map_name) {
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "hasMap/map_name");
-    return performQuery("SELECT * FROM players_follow WHERE map_name = ?", [validatedMapName], "hasMap", true);
+    return runStatement("SELECT * FROM players_follow WHERE map_name = ?", [validatedMapName], "hasMap", "get");
 }
 
 /**
@@ -153,5 +132,5 @@ export function hasMap(map_name) {
  */
 export function unfollowAll(discord_id) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "unfollowAll/discord_id");
-    execStmt("DELETE FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "unfollowAll");
+    runStatement("DELETE FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "unfollowAll", "run");
 }

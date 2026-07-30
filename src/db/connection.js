@@ -11,6 +11,15 @@ import { dbLogger } from "../utils/logger.js";
 let db = null;
 
 /**
+ * Cache of prepared statements keyed by SQL text. better-sqlite3 recommends
+ * preparing a statement once and reusing it rather than re-preparing on every
+ * call. Statements belong to the connection that created them, so the cache is
+ * cleared whenever the connection changes (initDB and closeDB).
+ * @type {Map<string, import("better-sqlite3").Statement>}
+ */
+const statementCache = new Map();
+
+/**
  * Initialize the database and create tables if they don't exist
  * Uses a transaction to ensure atomic initialization
  *
@@ -21,6 +30,8 @@ let db = null;
 export function initDB() {
     const dbPath = config.database.path;
     dbLogger.info(`Initializing database at: ${dbPath}`);
+    // Any statement cached here belongs to a previous connection
+    statementCache.clear();
     db = new Database(dbPath);
     // Enable WAL mode for better concurrency
     db.pragma("journal_mode = WAL");
@@ -54,6 +65,7 @@ export function initDB() {
  * Close the database connection
  */
 export function closeDB() {
+    statementCache.clear();
     if (db) {
         db.close();
         db = null;
@@ -66,4 +78,20 @@ export function closeDB() {
  */
 export function getDB() {
     return db;
+}
+
+/**
+ * Get a prepared statement for the given SQL, preparing it on first use
+ * @param {string} sql - SQL statement
+ * @returns {import("better-sqlite3").Statement} - The cached prepared statement
+ * @throws {Error} If the database has not been initialized
+ */
+export function getStatement(sql) {
+    if (!db) throw new Error("Database not initialized");
+    let stmt = statementCache.get(sql);
+    if (!stmt) {
+        stmt = db.prepare(sql);
+        statementCache.set(sql, stmt);
+    }
+    return stmt;
 }
