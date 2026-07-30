@@ -115,7 +115,7 @@ async function deliverNotification(user, event) {
     try {
         if (!u) {
             // User fetch failed, send fallback notification to log channel
-            await sendFallbackNotification(mapName, server, serverObj, ip, mapImage);
+            await sendFallbackNotification(event);
             return;
         }
 
@@ -181,24 +181,66 @@ async function deliverNotification(user, event) {
         }
 
         // Send fallback notification to log channel (without user mention)
-        await sendFallbackNotification(mapName, server, serverObj, ip, mapImage);
+        await sendFallbackNotification(event);
     }
 }
 
 /**
- * Send fallback notification to the configured channel
- * @param {string} mapName - The normalized map name
- * @param {string} server - The server name
- * @param {Object} serverObj - The server object
- * @param {string} ip - The server IP
- * @param {string|false} mapImage - Map image URL
+ * Resolve the configured fallback channel, fetching it when the cache misses.
+ *
+ * The cache is only populated for channels the gateway has told us about, so a
+ * cache-only lookup fails permanently after a restart until something happens in
+ * that channel. fetch() fills the cache and raises Unknown Channel (10003) for a
+ * wrong ID, which isRetryableDiscordError already classifies as terminal.
+ * @param {Object} bot - The Discord client to resolve through
+ * @returns {Promise<Object>} - The resolved channel
+ * @throws {TerminalError} If the channel does not resolve, or is in another guild
  */
-async function sendFallbackNotification(mapName, server, serverObj, ip, mapImage) {
+async function resolveFallbackChannel(bot) {
+    const { channelID, guildID } = config.fallback;
+
+    const channel = bot.channels.cache.get(channelID) ?? (await bot.channels.fetch(channelID));
+    if (!channel) {
+        throw new TerminalError(
+            `Fallback channel ${channelID} not found`,
+            `FALLBACK_CHANNEL_ID ${channelID} does not resolve to a channel the bot can see; check the ID and that the bot is in that guild`
+        );
+    }
+
+    // The channel is resolved through the client rather than through the guild now,
+    // so the configured guild is checked rather than assumed.
+    const channelGuildID = channel.guildId ?? channel.guild?.id;
+    if (channelGuildID !== guildID) {
+        throw new TerminalError(
+            `Fallback channel ${channelID} is in guild ${channelGuildID}, not the configured ${guildID}`,
+            `FALLBACK_CHANNEL_ID ${channelID} belongs to guild ${channelGuildID}; set FALLBACK_GUILD_ID to that guild, or point FALLBACK_CHANNEL_ID at a channel in ${guildID}`
+        );
+    }
+
+    return channel;
+}
+
+/**
+ * Send fallback notification to the configured channel
+ * @param {Object} event - The same event details deliverNotification received
+ */
+async function sendFallbackNotification(event) {
+    // Uses the client threaded through from notifyUsers rather than the module-level
+    // botInstance, so an explicitly passed client is honoured.
+    const { bot, ip, mapImage, mapName, server, serverObj } = event;
+
     // Nothing to fall back to, so there is nothing to retry. Without this an
     // unconfigured fallback costs three retried "guild not found" throws, with
     // backoff, for every recipient whose DM failed, which dominated the fanout.
     if (!config.fallback.guildID || !config.fallback.channelID) {
         serviceLogger.debug({ map: mapName }, "No fallback channel configured, skipping fallback notification");
+        return;
+    }
+
+    // Only reachable if initNotificationService was never called and no client was
+    // passed; without this the retries would be three TypeErrors deep in withRetry.
+    if (!bot) {
+        serviceLogger.error({ map: mapName }, "No Discord client available, skipping fallback notification");
         return;
     }
 
@@ -217,14 +259,7 @@ async function sendFallbackNotification(mapName, server, serverObj, ip, mapImage
 
     try {
         await withRetry(async () => {
-            const guild = botInstance.guilds.cache.get(config.fallback.guildID);
-            if (!guild) {
-                throw new Error(`Fallback guild ${config.fallback.guildID} not found`);
-            }
-            const channel = guild.channels.cache.get(config.fallback.channelID);
-            if (!channel) {
-                throw new Error(`Fallback channel ${config.fallback.channelID} not found`);
-            }
+            const channel = await resolveFallbackChannel(bot);
             // Validate permissions before sending. Terminal: another attempt cannot
             // grant the bot a permission it does not have.
             const permCheck = validateChannelForSend(channel);
