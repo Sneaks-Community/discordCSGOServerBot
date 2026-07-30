@@ -24,19 +24,20 @@ export const mapNameSchema = z
     .transform((val) => val.toLowerCase());
 
 /**
- * Player name schema: printable ASCII characters, max 64 chars
- * Allows any printable ASCII except backslash (\) and angle brackets (<>)
- * to prevent Discord markdown injection at the source.
- * Pattern: \x20 (space), \x21 (!), \x23-\x7E (#-~) — excludes \ (\x5C), < (\x3C), > (\x3E)
+ * Player name schema: any single-line text, trimmed, max 64 characters.
+ * Unicode names are common on CS servers, so only control characters and line
+ * separators are rejected; escapeForDiscord handles markdown at render time.
  */
 export const playerNameSchema = z
     .string()
-    .min(1, "Player name cannot be empty")
-    .max(64, "Player name cannot exceed 64 characters")
-    // Allow printable ASCII except backslash (\x5C \), angle brackets (\x3C <, \x3E >)
-    // Ranges: space-; [\x20-\x3B], ?-[\\] [\x3F-\x5B], ]-~ [\x5D-\x7E]
-    .regex(/^[\x20-\x3B\x3F-\x5B\x5D-\x7E]+$/, "Player name contains invalid characters")
-    .transform((val) => val.trim());
+    .transform((val) => val.trim())
+    .pipe(
+        z
+            .string()
+            .min(1, "Player name cannot be empty")
+            .max(64, "Player name cannot exceed 64 characters")
+            .regex(/^[^\p{Cc}\p{Zl}\p{Zp}]+$/u, "Player name contains control characters")
+    );
 
 /**
  * Maximum number of servers `servers.json` may define.

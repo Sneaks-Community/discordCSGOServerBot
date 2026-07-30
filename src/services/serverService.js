@@ -65,6 +65,41 @@ export function getServerByKeyword(keyword) {
 }
 
 /**
+ * Sanitize one player or bot entry, replacing an unusable name rather than
+ * dropping the row, which used to hide players and understate the count.
+ * @param {Object} entry - gamedig player or bot entry
+ * @param {string} fallback - Name to use when the real one is unusable
+ * @param {string} label - Field label for the validation message
+ * @returns {Object} - Entry with a usable name
+ */
+function sanitizeEntry(entry, fallback, label) {
+    const result = validateWithZod(playerNameSchema, entry.name, label);
+
+    if (!result.valid) {
+        serviceLogger.debug({ reason: result.error }, `Unusable ${label.toLowerCase()}, substituting "${fallback}"`);
+        return { ...entry, name: fallback };
+    }
+
+    return { ...entry, name: result.data };
+}
+
+/**
+ * Read the counts the server reports for itself; `res.numplayers` includes bots
+ * and `res.players` can be truncated, so take the larger of reported and listed.
+ * @param {Object} res - gamedig query result
+ * @returns {{numBots: number, numPlayers: number}} - Reported counts
+ */
+function readCounts(res) {
+    const reportedBots = Number(res.raw?.numbots);
+    const numBots = Math.max(Number.isInteger(reportedBots) ? reportedBots : 0, res.bots.length);
+
+    const reportedTotal = Number(res.numplayers);
+    const reportedHumans = Number.isInteger(reportedTotal) ? reportedTotal - numBots : 0;
+
+    return { numBots, numPlayers: Math.max(reportedHumans, res.players.length, 0) };
+}
+
+/**
  * Query server information using GameDig
  * @param {Object} server - Server configuration object
  * @param {number} index - Server index
@@ -93,29 +128,11 @@ export async function getInfo(server, index) {
     let data;
 
     if (valid) {
-        // Sanitize player names from game server using Zod v4 schema
-        // This prevents Discord markdown injection and ensures data integrity
-        const sanitizedPlayers = res.players
-            .map((player) => {
-                const result = validateWithZod(playerNameSchema, player.name, "Player name");
-                if (!result.valid) {
-                    serviceLogger.warn(`Invalid player name detected, using 'Unknown': ${result.error}`);
-                    return { ...player, name: "Unknown" };
-                }
-                return { ...player, name: result.data };
-            })
-            .filter((player) => player.name && player.name !== "Unknown");
+        // Names are escaped at render time, so this only ensures a usable string
+        const sanitizedPlayers = res.players.map((player) => sanitizeEntry(player, "Unknown", "Player name"));
+        const sanitizedBots = res.bots.map((bot) => sanitizeEntry(bot, "Unknown Bot", "Bot name"));
 
-        // Sanitize bot names similarly
-        const sanitizedBots = res.bots
-            .map((bot) => {
-                const result = validateWithZod(playerNameSchema, bot.name, "Bot name");
-                if (!result.valid) {
-                    return { ...bot, name: "Unknown Bot" };
-                }
-                return { ...bot, name: result.data };
-            })
-            .filter((bot) => bot.name && bot.name !== "Unknown Bot");
+        const { numBots, numPlayers } = readCounts(res);
 
         // If the server is valid, populate the data object with server information
         data = {
@@ -126,8 +143,8 @@ export async function getInfo(server, index) {
             map: normalizeMapName(res.map), // Current map, workshop path stripped to the bare name
             maxPlayers: res.maxplayers,
             name: server.nick, // Short nickname
-            numBots: sanitizedBots.length, // int (gamedig v5.x API)
-            numPlayers: sanitizedPlayers.length, // int (gamedig v5.x API)
+            numBots: numBots,
+            numPlayers: numPlayers, // Humans only; the bot count is reported separately
             online: true,
             players: sanitizedPlayers // Players array {name, score, time}
         };
