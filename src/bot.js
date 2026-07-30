@@ -121,7 +121,10 @@ async function intervalFunction() {
                     }
 
                     const message = await channel.messages.fetch(e.messageID);
-                    await message.edit({ content: "\u200B", embeds: [embed] });
+                    // Mentions denied: the embed is built from server names and map
+                    // names supplied by the game servers, and an edit re-resolves
+                    // mentions in the payload.
+                    await message.edit({ allowedMentions: { parse: [] }, content: "\u200B", embeds: [embed] });
                 }, { isRetryable: isRetryableDiscordError });
             } catch (err) {
                 const reason = getTerminalReason(err);

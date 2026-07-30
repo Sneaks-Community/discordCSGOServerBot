@@ -158,8 +158,12 @@ async function deliverNotification(user, event) {
 
         if (mapImage) dmEmbed.setImage(mapImage);
 
-        // Send the direct message to the user with proper error handling
+        // Send the direct message to the user with proper error handling.
+        // allowedMentions denies every mention type: the map name and server nick
+        // come from the game server, and escapeForDiscord neutralizes markdown but
+        // not "@", so nothing here should ever be able to ping.
         await u.send({
+            allowedMentions: { parse: [] },
             content: `${mapName} is now on ${server}!\nsteam://connect/${ip}`,
             embeds: [dmEmbed]
         });
@@ -230,7 +234,10 @@ async function sendFallbackNotification(mapName, server, serverObj, ip, mapImage
                     `${permCheck.error} in the fallback channel ${config.fallback.channelID}; grant the bot those permissions there`
                 );
             }
+            // Same reasoning as the DM, and it matters more here: this goes to a
+            // channel, so an @everyone slipping through would reach the whole guild.
             await channel.send({
+                allowedMentions: { parse: [] },
                 content: fallbackContent,
                 embeds: [backupEmbed]
             });

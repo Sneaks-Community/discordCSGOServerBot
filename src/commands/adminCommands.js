@@ -91,7 +91,10 @@ export async function handleSlashRemoveuser(interaction) {
     }
 
     await unfollowAll(userIdValidation.data);
-    await interaction.reply({ content: `Removed all maps from user <@${userID}>.`, flags: MessageFlags.Ephemeral });
+    // The only reply that renders a real mention in content rather than in an embed.
+    // Ephemeral replies do not notify anyone today, but P0-4 showed how easily that
+    // flag gets dropped, so the mention is denied here rather than relied upon.
+    await interaction.reply({ allowedMentions: { parse: [] }, content: `Removed all maps from user <@${userID}>.`, flags: MessageFlags.Ephemeral });
 }
 
 /**
