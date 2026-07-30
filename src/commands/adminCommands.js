@@ -40,7 +40,7 @@ export async function handleSlashListallfollows(interaction) {
         .setTimestamp(Date.now())
         .setDescription(list);
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
 }
 
 /**
