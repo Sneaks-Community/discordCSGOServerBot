@@ -1,6 +1,6 @@
 /**
  * Admin slash command handlers
- * Handles /listallfollows, /testnotify, /removeuser, and /mem commands
+ * Handles /listallfollows, /testnotify, and /removeuser commands
  */
 
 import { MessageFlags } from "discord.js";
@@ -95,19 +95,4 @@ export async function handleSlashRemoveuser(interaction) {
     // Ephemeral replies do not notify anyone today, but P0-4 showed how easily that
     // flag gets dropped, so the mention is denied here rather than relied upon.
     await interaction.reply({ allowedMentions: { parse: [] }, content: `Removed all maps from user <@${userID}>.`, flags: MessageFlags.Ephemeral });
-}
-
-/**
- * Handle /mem slash command (Admin only)
- * @param {Object} interaction - Discord interaction object
- */
-export async function handleSlashMem(interaction) {
-    const used = process.memoryUsage();
-    let out = "```";
-    for (const key in used) {
-        out += `${key} ${Math.round((used[key] / 1024 / 1024) * 100) / 100} MB\n`;
-    }
-    out += "```";
-
-    await interaction.reply({ content: out, flags: MessageFlags.Ephemeral });
 }

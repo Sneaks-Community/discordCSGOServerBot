@@ -7,7 +7,7 @@ import { SlashCommandBuilder, REST, Routes, MessageFlags } from "discord.js";
 
 import { config } from "../config/index.js";
 import { commandLogger } from "../utils/logger.js";
-import { handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser, handleSlashMem } from "./adminCommands.js";
+import { handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser } from "./adminCommands.js";
 import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
 import { handleSlashPlayers, handleSlashKeywords } from "./playerCommands.js";
 import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
@@ -36,8 +36,7 @@ const publicCommands = new Map([
 const adminCommands = new Map([
     ["listallfollows", handleSlashListallfollows],
     ["testnotify", handleSlashTestnotify],
-    ["removeuser", handleSlashRemoveuser],
-    ["mem", handleSlashMem]
+    ["removeuser", handleSlashRemoveuser]
 ]);
 
 /**
@@ -60,8 +59,7 @@ function getCommandDefinitions() {
         { admin: true, description: "Test map notification system (Admin only)", name: "testnotify",
             options: opt => opt.setName("map").setDescription("Map name to test").setRequired(true) },
         { admin: true, description: "Remove all follows for a user (Admin only)", name: "removeuser",
-            options: opt => opt.setName("userid").setDescription("Discord user ID").setRequired(true) },
-        { admin: true, description: "Show memory usage (Admin only)", name: "mem" }
+            options: opt => opt.setName("userid").setDescription("Discord user ID").setRequired(true) }
     ];
 }
 
