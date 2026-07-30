@@ -18,15 +18,16 @@ import { validateWithZod } from "../utils/zodValidator.js";
 export async function handleSlashListallfollows(interaction) {
     const follows = await getAllFollows();
 
+    // Guard before sorting: sorting a null/undefined result would throw first
+    if (!follows || follows.length === 0) {
+        return interaction.reply({ content: "There are no users following any maps.", flags: MessageFlags.Ephemeral });
+    }
+
     follows.sort((a, b) => {
         if (a.discord_id < b.discord_id) return -1;
         if (a.discord_id > b.discord_id) return 1;
         return 0;
     });
-
-    if (!follows || follows.length === 0) {
-        return interaction.reply({ content: "There are no users following any maps.", flags: MessageFlags.Ephemeral });
-    }
 
     let list = "";
     for (const follow of follows) {
