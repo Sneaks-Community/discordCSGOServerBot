@@ -12,6 +12,7 @@ services:
     # Drop all container capabilities
     cap_drop:
       - ALL
+    read_only: true
     restart: unless-stopped
     env_file:
       - .env
@@ -22,12 +23,11 @@ services:
       - ./servers.json:/app/servers.json:ro
       # Persist SQLite database
       - bot-data:/app/data
-    # Logging configuration
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: '0.5'
 
 volumes:
   bot-data:

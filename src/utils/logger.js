@@ -68,19 +68,23 @@ function createLogger() {
 
     // Add pretty printing for development
     if (isDevelopment && process.env.NODE_ENV !== "production") {
-        return pino({
-            ...baseConfig,
-            transport: {
-                options: {
-                    colorize: true,
-                    customColors: "fatal:red,error:red,warn:yellow,info:green,debug:gray,trace:gray",
-                    ignore: "pid,hostname",
-                    messageFormat: "({ts}) {level}: {msg}",
-                    translateTime: "SYS:yyyy-mm-dd HH:MM:ss.l o"
-                },
-                target: "pino-pretty"
-            }
-        });
+        try {
+            return pino({
+                ...baseConfig,
+                transport: {
+                    options: {
+                        colorize: true,
+                        customColors: "fatal:red,error:red,warn:yellow,info:green,debug:gray,trace:gray",
+                        ignore: "pid,hostname",
+                        messageFormat: "({ts}) {level}: {msg}",
+                        translateTime: "SYS:yyyy-mm-dd HH:MM:ss.l o"
+                    },
+                    target: "pino-pretty"
+                }
+            });
+        } catch {
+            // pino-pretty is not installed; fall through to JSON logging.
+        }
     }
 
     // Production: JSON logs

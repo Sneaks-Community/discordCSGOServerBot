@@ -15,17 +15,14 @@ WORKDIR /app
 # Copy package files first for better layer caching
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies for native module compilation)
-RUN npm ci
+# Install production dependencies
+RUN npm ci --omit=dev --ignore-scripts
 
 # Copy source code
 COPY src/ ./src/
 
 # Rebuild native modules for current Node.js version
 RUN npm rebuild better-sqlite3
-
-# Prune to production dependencies only
-RUN npm prune --omit=dev
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production - Minimal runtime image
@@ -55,7 +52,8 @@ COPY src/ ./src/
 RUN mkdir -p /app/data && \
     chown -R nodejs:nodejs /app
 
-ENV DATABASE_PATH=/app/data/db.sqlite
+ENV NODE_ENV=production \
+    DATABASE_PATH=/app/data/db.sqlite
 
 # Switch to non-root user
 USER nodejs

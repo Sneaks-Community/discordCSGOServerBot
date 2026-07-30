@@ -123,13 +123,14 @@ docker run -d \
 ```
 
 Follows are the only state on disk, and they live in the SQLite file at `DATABASE_PATH`, so it
-has to resolve inside the `bot-data` volume mounted at `/app/data`. Anywhere else is the
-container's writable layer, which is discarded whenever the container is recreated. The image
-and `docker-compose.yml` both default it correctly, but an uncommented `DATABASE_PATH` in
+has to resolve inside the `bot-data` volume mounted at `/app/data`. Under `docker run` above,
+anywhere else is the container's writable layer, which is discarded whenever the container is
+recreated; under Compose it fails outright, because `docker-compose.yml` sets
+`read_only: true` and the only writable path is the volume. The image and
+`docker-compose.yml` both default it correctly, but an uncommented `DATABASE_PATH` in
 `.env` would override that through `--env-file`, which is why the `docker run` above passes it
 explicitly: an explicit `-e` wins.
 
-`docker-compose.yml` also sets `NODE_ENV=production`, which selects JSON logging.
 
 ### Updating
 
