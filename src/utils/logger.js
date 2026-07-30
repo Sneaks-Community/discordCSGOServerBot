@@ -47,13 +47,21 @@ const { invalid: invalidLogLevel, level: logLevel } = resolveLogLevel();
 function createLogger() {
     const isDevelopment = process.stdout.isTTY;
 
-    // Paths to redact from all log output. These match object keys on logged
-    // objects only; they do not scrub tokens interpolated into a message string.
+    // Matches object keys only, not tokens interpolated into a message string.
+    // fast-redact is case sensitive and `*` is exactly one level, no prefix globs.
     const redactPaths = [
-        "discord.token",
-        "discord.token*",
+        "token",
+        "*.token",
+        "*.*.token",
         "DISCORD_TOKEN",
-        "DISCORD_TOKEN*"
+        "*.DISCORD_TOKEN",
+        "*.*.DISCORD_TOKEN",
+        "authorization",
+        "*.authorization",
+        "*.*.authorization",
+        "Authorization",
+        "*.Authorization",
+        "*.*.Authorization"
     ];
 
     // Base pino configuration
