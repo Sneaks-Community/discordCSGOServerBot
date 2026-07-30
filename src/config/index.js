@@ -5,6 +5,7 @@
 
 import { configLogger } from "../utils/logger.js";
 import { config, CONFIG_VALUES, REQUIRED_PERMISSIONS } from "./config.js";
+import { validateServersConfig } from "./servers.js";
 
 export { config, CONFIG_VALUES, REQUIRED_PERMISSIONS };
 
@@ -56,6 +57,11 @@ export function validateConfig() {
         warnings.push("SERVER_UPDATE_INTERVAL should be at least 30 seconds");
     }
 
+    // Critical: servers.json contents (a bad entry breaks queries or embeds)
+    const servers = validateServersConfig();
+    errors.push(...servers.errors);
+    warnings.push(...servers.warnings);
+
     // Log warnings
     for (const warning of warnings) {
         configLogger.warn(warning);
@@ -65,7 +71,7 @@ export function validateConfig() {
     if (errors.length > 0) {
         configLogger.fatal(
             { errors },
-            "Critical configuration errors; set the required environment variables (see .env.example)"
+            "Critical configuration errors; fix the reported environment variables (see .env.example) and servers.json entries (see README Server Configuration)"
         );
         process.exit(1);
     }

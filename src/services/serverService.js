@@ -8,7 +8,7 @@ import pLimit from "p-limit";
 
 import serverObject from "../../servers.json" with { type: "json" };
 import { CONFIG_VALUES } from "../config/index.js";
-import { playerNameSchema } from "../schemas/validationSchemas.js";
+import { DEFAULT_SERVER_PORT, playerNameSchema } from "../schemas/validationSchemas.js";
 import { serviceLogger } from "../utils/logger.js";
 import { normalizeMapName } from "../utils/mapUtils.js";
 import { validateWithZod } from "../utils/zodValidator.js";
@@ -71,14 +71,17 @@ export function getServerByKeyword(keyword) {
  * @returns {Promise<Object>} - Server data object
  */
 export async function getInfo(server, index) {
-    // Get IP and port from the server object
-    const [ip, port] = server.ip.split(":");
+    // Split the host from the port. validateServersConfig has already rejected
+    // anything that is not "host" or "host:port" with a numeric in-range port,
+    // so the port only needs its default applied and a cast to a number.
+    const [host, rawPort] = server.ip.split(":");
+    const port = rawPort === undefined ? DEFAULT_SERVER_PORT : Number(rawPort);
 
     let valid = true;
 
     // Query the server using Gamedig
     const res = await GameDig.query({
-        host: ip,
+        host: host,
         maxRetries: CONFIG_VALUES.GAMEDIG_MAX_RETRIES,
         port: port,
         type: server.protocol || "csgo"

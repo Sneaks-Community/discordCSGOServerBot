@@ -122,14 +122,18 @@ Add your CS:GO servers to `servers.json`:
 }
 ```
 
+**Maximum of 25 servers.** The server list embed adds one field per configured
+server and Discord caps an embed at 25 fields, so `servers.json` supports at most
+25 entries.
+
 ### Server Fields
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `ip` | string | Yes | Server IP/FQDN and port (e.g., `127.0.0.1:27015`) |
-| `nick` | string | Yes | Display name shown in embeds |
+| `ip` | string | Yes | Server IP/FQDN, optionally with a port (e.g., `127.0.0.1:27015`). The port defaults to `27015` when omitted. IPv6 is not supported |
+| `nick` | string | Yes | Display name shown in embeds (max 100 characters) |
 | `protocol` | string | No | Game protocol (default: `csgo`) - see list [here](https://github.com/gamedig/node-gamedig/blob/master/GAMES_LIST.md)|
-| `keywords` | array | Yes | Search keywords for the server |
+| `keywords` | array | Yes | Search keywords for the server. Must be lowercase and unique across all servers |
 
 ## Minimum Requirements
 
