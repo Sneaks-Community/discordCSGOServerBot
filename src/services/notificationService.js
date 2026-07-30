@@ -8,6 +8,7 @@ import { EmbedBuilder } from "discord.js";
 import { CONFIG_VALUES, config } from "../config/index.js";
 import { getUsersFollowingMap } from "../db/index.js";
 import { mapNameSchema } from "../schemas/validationSchemas.js";
+import { getTerminalReason, isRetryableDiscordError, TerminalError } from "../utils/discordErrors.js";
 import { serviceLogger } from "../utils/logger.js";
 import { getMapImage, normalizeMapName } from "../utils/mapUtils.js";
 import { validateChannelForSend } from "../utils/permissions.js";
@@ -166,17 +167,26 @@ async function sendFallbackNotification(mapName, server, serverObj, ip, mapImage
             if (!channel) {
                 throw new Error(`Fallback channel ${config.fallback.channelID} not found`);
             }
-            // Validate permissions before sending
+            // Validate permissions before sending. Terminal: another attempt cannot
+            // grant the bot a permission it does not have.
             const permCheck = validateChannelForSend(channel);
             if (!permCheck.valid) {
-                throw new Error(`Fallback channel permission error: ${permCheck.error}`);
+                throw new TerminalError(
+                    `Fallback channel permission error: ${permCheck.error}`,
+                    `${permCheck.error} in the fallback channel ${config.fallback.channelID}; grant the bot those permissions there`
+                );
             }
             await channel.send({
                 content: fallbackContent,
                 embeds: [backupEmbed]
             });
-        });
+        }, { isRetryable: isRetryableDiscordError });
     } catch (fallbackError) {
-        serviceLogger.error({ err: fallbackError, map: mapName }, "Failed to send fallback notification");
+        const reason = getTerminalReason(fallbackError);
+        if (reason) {
+            serviceLogger.error({ err: fallbackError, map: mapName }, `Fallback notification cannot succeed and will not be retried. ${reason}`);
+        } else {
+            serviceLogger.error({ err: fallbackError, map: mapName }, "Failed to send fallback notification");
+        }
     }
 }

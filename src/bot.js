@@ -12,6 +12,7 @@ import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheService.js";
 import { notifyUsers, initNotificationService } from "./services/notificationService.js";
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
+import { getTerminalReason, isRetryableDiscordError, TerminalError } from "./utils/discordErrors.js";
 import { botLogger } from "./utils/logger.js";
 import { validateChannelForEdit } from "./utils/permissions.js";
 import { withRetry } from "./utils/retry.js";
@@ -103,18 +104,27 @@ async function intervalFunction() {
             try {
                 await withRetry(async () => {
                     const channel = await bot.channels.fetch(e.channelID);
-                    
-                    // Validate permissions before editing
+
+                    // Validate permissions before editing. Terminal: a missing
+                    // permission needs an operator, not another attempt.
                     const permCheck = validateChannelForEdit(channel);
                     if (!permCheck.valid) {
-                        throw new Error(`Permission check failed for channel ${e.channelID}: ${permCheck.error}`);
+                        throw new TerminalError(
+                            `Permission check failed for channel ${e.channelID}: ${permCheck.error}`,
+                            `${permCheck.error} in channel ${e.channelID}; grant the bot those permissions there`
+                        );
                     }
-                    
+
                     const message = await channel.messages.fetch(e.messageID);
                     await message.edit({ content: "\u200B", embeds: [embed] });
-                });
+                }, { isRetryable: isRetryableDiscordError });
             } catch (err) {
-                botLogger.error({ channelId: e.channelID, err }, "Failed to update embed after retries");
+                const reason = getTerminalReason(err);
+                if (reason) {
+                    botLogger.error({ channelId: e.channelID, err, messageId: e.messageID }, `Embed update cannot succeed and will not be retried. ${reason}`);
+                } else {
+                    botLogger.error({ channelId: e.channelID, err }, "Failed to update embed after retries");
+                }
             }
         })
     );
