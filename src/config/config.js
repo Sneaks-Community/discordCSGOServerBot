@@ -56,6 +56,9 @@ const baseConfig = {
         channelID: env.FALLBACK_CHANNEL_ID,
         guildID: env.FALLBACK_GUILD_ID
     },
+    follows: {
+        maxPerUser: env.MAX_FOLLOWS_PER_USER
+    },
     gamedig: {
         defaultMaxRetries: env.GAMEDIG_MAX_RETRIES
     },
@@ -93,6 +96,7 @@ export const CONFIG_VALUES = {
     GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
     MAP_CHECK_INTERVAL_MS: toMs(baseConfig.serverUpdate.mapCheckIntervalSeconds),
     MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
+    MAX_FOLLOWS_PER_USER: baseConfig.follows.maxPerUser,
     OFFLINE_SERVER_IMAGE: baseConfig.images.offlineServer,
     RETRY_BASE_DELAY_MS: toMs(baseConfig.retry.baseDelaySeconds),
     RETRY_MAX_RETRIES: baseConfig.retry.maxRetries,

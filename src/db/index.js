@@ -10,6 +10,7 @@ export { initDB, closeDB } from "./connection.js";
 export {
     followMap,
     unfollowMap,
+    countUserFollows,
     getAllFollows,
     getUserFollows,
     isFollowingMap,

@@ -210,6 +210,10 @@ export const envSchema = z.object({
     MAP_IMAGE_BASE_URL: mapImageBaseUrlEnv,
     // p-limit throws on a concurrency below 1
     MAX_CONCURRENT_QUERIES: intEnv(10, 1, 100),
+    // Lifetime cap per user. The per-minute rate limit only slows accumulation
+    // down; without a ceiling one user can grow the table, their own /listfollows
+    // and the notification fanout without bound.
+    MAX_FOLLOWS_PER_USER: intEnv(50, 1, 10000),
     OFFLINE_SERVER_IMAGE: urlEnv("https://i.imgur.com/WnS0Biz.png"),
     RATE_LIMIT_FOLLOW_PER_MINUTE: intEnv(5, 1, 1000),
     RATE_LIMIT_UNFOLLOW_PER_MINUTE: intEnv(5, 1, 1000),

@@ -105,6 +105,17 @@ export function getUserFollows(discord_id) {
 }
 
 /**
+ * Count the maps a user follows
+ * @param {string} discord_id - The Discord user ID
+ * @returns {number} - Number of maps the user follows
+ */
+export function countUserFollows(discord_id) {
+    const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "countUserFollows/discord_id");
+    const row = performQuery("SELECT COUNT(*) AS count FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "countUserFollows", true);
+    return row?.count ?? 0;
+}
+
+/**
  * Check if a user is following a specific map
  * @param {string} discord_id - The Discord user ID
  * @param {string} map_name - The map name

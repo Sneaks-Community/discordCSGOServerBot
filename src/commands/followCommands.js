@@ -6,7 +6,7 @@
 import { MessageFlags } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
-import { followMap, unfollowMap, getUserFollows, isFollowingMap, unfollowAll } from "../db/index.js";
+import { followMap, unfollowMap, countUserFollows, getUserFollows, isFollowingMap, unfollowAll } from "../db/index.js";
 import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js";
 import { checkRateLimit } from "../services/cacheService.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
@@ -42,6 +42,18 @@ export async function handleSlashFollow(interaction) {
 
     if (await isFollowingMap(sanitizedUserId, sanitizedMap)) {
         return interaction.reply({ content: "You are already following this map.", flags: MessageFlags.Ephemeral });
+    }
+
+    // Lifetime cap, checked after the duplicate test so re-following a map already
+    // on the list can never be refused. The per-minute rate limit only paces
+    // follows; this is what actually bounds one user's rows, list length and
+    // notification fanout.
+    const followCount = await countUserFollows(sanitizedUserId);
+    if (followCount >= CONFIG_VALUES.MAX_FOLLOWS_PER_USER) {
+        return interaction.reply({
+            content: `You are already following the maximum of ${CONFIG_VALUES.MAX_FOLLOWS_PER_USER} maps. Use \`/unfollow <map>\` to make room, or \`/unfollow all\` to start over.`,
+            flags: MessageFlags.Ephemeral
+        });
     }
 
     await followMap(sanitizedUserId, sanitizedMap);
