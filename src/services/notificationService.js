@@ -13,15 +13,14 @@ import { getMapImage, normalizeMapName } from "../utils/mapUtils.js";
 import { validateChannelForSend } from "../utils/permissions.js";
 import { withRetry } from "../utils/retry.js";
 import { validateWithZod } from "../utils/zodValidator.js";
-import { getCachedUser } from "./cacheService.js";
+import { checkRateLimit, getCachedUser } from "./cacheService.js";
 
 // Store bot reference for fallback notifications
 let botInstance = null;
 
-// Track notification rate to prevent spam (module-level to persist across calls)
-const notificationRateLimit = new Map();
-const NOTIFICATION_RATE_LIMIT_WINDOW_MS = 60000; // 1 minute window
-const NOTIFICATION_MAX_PER_USER = 1; // Max 1 notification per user per minute
+// Max notifications per user per minute. The sliding window itself lives in
+// cacheService's checkRateLimit, which also owns expiry of the tracking map.
+const NOTIFICATION_MAX_PER_USER = 1;
 
 /**
  * Initialize the notification service with bot instance
@@ -30,24 +29,6 @@ const NOTIFICATION_MAX_PER_USER = 1; // Max 1 notification per user per minute
 export function initNotificationService(bot) {
     botInstance = bot;
 }
-
-/**
- * Clean up expired notification rate limit entries
- */
-function cleanupNotificationRateLimit() {
-    const now = Date.now();
-    for (const [userId, timestamps] of notificationRateLimit.entries()) {
-        const valid = timestamps.filter(ts => now - ts < NOTIFICATION_RATE_LIMIT_WINDOW_MS);
-        if (valid.length === 0) {
-            notificationRateLimit.delete(userId);
-        } else {
-            notificationRateLimit.set(userId, valid);
-        }
-    }
-}
-
-// Clean up expired entries every 5 minutes
-setInterval(cleanupNotificationRateLimit, 300000);
 
 /**
  * Send notifications to users following a map
@@ -96,23 +77,10 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
             }
 
             // Rate limiting: Check if user has received too many notifications recently
-            const now = Date.now();
-            if (!notificationRateLimit.has(user.discord_id)) {
-                notificationRateLimit.set(user.discord_id, []);
-            }
-            const userNotifications = notificationRateLimit.get(user.discord_id);
-      
-            // Filter out notifications older than the rate limit window
-            const recentNotifications = userNotifications.filter(timestamp => now - timestamp < NOTIFICATION_RATE_LIMIT_WINDOW_MS);
-      
-            if (recentNotifications.length >= NOTIFICATION_MAX_PER_USER) {
+            if (!checkRateLimit(user.discord_id, "notification", NOTIFICATION_MAX_PER_USER).allowed) {
                 // Skip notification to prevent spam
                 continue;
             }
-      
-            // Record this notification
-            recentNotifications.push(now);
-            notificationRateLimit.set(user.discord_id, recentNotifications);
 
             // Prepare the embed for the direct message
             const dmEmbed = new EmbedBuilder()
