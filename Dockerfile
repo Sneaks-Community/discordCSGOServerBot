@@ -57,6 +57,8 @@ COPY src/ ./src/
 RUN mkdir -p /app/data && \
     chown -R nodejs:nodejs /app
 
+ENV DATABASE_PATH=/app/data/db.sqlite
+
 # Switch to non-root user
 USER nodejs
 

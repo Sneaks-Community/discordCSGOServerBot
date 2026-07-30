@@ -87,6 +87,7 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | `FALLBACK_CHANNEL_ID` | No | - | Fallback channel ID for DM failures |
 | `EMBEDS` | No | `[]` | JSON array of embed configs: `[{"channelID":"xxx","messageID":"yyy"}]` |
 | `EMBED_COLOR` | No | `7980240` | Embed color in decimal |
+| `DATABASE_PATH` | No | `db.sqlite` | SQLite file path. In Docker this must point at the mounted volume (`/app/data/db.sqlite`), which the image sets by default |
 | `SERVER_UPDATE_INTERVAL` | No | `90` | Server status update interval (seconds) |
 | `MAP_CHECK_INTERVAL` | No | `91` | Map change check interval (seconds) |
 | `MAX_CONCURRENT_QUERIES` | No | `10` | Maximum concurrent server queries |
@@ -215,10 +216,17 @@ docker build -t discord-csgo-bot .
 docker run -d \
   --name csgo-server-bot \
   --env-file .env \
+  -e DATABASE_PATH=/app/data/db.sqlite \
   -v $(pwd)/servers.json:/app/servers.json:ro \
   -v bot-data:/app/data \
   discord-csgo-bot
 ```
+
+The image already defaults `DATABASE_PATH` to `/app/data/db.sqlite`, but a
+`DATABASE_PATH` line in your `.env` would override it through `--env-file` and put
+the database in the container's writable layer instead of on the `bot-data`
+volume, where it is lost on every recreation. The explicit `-e` above wins over
+`--env-file`, so it is safe either way.
 
 ### Environment Variables
 
@@ -234,11 +242,18 @@ All configuration options can be set via environment variables. See `.env.exampl
 | `EMBEDS` | No | JSON array of embed configs |
 | `SERVER_UPDATE_INTERVAL` | No | Server update interval (seconds) |
 | `MAP_CHECK_INTERVAL` | No | Map check interval (seconds) |
+| `DATABASE_PATH` | No | SQLite file path; keep it on the mounted volume (`/app/data/db.sqlite`, the image default) |
 
 ### Data Persistence
 
 The Docker compose setup uses named volumes:
-- `bot-data` - SQLite database storage
+
+- `bot-data` - SQLite database storage, mounted at `/app/data`
+
+Follows live only in that database, so `DATABASE_PATH` has to resolve inside
+`/app/data`. Anywhere else is the container's writable layer and is discarded when
+the container is recreated. `docker-compose.yml` sets it explicitly; the image
+also defaults to it.
 
 ### Updating
 
