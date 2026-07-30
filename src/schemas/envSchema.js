@@ -213,6 +213,10 @@ export const envSchema = z.object({
     // down; without a ceiling one user can grow the table, their own /listfollows
     // and the notification fanout without bound.
     MAX_FOLLOWS_PER_USER: intEnv(50, 1, 10000),
+    // Recipients notified per map change. Discord treats unsolicited bulk DMs as
+    // spam and quarantines bots for it; every DM here is opt-in via /follow, and
+    // this bounds how large a single fanout can get regardless.
+    MAX_NOTIFICATION_RECIPIENTS: intEnv(200, 1, 10000),
     OFFLINE_SERVER_IMAGE: urlEnv("https://i.imgur.com/WnS0Biz.png"),
     RATE_LIMIT_FOLLOW_PER_MINUTE: intEnv(5, 1, 1000),
     // Ceiling on map-change DMs per user per minute. Repeats of one map are

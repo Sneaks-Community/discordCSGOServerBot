@@ -101,6 +101,7 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | `RATE_LIMIT_UNFOLLOW_PER_MINUTE` | No | `5` | Max unfollow commands per minute per user |
 | `RATE_LIMIT_NOTIFICATION_PER_MINUTE` | No | `10` | Max map-change DMs per minute per user. Repeats of the same map (for example one map live on two servers) are always collapsed to one DM and do not count against this |
 | `MAX_FOLLOWS_PER_USER` | No | `50` | Maximum maps a single user may follow at once |
+| `MAX_NOTIFICATION_RECIPIENTS` | No | `200` | Maximum users DMed for a single map change; a truncated fanout is logged |
 
 ## Map Images
 

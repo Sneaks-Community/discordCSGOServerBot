@@ -6,13 +6,16 @@
 import { config } from "../config/index.js";
 
 /**
- * Build the map image URL for any map, or false if no base URL is configured
+ * Build the map image URL for any map, or false if no base URL is configured.
+ * The name is encoded because it reaches here straight from a game server on some
+ * paths; validated names are already URL-safe, so this only ever matters for the
+ * unvalidated ones.
  * @param {string} mapName - The map name
  * @returns {string|false} - The image URL or false if no base URL is set
  */
 export function getMapImage(mapName) {
     const base = config.mapImageBaseUrl;
-    return base ? `${base}${mapName}.jpg` : false;
+    return base ? `${base}${encodeURIComponent(mapName)}.jpg` : false;
 }
 
 /**

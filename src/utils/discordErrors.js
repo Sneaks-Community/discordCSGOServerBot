@@ -5,19 +5,25 @@
  * retry "Unknown Message" three times with backoff every 90 seconds forever, and
  * the real cause never appeared in the logs as anything but a generic failure.
  * Each terminal code below carries the remediation, because these are setup
- * mistakes rather than runtime faults.
+ * mistakes or per-recipient conditions rather than runtime faults.
  */
+
+import { RESTJSONErrorCodes } from "discord.js";
 
 /**
  * DiscordAPIError codes that cannot succeed on a retry, mapped to what to do.
+ * The last two are per-recipient conditions on a DM rather than setup mistakes:
+ * the user has to reopen their DMs or rejoin, so nothing the bot does helps.
  * @type {Map<number, string>}
  */
 const TERMINAL_API_CODES = new Map([
-    [10003, "Unknown Channel: the configured channel ID does not exist, or the bot is not in that guild"],
-    [10008, "Unknown Message: the configured message ID does not exist in that channel"],
-    [50001, "Missing Access: the bot cannot see that channel, grant it View Channel"],
-    [50005, "Cannot edit a message authored by another user: the message referenced by EMBEDS must have been posted by the bot itself, so post a new one as the bot and use its ID"],
-    [50013, "Missing Permissions: the bot lacks a required permission in that channel"]
+    [RESTJSONErrorCodes.UnknownChannel, "Unknown Channel: the configured channel ID does not exist, or the bot is not in that guild"],
+    [RESTJSONErrorCodes.UnknownMessage, "Unknown Message: the configured message ID does not exist in that channel"],
+    [RESTJSONErrorCodes.MissingAccess, "Missing Access: the bot cannot see that channel, grant it View Channel"],
+    [RESTJSONErrorCodes.CannotEditMessageAuthoredByAnotherUser, "Cannot edit a message authored by another user: the message referenced by EMBEDS must have been posted by the bot itself, so post a new one as the bot and use its ID"],
+    [RESTJSONErrorCodes.CannotSendMessagesToThisUser, "Cannot send messages to this user: their DMs are closed to the bot, or they have blocked it"],
+    [RESTJSONErrorCodes.MissingPermissions, "Missing Permissions: the bot lacks a required permission in that channel"],
+    [RESTJSONErrorCodes.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds, "Cannot send messages to this user: the bot no longer shares a guild with them"]
 ]);
 
 /**

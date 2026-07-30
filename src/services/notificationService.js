@@ -4,6 +4,7 @@
  */
 
 import { EmbedBuilder } from "discord.js";
+import pLimit from "p-limit";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
 import { getUsersFollowingMap } from "../db/index.js";
@@ -22,6 +23,10 @@ let botInstance = null;
 // Per user per map per minute. Not configurable: above 1 just means sending the
 // duplicate. The overall ceiling is RATE_LIMIT_NOTIFICATION_PER_MINUTE.
 const NOTIFICATION_MAX_PER_MAP = 1;
+
+// Concurrent DM sends per map change. Not configurable: discord.js's REST queue is
+// the real throttle, so a larger number would only queue deeper, not send faster.
+const NOTIFICATION_CONCURRENCY = 5;
 
 /**
  * Initialize the notification service with bot instance
@@ -56,82 +61,123 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
         return;
     }
 
-    const users = await getUsersFollowingMap(validatedMap.data);
+    const followers = await getUsersFollowingMap(validatedMap.data);
 
-    for (const user of users) {
-        const mapImage = getMapImage(mapName);
+    // Bound the fanout per event, and say so when it bites: a map that suddenly has
+    // hundreds of followers is worth seeing in the log rather than discovering later.
+    const recipients = followers.slice(0, CONFIG_VALUES.MAX_NOTIFICATION_RECIPIENTS);
+    if (recipients.length < followers.length) {
+        serviceLogger.warn(
+            {
+                cap: CONFIG_VALUES.MAX_NOTIFICATION_RECIPIENTS,
+                map: mapName,
+                notified: recipients.length,
+                server,
+                skipped: followers.length - recipients.length
+            },
+            "Notification fanout truncated by MAX_NOTIFICATION_RECIPIENTS"
+        );
+    }
 
-        // Fetch user first to ensure we have a valid reference
-        let u;
-        try {
-            u = await getCachedUser(user.discord_id, bot);
-        } catch (fetchError) {
-            serviceLogger.warn({ err: fetchError, userId: user.discord_id }, "Failed to fetch user");
-            u = null;
-        }
+    // Loop-invariant, so built once per event rather than once per recipient. Uses the
+    // validated lowercase name, matching the casing follows are stored under.
+    const mapImage = getMapImage(validatedMap.data);
 
-        try {
-            if (!u) {
-                // User fetch failed, send fallback notification to log channel
-                await sendFallbackNotification(mapName, server, serverObj, ip, mapImage);
-                continue;
-            }
+    const event = { bot, ip, mapImage, mapName, server, serverObj, validatedMapName: validatedMap.data };
 
-            // Keyed per map, so a user following three maps that rotate together
-            // hears about all three; only a repeat of the same map is suppressed.
-            const mapKey = `notification:${validatedMap.data}`;
-            const perMap = checkRateLimit(user.discord_id, mapKey, NOTIFICATION_MAX_PER_MAP);
-            if (!perMap.allowed) {
-                serviceLogger.debug(
-                    { map: mapName, server, userId: user.discord_id },
-                    "Skipping duplicate notification for the same map"
-                );
-                continue;
-            }
+    // Concurrency is about our own wall clock, not about protecting Discord: the REST
+    // queue in discord.js already enforces the 50 requests/second global limit and
+    // sleeps on a 429. Serially awaiting each DM could occupy this loop for minutes.
+    const limit = pLimit(NOTIFICATION_CONCURRENCY);
+    await Promise.all(recipients.map((user) => limit(() => deliverNotification(user, event))));
+}
 
-            // Checked second so a suppressed duplicate spends none of the ceiling.
-            const perUser = checkRateLimit(user.discord_id, "notification", CONFIG_VALUES.NOTIFICATION_RATE_LIMIT_PER_MINUTE);
-            if (!perUser.allowed) {
-                serviceLogger.warn(
-                    {
-                        limit: CONFIG_VALUES.NOTIFICATION_RATE_LIMIT_PER_MINUTE,
-                        map: mapName,
-                        retryAfter: perUser.retryAfter,
-                        server,
-                        userId: user.discord_id
-                    },
-                    "Notification dropped: user is at their per-minute notification limit"
-                );
-                continue;
-            }
+/**
+ * Deliver one notification, falling back to the log channel when the DM fails.
+ * Resolves rather than throwing on any per-recipient failure, so one bad recipient
+ * cannot abandon the rest of the fanout.
+ * @param {Object} user - Follow row with a discord_id
+ * @param {Object} event - Loop-invariant event details shared by every recipient
+ * @returns {Promise<void>}
+ */
+async function deliverNotification(user, event) {
+    const { bot, ip, mapImage, mapName, server, serverObj, validatedMapName } = event;
 
-            // Prepare the embed for the direct message
-            const dmEmbed = new EmbedBuilder()
-                .setTitle(`${mapName} is now on ${server}`)
-                .setDescription(
-                    `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
-                )
-                .setColor(CONFIG_VALUES.EMBED_COLOR)
-                .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
-                .setTimestamp(Date.now());
+    // Fetch user first to ensure we have a valid reference
+    let u;
+    try {
+        u = await getCachedUser(user.discord_id, bot);
+    } catch (fetchError) {
+        serviceLogger.warn({ err: fetchError, userId: user.discord_id }, "Failed to fetch user");
+        u = null;
+    }
 
-            if (mapImage) dmEmbed.setImage(mapImage);
-
-            // Send the direct message to the user with proper error handling
-            await u.send({
-                content: `${mapName} is now on ${server}!\nsteam://connect/${ip}`,
-                embeds: [dmEmbed]
-            });
-
-            serviceLogger.info({ map: mapName, userId: u.id, username: u.tag }, "Sent notification");
-        } catch (e) {
-            // Handle failed DM (user may have DMs disabled or other issues)
-            const userId = u?.id || user.discord_id;
-            serviceLogger.warn({ err: e, map: mapName, userId }, "Failed to send DM to user");
-
-            // Send fallback notification to log channel (without user mention)
+    try {
+        if (!u) {
+            // User fetch failed, send fallback notification to log channel
             await sendFallbackNotification(mapName, server, serverObj, ip, mapImage);
+            return;
         }
+
+        // Keyed per map, so a user following three maps that rotate together
+        // hears about all three; only a repeat of the same map is suppressed.
+        const perMap = checkRateLimit(user.discord_id, `notification:${validatedMapName}`, NOTIFICATION_MAX_PER_MAP);
+        if (!perMap.allowed) {
+            serviceLogger.debug(
+                { map: mapName, server, userId: user.discord_id },
+                "Skipping duplicate notification for the same map"
+            );
+            return;
+        }
+
+        // Checked second so a suppressed duplicate spends none of the ceiling.
+        const perUser = checkRateLimit(user.discord_id, "notification", CONFIG_VALUES.NOTIFICATION_RATE_LIMIT_PER_MINUTE);
+        if (!perUser.allowed) {
+            serviceLogger.warn(
+                {
+                    limit: CONFIG_VALUES.NOTIFICATION_RATE_LIMIT_PER_MINUTE,
+                    map: mapName,
+                    retryAfter: perUser.retryAfter,
+                    server,
+                    userId: user.discord_id
+                },
+                "Notification dropped: user is at their per-minute notification limit"
+            );
+            return;
+        }
+
+        // Prepare the embed for the direct message
+        const dmEmbed = new EmbedBuilder()
+            .setTitle(`${mapName} is now on ${server}`)
+            .setDescription(
+                `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
+            )
+            .setColor(CONFIG_VALUES.EMBED_COLOR)
+            .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
+            .setTimestamp(Date.now());
+
+        if (mapImage) dmEmbed.setImage(mapImage);
+
+        // Send the direct message to the user with proper error handling
+        await u.send({
+            content: `${mapName} is now on ${server}!\nsteam://connect/${ip}`,
+            embeds: [dmEmbed]
+        });
+
+        serviceLogger.info({ map: mapName, userId: u.id, username: u.tag }, "Sent notification");
+    } catch (e) {
+        // Handle failed DM (user may have DMs disabled or other issues). A refusal is
+        // a property of the recipient, so it is never worth another attempt.
+        const userId = u?.id || user.discord_id;
+        const reason = getTerminalReason(e);
+        if (reason) {
+            serviceLogger.warn({ err: e, map: mapName, userId }, `DM refused by Discord, not retrying. ${reason}`);
+        } else {
+            serviceLogger.warn({ err: e, map: mapName, userId }, "Failed to send DM to user");
+        }
+
+        // Send fallback notification to log channel (without user mention)
+        await sendFallbackNotification(mapName, server, serverObj, ip, mapImage);
     }
 }
 
@@ -144,6 +190,14 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
  * @param {string|false} mapImage - Map image URL
  */
 async function sendFallbackNotification(mapName, server, serverObj, ip, mapImage) {
+    // Nothing to fall back to, so there is nothing to retry. Without this an
+    // unconfigured fallback costs three retried "guild not found" throws, with
+    // backoff, for every recipient whose DM failed, which dominated the fanout.
+    if (!config.fallback.guildID || !config.fallback.channelID) {
+        serviceLogger.debug({ map: mapName }, "No fallback channel configured, skipping fallback notification");
+        return;
+    }
+
     const backupEmbed = new EmbedBuilder()
         .setTitle(`${mapName} is now on ${server}`)
         .setDescription(

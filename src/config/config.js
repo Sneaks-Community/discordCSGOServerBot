@@ -67,6 +67,9 @@ const baseConfig = {
         offlineServer: env.OFFLINE_SERVER_IMAGE
     },
     mapImageBaseUrl: env.MAP_IMAGE_BASE_URL,
+    notifications: {
+        maxRecipientsPerEvent: env.MAX_NOTIFICATION_RECIPIENTS
+    },
     rateLimit: {
         followPerMinute: env.RATE_LIMIT_FOLLOW_PER_MINUTE,
         notificationPerMinute: env.RATE_LIMIT_NOTIFICATION_PER_MINUTE,
@@ -96,6 +99,7 @@ export const CONFIG_VALUES = {
     GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
     MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
     MAX_FOLLOWS_PER_USER: baseConfig.follows.maxPerUser,
+    MAX_NOTIFICATION_RECIPIENTS: baseConfig.notifications.maxRecipientsPerEvent,
     NOTIFICATION_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.notificationPerMinute,
     OFFLINE_SERVER_IMAGE: baseConfig.images.offlineServer,
     RETRY_BASE_DELAY_MS: toMs(baseConfig.retry.baseDelaySeconds),
