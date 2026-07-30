@@ -8,9 +8,7 @@ FROM node:${NODE_VERSION}-alpine AS builder
 RUN apk add --no-cache \
     python3 \
     make \
-    g++ \
-    sqlite \
-    sqlite-dev
+    g++
 
 WORKDIR /app
 
@@ -27,7 +25,7 @@ COPY src/ ./src/
 RUN npm rebuild better-sqlite3
 
 # Prune to production dependencies only
-RUN npm prune --production
+RUN npm prune --omit=dev
 
 # -----------------------------------------------------------------------------
 # Stage 2: Production - Minimal runtime image
