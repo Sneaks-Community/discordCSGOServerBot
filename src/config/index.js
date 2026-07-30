@@ -5,29 +5,33 @@
 
 import { configLogger } from "../utils/logger.js";
 import { config, CONFIG_VALUES, ENV_ERRORS, ENV_WARNINGS, REQUIRED_PERMISSIONS } from "./config.js";
+import { ConfigError } from "./configError.js";
 import { validateServersConfig } from "./servers.js";
 
-export { config, CONFIG_VALUES, REQUIRED_PERMISSIONS };
+export { config, CONFIG_VALUES, ConfigError, REQUIRED_PERMISSIONS };
 
 /**
- * Validate configuration and stop the process if it cannot be honoured.
+ * Validate configuration, throwing if it cannot be honoured.
  *
  * The environment is described entirely by schemas/envSchema.js, which is what
  * produced ENV_ERRORS and ENV_WARNINGS at import time; this function reports
  * those and then checks the one input that does not come from the environment,
  * servers.json.
- * @returns {{ errors: string[], warnings: string[] }} - Everything reported
+ *
+ * Warnings are logged here because they are not fatal. Errors are thrown rather
+ * than exited on, so the caller owns the exit and the function stays testable.
+ * @returns {{ warnings: string[] }} - The non-fatal findings, already logged
+ * @throws {ConfigError} If the environment or servers.json is unusable
  */
 export function validateConfig() {
     // Malformed variables come first and abort immediately: when envSchema rejects
     // anything, every value in `config` has fallen back to its default, so nothing
     // further would be describing the operator's actual configuration.
     if (ENV_ERRORS.length > 0) {
-        configLogger.fatal(
-            { errors: ENV_ERRORS },
-            "Invalid environment variables; fix the values listed in errors (see .env.example for the accepted range of each)"
+        throw new ConfigError(
+            "Invalid environment variables; fix the values listed in errors (see .env.example for the accepted range of each)",
+            ENV_ERRORS
         );
-        process.exit(1);
     }
 
     // A bad entry here breaks server queries or the embed rather than startup
@@ -39,12 +43,11 @@ export function validateConfig() {
     }
 
     if (servers.errors.length > 0) {
-        configLogger.fatal(
-            { errors: servers.errors },
-            "Critical servers.json errors; fix the reported entries (see README Server Configuration)"
+        throw new ConfigError(
+            "Critical servers.json errors; fix the reported entries (see README Server Configuration)",
+            servers.errors
         );
-        process.exit(1);
     }
 
-    return { errors: servers.errors, warnings };
+    return { warnings };
 }

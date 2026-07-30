@@ -34,7 +34,12 @@ const bot = new Discord.Client({
 });
 
 /**
- * Initialize the bot and start all services
+ * Initialize the bot and start all services.
+ *
+ * Rejects rather than exiting on any startup failure, including an invalid
+ * configuration and a failed login, so index.js is the only place that decides
+ * to end the process.
+ * @throws {ConfigError} If the configuration is unusable
  */
 export async function initBot() {
     // Validate configuration before starting
@@ -51,10 +56,10 @@ export async function initBot() {
     // so passing it here is what actually keeps login working if the variable is ever
     // renamed. Pino's redact paths only scrub matching keys on logged objects, so
     // never interpolate the token into a log message.
-    bot.login(config.discord.token).catch(err => {
-        botLogger.fatal({ err }, "Failed to login to Discord");
-        process.exit(1);
-    });
+    //
+    // Awaited: unawaited, initBot() resolved before login finished and a rejection
+    // (an invalid token, or disallowed intents) could never reach index.js.
+    await bot.login(config.discord.token);
 }
 
 /**
