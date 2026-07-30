@@ -206,7 +206,6 @@ export const envSchema = z.object({
     FALLBACK_CHANNEL_ID: optionalIdEnv(),
     FALLBACK_GUILD_ID: optionalIdEnv(),
     GAMEDIG_MAX_RETRIES: intEnv(4, 0, 10),
-    MAP_CHECK_INTERVAL: intEnv(91, 30, 86400),
     MAP_IMAGE_BASE_URL: mapImageBaseUrlEnv,
     // p-limit throws on a concurrency below 1
     MAX_CONCURRENT_QUERIES: intEnv(10, 1, 100),

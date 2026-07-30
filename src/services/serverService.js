@@ -16,6 +16,7 @@ import { validateWithZod } from "../utils/zodValidator.js";
 // Server data state management
 let _serverData = {};
 let _isRefreshing = false;
+let _isNotifying = false;
 
 // Track old data for map change notifications
 const oldData = {};
@@ -205,38 +206,50 @@ export async function refresh() {
  * @returns {Promise<void>}
  */
 export async function updateServerData(notifyCallback) {
-    const serverData = getServerData();
-    
-    for (const currentServer of serverObjectKeys) {
-        const currentServerObject = serverObject[currentServer];
+    // Belt and braces: the caller already awaits this once per tick, but DM fanout
+    // can outlast a tick and a second pass would re-read the same snapshot.
+    if (_isNotifying) {
+        serviceLogger.debug("Skipping map change check -- notifications still in progress");
+        return;
+    }
 
-        if (!serverData[currentServer] || !serverData[currentServer].online) {
-            continue;
-        }
+    _isNotifying = true;
+    try {
+        const serverData = getServerData();
 
-        const currentMap = serverData[currentServer].map;
+        for (const currentServer of serverObjectKeys) {
+            const currentServerObject = serverObject[currentServer];
 
-        if (oldData[currentServer] !== "" && oldData[currentServer] !== currentMap) {
-            const newMap = currentMap;
-
-            currentServerObject["numPlayers"] = serverData[currentServer].numPlayers;
-            currentServerObject["numBots"] = serverData[currentServer].numBots;
-            currentServerObject["maxPlayers"] = serverData[currentServer].maxPlayers;
-
-            // Record the change before notifying: if the notification fails, this
-            // server must not re-detect the same map change on every subsequent tick.
-            oldData[currentServer] = newMap;
-
-            if (notifyCallback) {
-                try {
-                    await notifyCallback(newMap, currentServerObject);
-                } catch (err) {
-                    // Contained per server so the remaining servers still get notified.
-                    serviceLogger.error({ err, map: newMap, server: currentServer }, "Map change notification failed");
-                }
+            if (!serverData[currentServer] || !serverData[currentServer].online) {
+                continue;
             }
-        } else if (oldData[currentServer] === "") {
-            oldData[currentServer] = currentMap;
+
+            const currentMap = serverData[currentServer].map;
+
+            if (oldData[currentServer] !== "" && oldData[currentServer] !== currentMap) {
+                const newMap = currentMap;
+
+                currentServerObject["numPlayers"] = serverData[currentServer].numPlayers;
+                currentServerObject["numBots"] = serverData[currentServer].numBots;
+                currentServerObject["maxPlayers"] = serverData[currentServer].maxPlayers;
+
+                // Record the change before notifying: if the notification fails, this
+                // server must not re-detect the same map change on every subsequent tick.
+                oldData[currentServer] = newMap;
+
+                if (notifyCallback) {
+                    try {
+                        await notifyCallback(newMap, currentServerObject);
+                    } catch (err) {
+                        // Contained per server so the remaining servers still get notified.
+                        serviceLogger.error({ err, map: newMap, server: currentServer }, "Map change notification failed");
+                    }
+                }
+            } else if (oldData[currentServer] === "") {
+                oldData[currentServer] = currentMap;
+            }
         }
+    } finally {
+        _isNotifying = false;
     }
 }

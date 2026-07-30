@@ -18,7 +18,6 @@ import { withRetry } from "./utils/retry.js";
 
 // Store interval references for cleanup during shutdown
 let embedInterval = null;
-let mapCheckInterval = null;
 
 // Create bot client with v14 intents
 const bot = new Discord.Client({
@@ -71,11 +70,8 @@ bot.on(Events.ClientReady, async () => {
         // Start the interval function
         await intervalFunction();
 
-        // Start embed update loop (store reference for cleanup)
+        // Single loop: refresh, embeds, then map-change notifications (store reference for cleanup)
         embedInterval = setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
-
-        // Start map change notification loop (store reference for cleanup)
-        mapCheckInterval = setInterval(() => updateServerData(notifyUsers), CONFIG_VALUES.MAP_CHECK_INTERVAL_MS);
 
         // Start cleanup intervals for cache and rate limits
         startCleanupIntervals();
@@ -86,7 +82,9 @@ bot.on(Events.ClientReady, async () => {
 });
 
 /**
- * Interval function to refresh server data and update embeds
+ * Interval function: refresh server data, update embeds, then notify on map changes.
+ * Map detection lives here rather than on its own timer so it always reads the
+ * snapshot refresh() just wrote; two timers only drifted apart and could overlap.
  */
 async function intervalFunction() {
     try {
@@ -120,6 +118,13 @@ async function intervalFunction() {
             }
         })
     );
+
+    // Last, because DM fanout can outlast the embed edits and should not delay them.
+    try {
+        await updateServerData(notifyUsers);
+    } catch (err) {
+        botLogger.error({ err }, "Failed to check for map changes");
+    }
 }
 
 /**
@@ -184,11 +189,7 @@ function gracefulShutdown(signal) {
         clearInterval(embedInterval);
         embedInterval = null;
     }
-    if (mapCheckInterval) {
-        clearInterval(mapCheckInterval);
-        mapCheckInterval = null;
-    }
-    
+
     // Clear cleanup intervals for cache and rate limits
     clearCleanupIntervals();
     

@@ -88,8 +88,7 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | `EMBEDS` | No | `[]` | JSON array of embed configs: `[{"channelID":"xxx","messageID":"yyy"}]` |
 | `EMBED_COLOR` | No | `7980240` | Embed color in decimal |
 | `DATABASE_PATH` | No | `db.sqlite` | SQLite file path. In Docker this must point at the mounted volume (`/app/data/db.sqlite`), which the image sets by default |
-| `SERVER_UPDATE_INTERVAL` | No | `90` | Server status update interval (seconds) |
-| `MAP_CHECK_INTERVAL` | No | `91` | Map change check interval (seconds) |
+| `SERVER_UPDATE_INTERVAL` | No | `90` | How often the bot queries the servers, updates the embeds and checks for map changes, in that order (seconds) |
 | `MAX_CONCURRENT_QUERIES` | No | `10` | Maximum concurrent server queries |
 | `USER_CACHE_TTL` | No | `300` | User cache TTL (seconds) |
 | `RETRY_MAX_RETRIES` | No | `3` | Maximum retry attempts for failed operations |
@@ -242,7 +241,6 @@ All configuration options can be set via environment variables. See `.env.exampl
 | `FALLBACK_CHANNEL_ID` | No | Fallback channel for DMs |
 | `EMBEDS` | No | JSON array of embed configs |
 | `SERVER_UPDATE_INTERVAL` | No | Server update interval (seconds) |
-| `MAP_CHECK_INTERVAL` | No | Map check interval (seconds) |
 | `DATABASE_PATH` | No | SQLite file path; keep it on the mounted volume (`/app/data/db.sqlite`, the image default) |
 
 ### Data Persistence

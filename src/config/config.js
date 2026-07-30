@@ -81,7 +81,6 @@ const baseConfig = {
     },
     serverUpdate: {
         intervalSeconds: env.SERVER_UPDATE_INTERVAL,
-        mapCheckIntervalSeconds: env.MAP_CHECK_INTERVAL,
         maxConcurrentQueries: env.MAX_CONCURRENT_QUERIES
     }
 };
@@ -95,7 +94,6 @@ export const CONFIG_VALUES = {
     FALLBACK_AVATAR: baseConfig.images.fallbackAvatar,
     FOLLOW_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.followPerMinute,
     GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
-    MAP_CHECK_INTERVAL_MS: toMs(baseConfig.serverUpdate.mapCheckIntervalSeconds),
     MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
     MAX_FOLLOWS_PER_USER: baseConfig.follows.maxPerUser,
     NOTIFICATION_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.notificationPerMinute,
