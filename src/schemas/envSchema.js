@@ -216,6 +216,9 @@ export const envSchema = z.object({
     MAX_FOLLOWS_PER_USER: intEnv(50, 1, 10000),
     OFFLINE_SERVER_IMAGE: urlEnv("https://i.imgur.com/WnS0Biz.png"),
     RATE_LIMIT_FOLLOW_PER_MINUTE: intEnv(5, 1, 1000),
+    // Ceiling on map-change DMs per user per minute. Repeats of one map are
+    // collapsed separately, in notificationService, and never counted here.
+    RATE_LIMIT_NOTIFICATION_PER_MINUTE: intEnv(10, 1, 1000),
     RATE_LIMIT_UNFOLLOW_PER_MINUTE: intEnv(5, 1, 1000),
     RETRY_BASE_DELAY: intEnv(1, 0, 60),
     // withRetry needs at least one attempt for its callback to ever run

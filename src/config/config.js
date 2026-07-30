@@ -69,6 +69,7 @@ const baseConfig = {
     mapImageBaseUrl: env.MAP_IMAGE_BASE_URL,
     rateLimit: {
         followPerMinute: env.RATE_LIMIT_FOLLOW_PER_MINUTE,
+        notificationPerMinute: env.RATE_LIMIT_NOTIFICATION_PER_MINUTE,
         unfollowPerMinute: env.RATE_LIMIT_UNFOLLOW_PER_MINUTE
     },
     retry: {
@@ -97,6 +98,7 @@ export const CONFIG_VALUES = {
     MAP_CHECK_INTERVAL_MS: toMs(baseConfig.serverUpdate.mapCheckIntervalSeconds),
     MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
     MAX_FOLLOWS_PER_USER: baseConfig.follows.maxPerUser,
+    NOTIFICATION_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.notificationPerMinute,
     OFFLINE_SERVER_IMAGE: baseConfig.images.offlineServer,
     RETRY_BASE_DELAY_MS: toMs(baseConfig.retry.baseDelaySeconds),
     RETRY_MAX_RETRIES: baseConfig.retry.maxRetries,

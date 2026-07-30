@@ -100,6 +100,7 @@ All configuration is done via environment variables. Copy `.env.example` to `.en
 | `MAP_IMAGE_BASE_URL` | No | `https://bans.snksrv.com/images/maps/` | Base URL for map images (`<base><mapname>.jpg`); leave blank to disable |
 | `RATE_LIMIT_FOLLOW_PER_MINUTE` | No | `5` | Max follow commands per minute per user |
 | `RATE_LIMIT_UNFOLLOW_PER_MINUTE` | No | `5` | Max unfollow commands per minute per user |
+| `RATE_LIMIT_NOTIFICATION_PER_MINUTE` | No | `10` | Max map-change DMs per minute per user. Repeats of the same map (for example one map live on two servers) are always collapsed to one DM and do not count against this |
 | `MAX_FOLLOWS_PER_USER` | No | `50` | Maximum maps a single user may follow at once |
 
 ## Map Images

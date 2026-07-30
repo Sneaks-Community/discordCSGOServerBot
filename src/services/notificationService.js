@@ -18,9 +18,9 @@ import { checkRateLimit, getCachedUser } from "./cacheService.js";
 // Store bot reference for fallback notifications
 let botInstance = null;
 
-// Max notifications per user per minute. The sliding window itself lives in
-// cacheService's checkRateLimit, which also owns expiry of the tracking map.
-const NOTIFICATION_MAX_PER_USER = 1;
+// Per user per map per minute. Not configurable: above 1 just means sending the
+// duplicate. The overall ceiling is RATE_LIMIT_NOTIFICATION_PER_MINUTE.
+const NOTIFICATION_MAX_PER_MAP = 1;
 
 /**
  * Initialize the notification service with bot instance
@@ -76,9 +76,31 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
                 continue;
             }
 
-            // Rate limiting: Check if user has received too many notifications recently
-            if (!checkRateLimit(user.discord_id, "notification", NOTIFICATION_MAX_PER_USER).allowed) {
-                // Skip notification to prevent spam
+            // Keyed per map, so a user following three maps that rotate together
+            // hears about all three; only a repeat of the same map is suppressed.
+            const mapKey = `notification:${validatedMap.data}`;
+            const perMap = checkRateLimit(user.discord_id, mapKey, NOTIFICATION_MAX_PER_MAP);
+            if (!perMap.allowed) {
+                serviceLogger.debug(
+                    { map: mapName, server, userId: user.discord_id },
+                    "Skipping duplicate notification for the same map"
+                );
+                continue;
+            }
+
+            // Checked second so a suppressed duplicate spends none of the ceiling.
+            const perUser = checkRateLimit(user.discord_id, "notification", CONFIG_VALUES.NOTIFICATION_RATE_LIMIT_PER_MINUTE);
+            if (!perUser.allowed) {
+                serviceLogger.warn(
+                    {
+                        limit: CONFIG_VALUES.NOTIFICATION_RATE_LIMIT_PER_MINUTE,
+                        map: mapName,
+                        retryAfter: perUser.retryAfter,
+                        server,
+                        userId: user.discord_id
+                    },
+                    "Notification dropped: user is at their per-minute notification limit"
+                );
                 continue;
             }
 
