@@ -179,11 +179,35 @@ bot.on(Events.ShardReady, (shardId) => {
 });
 
 /**
- * Graceful shutdown handling
+ * Longest the shutdown may take before the process exits regardless. Docker's
+ * default grace period is 10s, so this stays well inside it.
  */
-function gracefulShutdown(signal) {
+const SHUTDOWN_TIMEOUT_MS = 5000;
+
+// Set once shutdown starts, so a second signal cannot re-enter and double-close.
+let isShuttingDown = false;
+
+/**
+ * Graceful shutdown handling
+ * @param {string} signal - The signal that triggered the shutdown
+ */
+async function gracefulShutdown(signal) {
+    if (isShuttingDown) {
+        botLogger.debug(`Ignoring ${signal}, shutdown already in progress`);
+        return;
+    }
+    isShuttingDown = true;
+
     botLogger.info(`Received ${signal}, shutting down...`);
-    
+
+    // Hard exit so a hung destroy cannot wedge the container until Docker escalates
+    // to SIGKILL. Deliberately not unref'd: an unref'd timer lets Node exit 0 the
+    // moment the loop empties, which reports a stalled shutdown as a clean one.
+    const hardExit = setTimeout(() => {
+        botLogger.error(`Shutdown did not finish within ${SHUTDOWN_TIMEOUT_MS}ms, exiting anyway`);
+        process.exit(1);
+    }, SHUTDOWN_TIMEOUT_MS);
+
     // Clear intervals to prevent further operations
     if (embedInterval) {
         clearInterval(embedInterval);
@@ -192,15 +216,36 @@ function gracefulShutdown(signal) {
 
     // Clear cleanup intervals for cache and rate limits
     clearCleanupIntervals();
-    
+
+    let exitCode = 0;
+
+    // Close the gateway instead of letting the process drop it, so discord.js stops
+    // its own sweepers and in-flight REST calls are not abandoned mid-request.
+    try {
+        await bot.destroy();
+    } catch (destroyError) {
+        botLogger.error({ err: destroyError }, "Failed to close the Discord connection");
+        exitCode = 1;
+    }
+
+    // Separate try: the database must be closed even if destroy failed, or SQLite
+    // skips its WAL checkpoint.
     try {
         closeDB();
-        botLogger.info("Shutdown complete.");
-        process.exit(0);
-    } catch (shutdownError) {
-        botLogger.fatal({ err: shutdownError }, "Shutdown error");
-        process.exit(1);
+    } catch (dbError) {
+        botLogger.fatal({ err: dbError }, "Failed to close the database");
+        exitCode = 1;
     }
+
+    clearTimeout(hardExit);
+
+    if (exitCode === 0) {
+        botLogger.info("Shutdown complete.");
+    } else {
+        botLogger.warn("Shutdown complete, with errors.");
+    }
+
+    process.exit(exitCode);
 }
 
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
@@ -215,5 +260,14 @@ process.on("unhandledRejection", (reason) => {
 
 process.on("uncaughtException", (err) => {
     botLogger.fatal({ err }, "Uncaught exception");
+
+    // Best effort on the way out: the process is going down regardless, but leaving
+    // the connection open skips SQLite's WAL checkpoint.
+    try {
+        closeDB();
+    } catch (dbError) {
+        botLogger.error({ err: dbError }, "Failed to close the database during crash exit");
+    }
+
     process.exit(1);
 });
