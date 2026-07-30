@@ -3,12 +3,12 @@
  * Handles /listallfollows, /testnotify, /removeuser, and /mem commands
  */
 
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { MessageFlags } from "discord.js";
 
-import { CONFIG_VALUES } from "../config/index.js";
 import { getAllFollows, hasMap, unfollowAll } from "../db/index.js";
 import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js";
 import { notifyUsers } from "../services/notificationService.js";
+import { replyWithPagedEmbed } from "../utils/pagination.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
 /**
@@ -29,18 +29,16 @@ export async function handleSlashListallfollows(interaction) {
         return 0;
     });
 
-    let list = "";
-    for (const follow of follows) {
-        list += `<@${follow.discord_id}>: ${follow.map_name}\n`;
-    }
+    // This list grows with every follow in the database and would blow past the
+    // 4096 character embed description limit at roughly 130 rows, so it is paged
+    // rather than truncated: an admin needs to be able to read all of it.
+    const lines = follows.map((follow) => `<@${follow.discord_id}>: ${follow.map_name}`);
 
-    const embed = new EmbedBuilder()
-        .setTitle("List of all followed maps:")
-        .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setTimestamp(Date.now())
-        .setDescription(list);
-
-    await interaction.reply({ embeds: [embed], flags: MessageFlags.Ephemeral });
+    await replyWithPagedEmbed(interaction, {
+        ephemeral: true,
+        lines,
+        title: `List of all followed maps (${follows.length}):`
+    });
 }
 
 /**

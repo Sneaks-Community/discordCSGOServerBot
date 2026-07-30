@@ -8,6 +8,7 @@ import { MessageFlags } from "discord.js";
 import serverObject from "../../servers.json" with { type: "json" };
 import { playerListEmbed, makeServerList } from "../embeds/playerEmbeds.js";
 import { isServerDataEmpty, getServerData, getServerByKeyword } from "../services/serverService.js";
+import { joinWithinLimit, MESSAGE_CONTENT_LIMIT } from "../utils/truncate.js";
 
 /**
  * Handle /players slash command
@@ -41,13 +42,14 @@ export async function handleSlashPlayers(interaction) {
  * @param {Object} interaction - Discord interaction object
  */
 export async function handleSlashKeywords(interaction) {
-    let list = "";
-    for (const server of Object.values(serverObject)) {
-        list += `**${server.nick}:**\n`;
-        for (const k of server.keywords) {
-            list += `\t${k}`;
-        }
-        list += "\n";
-    }
-    await interaction.reply({ content: list });
+    // 25 servers with several keywords each can pass the 2000 character content
+    // limit, which rejects the whole reply, so drop whole server entries instead.
+    const entries = Object.values(serverObject).map((server) => {
+        const keywords = server.keywords.map((k) => `\t${k}`).join("");
+        return `**${server.nick}:**\n${keywords}`;
+    });
+
+    const content = joinWithinLimit(entries, MESSAGE_CONTENT_LIMIT);
+
+    await interaction.reply({ content: content || "No servers configured." });
 }

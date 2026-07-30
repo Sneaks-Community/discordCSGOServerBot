@@ -38,14 +38,26 @@ export function escapeForDiscord(text) {
 }
 
 /**
+ * Escape a list of items (e.g., player names) for rendering.
+ * Filters out empty, undefined, and null values.
+ * @param {string[]} items - Array of strings to escape
+ * @returns {string[]} Escaped, non-empty items
+ */
+export function escapeLines(items) {
+    return items
+        .map((item) => escapeForDiscord(item))
+        .filter((item) => item && item !== "undefined" && item !== "null");
+}
+
+/**
  * Escape a list of items (e.g., player names) for Discord embed description.
  * Filters out empty, undefined, and null values.
+ *
+ * Callers that render into a length-limited field should use escapeLines with
+ * joinWithinLimit instead, so the result can be bounded line by line.
  * @param {string[]} items - Array of strings to escape and join
  * @returns {string} Escaped and joined string
  */
 export function escapeList(items) {
-    return items
-        .map((item) => escapeForDiscord(item))
-        .filter((item) => item && item !== "undefined" && item !== "null")
-        .join("\n");
+    return escapeLines(items).join("\n");
 }

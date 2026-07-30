@@ -6,7 +6,8 @@
 import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
-import { escapeForDiscord, escapeList } from "../utils/discordEscape.js";
+import { escapeForDiscord, escapeLines } from "../utils/discordEscape.js";
+import { EMBED_DESCRIPTION_LIMIT, joinWithinLimit } from "../utils/truncate.js";
 
 /**
  * Create a player list embed for a server
@@ -26,14 +27,18 @@ export function playerListEmbed(server) {
             .setTimestamp(Date.now());
 
         // Generate a list of player names and escape them properly
-        // Use centralized escapeList which applies escapeForDiscord to each item
+        // Use centralized escapeLines which applies escapeForDiscord to each item.
+        // A full 64-slot server with long names can exceed the 4096 character
+        // description limit, which would reject the whole reply, so bound it.
         const allPlayerNames = [
             ...server.players.map((player) => player.name),
             ...server.bots.map((bot) => bot.name)
         ];
-        const list = escapeList(allPlayerNames);
+        const list = joinWithinLimit(escapeLines(allPlayerNames), EMBED_DESCRIPTION_LIMIT);
 
-        embed.setDescription(list);
+        // An empty description is rejected by the embed builder, and an online
+        // server with nobody on it is perfectly normal.
+        embed.setDescription(list || "No players connected.");
     } else {
         // Create an embed for the offline server
         // Use centralized escapeForDiscord for server name
@@ -61,15 +66,15 @@ export function makeServerList(serverData) {
         .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
         .setTimestamp(Date.now());
 
-    // Generate the server list with proper escaping
-    const list = Object.values(serverData)
+    // Generate the server list with proper escaping, bounded to the description limit
+    const lines = Object.values(serverData)
         .map((server) => {
             const escapedName = escapeForDiscord(server.name);
             return server.online ? `${server.index}: **__${escapedName}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${escapeForDiscord(server.map)}` : `${server.index}: **__${escapedName}__**: is currently unavailable.`;
-        })
-        .join("\n");
+        });
+    const list = joinWithinLimit(lines, EMBED_DESCRIPTION_LIMIT);
 
-    embed.setDescription(list);
+    embed.setDescription(list || "No servers configured.");
 
     return embed;
 }

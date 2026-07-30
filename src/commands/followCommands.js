@@ -3,7 +3,7 @@
  * Handles /follow, /unfollow, and /listfollows commands
  */
 
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { MessageFlags } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
 import { followMap, unfollowMap, getUserFollows, isFollowingMap, unfollowAll } from "../db/index.js";
@@ -11,6 +11,7 @@ import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js"
 import { checkRateLimit } from "../services/cacheService.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
 import { commandLogger } from "../utils/logger.js";
+import { replyWithPagedEmbed } from "../utils/pagination.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
 /**
@@ -110,16 +111,12 @@ export async function handleSlashListfollows(interaction) {
         return interaction.reply({ content: "You are not following any maps.", flags: MessageFlags.Ephemeral });
     }
 
-    let list = "";
-    for (const follow of follows) {
-        list += `${escapeForDiscord(follow.map_name)}\n`;
-    }
+    // Until follows are capped per user this list is unbounded, so page it rather
+    // than risk a rejected reply once it passes the description limit.
+    const lines = follows.map((follow) => escapeForDiscord(follow.map_name));
 
-    const embed = new EmbedBuilder()
-        .setTitle("List of maps you are following:")
-        .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setTimestamp(Date.now())
-        .setDescription(list);
-
-    await interaction.reply({ embeds: [embed] });
+    await replyWithPagedEmbed(interaction, {
+        lines,
+        title: `List of maps you are following (${follows.length}):`
+    });
 }
