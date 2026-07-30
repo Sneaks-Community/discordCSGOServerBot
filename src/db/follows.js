@@ -20,7 +20,7 @@ import { getStatement } from "./connection.js";
 function validateOrThrow(schema, value, operationName) {
     const result = validateWithZod(schema, value, operationName);
     if (!result.valid) {
-        throw new Error(`${operationName}: ${result.error}`);
+        throw new Error(result.error);
     }
     return result.data;
 }
