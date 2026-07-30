@@ -1,6 +1,7 @@
 # Discord CS:GO Server Bot
 
-A Discord bot that monitors Counter-Strike: Global Offensive (and other supported) servers, provides real-time server status updates, and notifies users when specific maps appear on followed servers.
+A Discord bot that monitors Counter-Strike: Global Offensive (and other supported) servers,
+keeps a channel message in sync with their status, and DMs users when a followed map appears.
 
 ![Version](https://img.shields.io/badge/version-7.0.0-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D24-blue)
@@ -8,15 +9,18 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 
 ## Features
 
-### Core Features
+- **Server monitoring**: queries every configured server on one interval and keeps a channel
+  message updated with a rich embed of their status
+- **Map notifications**: DMs everyone following a map when it appears on a server, falling back
+  to a configured channel for recipients whose DMs are closed
+- **Slash commands**: all interaction is through slash commands, rate limited per user
+- **Automatic cleanup**: a member's follows are removed when they leave the guild (needs the
+  privileged Server Members Intent, see [Discord Application](#discord-application))
+- **Resilient**: game-server queries and Discord calls retry with exponential backoff and
+  jitter, while permanent failures are reported once with a remediation hint instead of being
+  retried forever
 
-- **Real-time Server Monitoring**: Automatically queries game servers at a configurable interval to update server status
-- **Embed Channel**: Automatically updates a channel message with rich embed of all configured servers and their status
-- **Map Notifications**: Receive DM alerts when followed maps appear on monitored servers
-- **Slash Commands**: Modern Discord interaction using slash commands with autocomplete support
-- **Rate Limiting**: Built-in rate limiting to prevent abuse (configurable per command)
-- **Automatic Cleanup**: Automatically removes user follows when they leave the server (requires the privileged Server Members Intent, see [Discord Bot Requirements](#discord-bot-requirements))
-- **Retry Logic**: Exponential backoff for failed server queries
+## Commands
 
 ### Public Commands
 
@@ -34,14 +38,41 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
 
 | Command | Description |
 |---------|-------------|
-| `/mem` | Display current memory usage statistics (admin only) |
-| `/listallfollows` | List all users and their followed maps (admin only) |
-| `/testnotify <map>` | Test map notification system (admin only) |
-| `/removeuser <userID>` | Remove all map follows for a specific user (admin only) |
+| `/mem` | Display current memory usage statistics |
+| `/listallfollows` | List all users and their followed maps |
+| `/testnotify <map>` | Test the map notification system |
+| `/removeuser <userID>` | Remove all map follows for a specific user |
 
-## Configuration
+Discord hides these behind the **Administrator** permission while the bot authorizes on
+`ADMIN_ROLE_ID`. Both apply, so a role holder who is not a Discord Administrator will not see
+the commands in the picker even though the bot would accept them: give the role Administrator,
+or add a channel permission override that reveals them. All replies are ephemeral.
 
-### Setup Instructions
+## Requirements
+
+- **Node.js** v24 or newer, or **Docker**
+- A **Discord application** with the `bot` and `applications.commands` OAuth2 scopes
+
+### Discord Application
+
+- **Permissions**, in every channel listed in `EMBEDS` and in the fallback channel:
+  - View Channel and Embed Links, in both
+  - Read Message History, in the `EMBEDS` channels, to fetch the message being edited
+  - Send Messages, in the fallback channel
+
+  DMs to followers need no permission.
+
+- **Intents**: Guilds, plus GuildMembers, which is privileged. Enable **Server Members Intent**
+  under Bot → Privileged Gateway Intents in the
+  [Discord Developer Portal](https://discord.com/developers/applications) before starting the
+  bot, otherwise login fails with `Used disallowed intents`. It powers the follow cleanup
+  above, which is scoped to `DISCORD_GUILD_ID` when that is set, so a user leaving another
+  guild the bot shares keeps their follows; with it unset, leaving any shared guild clears them.
+
+## Setup
+
+Both ways to run the bot use the same two configuration files, neither of which is tracked in
+git.
 
 1. **Clone the repository**
 
@@ -50,69 +81,104 @@ A Discord bot that monitors Counter-Strike: Global Offensive (and other supporte
    cd discordCSGOServerBot
    ```
 
-2. **Install dependencies**
+2. **Create the configuration files from their examples**
 
    ```bash
-   npm install
+   cp .env.example .env
+   cp servers.json.example servers.json
    ```
 
-3. **Configure the bot**
-   - Copy the example environment file:
+3. **Edit both.** `.env` needs at least `DISCORD_TOKEN` (see
+   [Environment Variables](#environment-variables)), and `servers.json` needs your game servers
+   (see [Server Configuration](#server-configuration)).
 
-     ```bash
-     cp .env.example .env
-     ```
+### Run with Node
 
-   - Edit `.env` with your settings (see [Environment Variables](#environment-variables-1) below)
+```bash
+npm install
+npm start
+```
 
-4. **Configure servers**
-   - Edit `servers.json` with your game server details (see [Server Configuration](#server-configuration) below)
+### Run with Docker
 
-5. **Run the bot**
+`docker-compose.yml` bind-mounts `servers.json` and keeps the database in a named volume, so
+both files from [Setup](#setup) must exist before the container starts.
 
-   ```bash
-   npm start
-   ```
+```bash
+docker compose up -d      # build and start
+docker compose logs -f    # follow the logs
+```
 
-### Environment Variables
+The image is a multi-stage `node:24-alpine` build, roughly 100MB. To run it without Compose:
 
-All configuration is done via environment variables. Copy `.env.example` to `.env` and configure as needed.
+```bash
+docker build -t discord-csgo-bot .
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `DISCORD_TOKEN` | Yes | - | Your Discord bot token |
-| `ADMIN_ROLE_ID` | Recommended | - | Discord role ID with admin access |
-| `LOG_LEVEL` | No | `info` | stdout verbosity: `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent`. |
-| `FALLBACK_GUILD_ID` | No | - | Fallback guild ID for DM failures |
-| `FALLBACK_CHANNEL_ID` | No | - | Fallback channel ID for DM failures |
-| `EMBEDS` | No | `[]` | JSON array of embed configs: `[{"channelID":"xxx","messageID":"yyy"}]` |
-| `EMBED_COLOR` | No | `7980240` | Embed color in decimal |
-| `DATABASE_PATH` | No | `db.sqlite` | SQLite file path. In Docker this must point at the mounted volume (`/app/data/db.sqlite`), which the image sets by default |
-| `SERVER_UPDATE_INTERVAL` | No | `90` | How often the bot queries the servers, updates the embeds and checks for map changes, in that order (seconds) |
-| `MAX_CONCURRENT_QUERIES` | No | `10` | Maximum concurrent server queries |
-| `USER_CACHE_TTL` | No | `300` | User cache TTL (seconds) |
-| `RETRY_MAX_RETRIES` | No | `3` | Maximum retry attempts for failed operations |
-| `RETRY_BASE_DELAY` | No | `1` | Base delay for exponential backoff (seconds) |
-| `GAMEDIG_MAX_RETRIES` | No | `4` | Maximum retries for GameDig queries |
-| `FALLBACK_AVATAR_URL` | No | `https://i.imgur.com/cBiDnMi.png` | Fallback avatar URL |
-| `OFFLINE_SERVER_IMAGE` | No | `https://i.imgur.com/WnS0Biz.png` | Offline server image URL |
-| `MAP_IMAGE_BASE_URL` | No | `https://bans.snksrv.com/images/maps/` | Base URL for map images (`<base><mapname>.jpg`); leave blank to disable |
-| `RATE_LIMIT_FOLLOW_PER_MINUTE` | No | `5` | Max follow commands per minute per user |
-| `RATE_LIMIT_UNFOLLOW_PER_MINUTE` | No | `5` | Max unfollow commands per minute per user |
-| `RATE_LIMIT_NOTIFICATION_PER_MINUTE` | No | `10` | Max map-change DMs per minute per user. Repeats of the same map (for example one map live on two servers) are always collapsed to one DM and do not count against this |
-| `MAX_FOLLOWS_PER_USER` | No | `50` | Maximum maps a single user may follow at once |
-| `MAX_NOTIFICATION_RECIPIENTS` | No | `200` | Maximum users DMed for a single map change; a truncated fanout is logged |
+docker run -d \
+  --name csgo-server-bot \
+  --env-file .env \
+  -e DATABASE_PATH=/app/data/db.sqlite \
+  -v $(pwd)/servers.json:/app/servers.json:ro \
+  -v bot-data:/app/data \
+  discord-csgo-bot
+```
 
-## Map Images
+Follows are the only state on disk, and they live in the SQLite file at `DATABASE_PATH`, so it
+has to resolve inside the `bot-data` volume mounted at `/app/data`. Anywhere else is the
+container's writable layer, which is discarded whenever the container is recreated. The image
+and `docker-compose.yml` both default it correctly, but an uncommented `DATABASE_PATH` in
+`.env` would override that through `--env-file`, which is why the `docker run` above passes it
+explicitly: an explicit `-e` wins.
 
-Embeds and notifications show a map thumbnail pulled from `MAP_IMAGE_BASE_URL` as
-`<MAP_IMAGE_BASE_URL><mapname>.jpg` for every map. If the configured host has no
-image for a given map, the embed simply renders without one. Set `MAP_IMAGE_BASE_URL`
-to your own image host, or leave it blank to disable map images entirely.
+`docker-compose.yml` also sets `NODE_ENV=production`, which selects JSON logging.
+
+### Updating
+
+```bash
+git pull
+npm install                    # Node
+docker compose up -d --build   # Docker
+```
+
+## Environment Variables
+
+Every value is validated at startup. A malformed or out-of-range one aborts startup with a
+message naming the variable and its accepted range rather than being silently corrected, so the
+bot never runs half configured. Leaving a variable unset, or setting it to an empty string,
+selects its default.
+
+| Variable | Required | Default | Valid range | Description |
+|----------|----------|---------|-------------|-------------|
+| `DISCORD_TOKEN` | Yes | - | non-empty | Your Discord bot token |
+| `DISCORD_GUILD_ID` | Recommended | - | snowflake or empty | Guild to register slash commands in. Empty registers them globally, which propagates slowly and exposes them in every guild the bot joins. `ADMIN_ROLE_ID` only ever resolves in the guild the command was run in |
+| `ADMIN_ROLE_ID` | Recommended | - | snowflake or empty | Role granting access to the [admin commands](#administrator-commands). Empty makes them inaccessible |
+| `LOG_LEVEL` | No | `info` | `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent` | stdout verbosity. An unrecognized value falls back to `info` with a warning rather than aborting, since logging is how problems get reported |
+| `FALLBACK_GUILD_ID` | No | - | snowflake or empty | Guild holding the fallback channel. Empty disables fallback notifications |
+| `FALLBACK_CHANNEL_ID` | No | - | snowflake or empty | Channel used when a DM cannot be delivered. Must be in `FALLBACK_GUILD_ID`. Empty disables fallback notifications |
+| `EMBEDS` | No | `[]` | JSON array of `{channelID, messageID}` | Messages the bot keeps the server list in: `[{"channelID":"xxx","messageID":"yyy"}]`. Each message **must have been posted by the bot itself**, since Discord forbids editing anyone else's. Empty disables embed updates; malformed JSON is a startup error |
+| `EMBED_COLOR` | No | `7980240` | 0 to 16777215 | Embed color as a 24-bit decimal |
+| `DATABASE_PATH` | No | `db.sqlite` | non-empty | SQLite file path. In Docker it must stay on the mounted volume (`/app/data/db.sqlite`, the image default) |
+| `SERVER_UPDATE_INTERVAL` | No | `90` | 30 to 86400 | How often the bot queries the servers, updates the embeds and checks for map changes, in that order, on one timer (seconds). The embed states this interval in its description |
+| `MAX_CONCURRENT_QUERIES` | No | `10` | 1 to 100 | Maximum concurrent server queries |
+| `USER_CACHE_TTL` | No | `300` | 1 to 86400 | User cache TTL (seconds) |
+| `RETRY_MAX_RETRIES` | No | `3` | 1 to 10 | Attempts for a retried Discord operation. At least 1, since 0 would mean never attempting it |
+| `RETRY_BASE_DELAY` | No | `1` | 0 to 60 | Base delay for exponential backoff (seconds) |
+| `GAMEDIG_MAX_RETRIES` | No | `4` | 0 to 10 | Maximum retries for GameDig queries |
+| `FALLBACK_AVATAR_URL` | No | `https://i.imgur.com/cBiDnMi.png` | http(s) URL | Icon used in embed footers |
+| `OFFLINE_SERVER_IMAGE` | No | `https://i.imgur.com/WnS0Biz.png` | http(s) URL | Image used for an offline server |
+| `MAP_IMAGE_BASE_URL` | No | `https://bans.snksrv.com/images/maps/` | http(s) URL ending in `/`, or empty | Map thumbnails are requested as `<base><mapname>.jpg`. A map the host has no image for simply renders without one. Empty disables map images |
+| `RATE_LIMIT_FOLLOW_PER_MINUTE` | No | `5` | 1 to 1000 | Max follow commands per minute per user |
+| `RATE_LIMIT_UNFOLLOW_PER_MINUTE` | No | `5` | 1 to 1000 | Max unfollow commands per minute per user |
+| `RATE_LIMIT_NOTIFICATION_PER_MINUTE` | No | `10` | 1 to 1000 | Max map-change DMs per minute per user. Repeats of the same map (for example one map live on two servers) are always collapsed to one DM and do not count against this |
+| `MAX_FOLLOWS_PER_USER` | No | `50` | 1 to 10000 | Maximum maps a single user may follow at once |
+| `MAX_NOTIFICATION_RECIPIENTS` | No | `200` | 1 to 10000 | Maximum users DMed for a single map change; a truncated fanout is logged |
+
+Rate limits, the user cache and the per-map notification history are all held in memory, so a
+restart clears every rate limit currently in effect.
 
 ## Server Configuration
 
-Add your CS:GO servers to `servers.json`:
+Add your servers to `servers.json`:
 
 ```json
 {
@@ -125,142 +191,12 @@ Add your CS:GO servers to `servers.json`:
 }
 ```
 
-**Maximum of 25 servers.** The server list embed adds one field per configured
-server and Discord caps an embed at 25 fields, so `servers.json` supports at most
-25 entries.
-
-### Server Fields
+**Maximum of 25 servers**, because the embed adds one field per server and Discord caps an
+embed at 25 fields.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `ip` | string | Yes | Server IP/FQDN, optionally with a port (e.g., `127.0.0.1:27015`). The port defaults to `27015` when omitted. IPv6 is not supported |
 | `nick` | string | Yes | Display name shown in embeds (max 100 characters) |
-| `protocol` | string | No | Game protocol (default: `csgo`) - see list [here](https://github.com/gamedig/node-gamedig/blob/master/GAMES_LIST.md)|
-| `keywords` | array | Yes | Search keywords for the server. Must be lowercase and unique across all servers |
-
-## Minimum Requirements
-
-### System Requirements
-
-- **Node.js** v24.x or higher
-- **Docker** (optional, for containerized deployment)
-
-### Discord Bot Requirements
-
-- **OAuth2 Scopes**: `bot` and `applications.commands`
-
-- **Bot Permissions**, needed in every channel listed in `EMBEDS` and in the fallback
-  notification channel:
-  - View Channel
-  - Send Messages (fallback notification channel only)
-  - Embed Links
-  - Read Message History (embed channels only, to fetch the message being edited)
-
-  Direct messages to followers need no permission.
-
-- **Required Intents**:
-  - Guilds
-  - GuildMembers (privileged)
-
-  GuildMembers is a privileged intent and powers the automatic follow cleanup when a
-  member leaves. Enable **Server Members Intent** under Bot → Privileged Gateway Intents
-  in the [Discord Developer Portal](https://discord.com/developers/applications) before
-  starting the bot, otherwise login fails with `Used disallowed intents`.
-
-  Cleanup is scoped to `DISCORD_GUILD_ID` when that variable is set, so a user leaving
-  another guild the bot shares does not lose their follows. With it unset, leaving any
-  guild the bot is in clears that user's follows.
-
-## Docker Deployment
-
-The bot can be run in a Docker container for easy deployment. The Docker image uses a multi-stage build with `node:24-alpine` for a minimal footprint (~100MB).
-
-### Quick Start with Docker Compose
-
-1. **Clone and configure**
-
-   ```bash
-   git clone https://github.com/Sneaks-Community/discordCSGOServerBot.git
-   cd discordCSGOServerBot
-   ```
-
-2. **Create environment file**
-
-   ```bash
-   cp .env.example .env
-   nano .env  # Edit with your Discord token and settings
-   ```
-
-3. **Configure servers**
-
-   Edit `servers.json` with your game server details.
-
-4. **Build and run**
-
-   ```bash
-   docker-compose up -d
-   ```
-
-5. **View logs**
-
-   ```bash
-   docker-compose logs -f
-   ```
-
-### Manual Docker Build
-
-```bash
-# Build the image
-docker build -t discord-csgo-bot .
-
-# Run the container
-docker run -d \
-  --name csgo-server-bot \
-  --env-file .env \
-  -e DATABASE_PATH=/app/data/db.sqlite \
-  -v $(pwd)/servers.json:/app/servers.json:ro \
-  -v bot-data:/app/data \
-  discord-csgo-bot
-```
-
-The image already defaults `DATABASE_PATH` to `/app/data/db.sqlite`, but a
-`DATABASE_PATH` line in your `.env` would override it through `--env-file` and put
-the database in the container's writable layer instead of on the `bot-data`
-volume, where it is lost on every recreation. The explicit `-e` above wins over
-`--env-file`, so it is safe either way.
-
-### Environment Variables
-
-All configuration options can be set via environment variables. See `.env.example` for the full list.
-
-| Variable | Required | Description |
-|----------|----------|-------------|
-| `DISCORD_TOKEN` | Yes | Your Discord bot token |
-| `ADMIN_ROLE_ID` | No | Discord role ID with admin access |
-| `LOG_LEVEL` | No | stdout log verbosity |
-| `FALLBACK_GUILD_ID` | No | Fallback guild for DMs |
-| `FALLBACK_CHANNEL_ID` | No | Fallback channel for DMs |
-| `EMBEDS` | No | JSON array of embed configs |
-| `SERVER_UPDATE_INTERVAL` | No | Server update interval (seconds) |
-| `DATABASE_PATH` | No | SQLite file path; keep it on the mounted volume (`/app/data/db.sqlite`, the image default) |
-
-### Data Persistence
-
-The Docker compose setup uses named volumes:
-
-- `bot-data` - SQLite database storage, mounted at `/app/data`
-
-Follows live only in that database, so `DATABASE_PATH` has to resolve inside
-`/app/data`. Anywhere else is the container's writable layer and is discarded when
-the container is recreated. `docker-compose.yml` sets it explicitly; the image
-also defaults to it.
-
-### Updating
-
-```bash
-# Pull latest changes
-git pull
-
-# Rebuild and restart
-docker-compose up -d --build
-```
+| `protocol` | string | No | Game protocol (default: `csgo`), from the [supported games list](https://github.com/gamedig/node-gamedig/blob/master/GAMES_LIST.md) |
+| `keywords` | array | Yes | Search keywords, at least one. Each must be lowercase, free of leading and trailing whitespace, at most 32 characters, and unique across all servers, since a lookup returns the first match |
