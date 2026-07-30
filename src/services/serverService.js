@@ -126,8 +126,7 @@ export async function getInfo(server, index) {
             numBots: sanitizedBots.length, // int (gamedig v5.x API)
             numPlayers: sanitizedPlayers.length, // int (gamedig v5.x API)
             online: true,
-            players: sanitizedPlayers, // Players array {name, score, time}
-            show: server.show // bool to print server in embed
+            players: sanitizedPlayers // Players array {name, score, time}
         };
     } else {
         // If the server is not valid, populate the data object with minimal information

@@ -34,8 +34,6 @@ export function makeEmbed(serverData) {
             continue;
         }
 
-        if (!server.show) continue; // Skip servers that shouldn't be displayed
-
         // Add a field for the online server with player, map, and IP details
         // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
         embed.addFields({

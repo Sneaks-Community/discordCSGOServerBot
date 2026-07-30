@@ -116,7 +116,6 @@ Add your CS:GO servers to `servers.json`:
   "ServerName": {
     "ip": "IP_ADDRESS:PORT",
     "nick": "Display Name",
-    "show": true,
     "protocol": "csgo",
     "keywords": ["keyword1", "keyword2"]
   }
@@ -129,7 +128,6 @@ Add your CS:GO servers to `servers.json`:
 |-------|------|----------|-------------|
 | `ip` | string | Yes | Server IP/FQDN and port (e.g., `127.0.0.1:27015`) |
 | `nick` | string | Yes | Display name shown in embeds |
-| `show` | boolean | Yes | Whether to display server in public commands |
 | `protocol` | string | No | Game protocol (default: `csgo`) - see list [here](https://github.com/gamedig/node-gamedig/blob/master/GAMES_LIST.md)|
 | `keywords` | array | Yes | Search keywords for the server |
 
