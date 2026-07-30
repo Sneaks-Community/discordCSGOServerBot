@@ -3,7 +3,9 @@
  * Handles config loading and validation from environment variables
  */
 
+import { discordIdSchema } from "../schemas/validationSchemas.js";
 import { configLogger } from "../utils/logger.js";
+import { validateWithZod } from "../utils/zodValidator.js";
 import { config, CONFIG_VALUES, REQUIRED_PERMISSIONS } from "./config.js";
 import { validateServersConfig } from "./servers.js";
 
@@ -25,8 +27,11 @@ export function validateConfig() {
     // Critical: Security admin role ID
     if (!config.security?.adminRoleId || typeof config.security.adminRoleId !== "string" || config.security.adminRoleId.trim() === "") {
         warnings.push("ADMIN_ROLE_ID environment variable is missing or empty - admin commands will be inaccessible");
-    } else if (!/^\d{17,19}$/.test(config.security.adminRoleId)) {
-        warnings.push(`Invalid admin role ID format: "${config.security.adminRoleId}" - should be 17-19 digits`);
+    } else {
+        const adminRoleId = validateWithZod(discordIdSchema, config.security.adminRoleId, "ADMIN_ROLE_ID");
+        if (!adminRoleId.valid) {
+            warnings.push(`${adminRoleId.error} (got "${config.security.adminRoleId}") - admin commands will be inaccessible`);
+        }
     }
 
     // Important: Fallback notification configuration

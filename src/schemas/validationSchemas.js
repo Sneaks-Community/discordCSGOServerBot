@@ -3,6 +3,7 @@ import * as z from "zod";
 /**
  * Discord user ID schema: 17-19 digit numeric string
  * Discord IDs are always numeric strings assigned by Discord's infrastructure.
+ * Used for user IDs and for the configured admin role ID (validateConfig).
  */
 export const discordIdSchema = z
     .string()
