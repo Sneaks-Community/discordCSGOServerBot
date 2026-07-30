@@ -35,7 +35,12 @@ export function initDB() {
     db = new Database(dbPath);
     // Enable WAL mode for better concurrency
     db.pragma("journal_mode = WAL");
-    
+    // Wait rather than throwing SQLITE_BUSY immediately if the file is locked, which
+    // a WAL checkpoint or an operator with a sqlite3 shell open can both cause.
+    // better-sqlite3 is synchronous, so this blocks the process; 5s is long enough to
+    // outlast a checkpoint and short enough not to look like a hang.
+    db.pragma("busy_timeout = 5000");
+
     // Use a transaction for atomic initialization
     const initTransaction = db.transaction(() => {
         // Create table players_follow with columns for discord_id, map_name
@@ -44,10 +49,15 @@ export function initDB() {
         // the follow system -- if a user re-follows a map, we want a clean record.
         // Note: This changes the rowid on conflict, but there are no foreign keys
         // referencing this table, so no cascading issues occur.
+        //
+        // NOT NULL applies to newly created databases only: CREATE TABLE IF NOT EXISTS
+        // leaves an existing table exactly as it is. No migration is needed, because
+        // every write goes through the Zod schemas in follows.js, which reject a null
+        // or empty id and map name, so no existing database can contain a NULL here.
         db.exec(`
             CREATE TABLE IF NOT EXISTS players_follow (
-                discord_id TEXT,
-                map_name TEXT,
+                discord_id TEXT NOT NULL,
+                map_name TEXT NOT NULL,
                 UNIQUE(discord_id, map_name) ON CONFLICT REPLACE
             )
         `);

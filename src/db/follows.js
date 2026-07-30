@@ -51,7 +51,9 @@ function runStatement(sql, params, operationName, mode) {
 export function followMap(discord_id, map_name) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "followMap/discord_id");
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "followMap/map_name");
-    runStatement("INSERT INTO players_follow VALUES (?, ?)", [validatedDiscordId, validatedMapName], "followMap", "run");
+    // Columns are named rather than positional so that adding one later cannot
+    // silently shift these two values into the wrong places.
+    runStatement("INSERT INTO players_follow (discord_id, map_name) VALUES (?, ?)", [validatedDiscordId, validatedMapName], "followMap", "run");
 }
 
 /**
@@ -70,7 +72,7 @@ export function unfollowMap(discord_id, map_name) {
  * @returns {Array} - Array of all rows from players_follow
  */
 export function getAllFollows() {
-    return runStatement("SELECT * FROM players_follow", [], "getAllFollows", "all");
+    return runStatement("SELECT discord_id, map_name FROM players_follow", [], "getAllFollows", "all");
 }
 
 /**
@@ -96,14 +98,17 @@ export function countUserFollows(discord_id) {
 
 /**
  * Check if a user is following a specific map
+ *
+ * Selects a constant rather than columns: nothing reads a field off the result,
+ * only its presence. Callers use it as a boolean.
  * @param {string} discord_id - The Discord user ID
  * @param {string} map_name - The map name
- * @returns {Object|null} - Row object if following, null otherwise
+ * @returns {Object|undefined} - A truthy marker row if following, undefined otherwise
  */
 export function isFollowingMap(discord_id, map_name) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "isFollowingMap/discord_id");
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "isFollowingMap/map_name");
-    return runStatement("SELECT * FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "isFollowingMap", "get");
+    return runStatement("SELECT 1 FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "isFollowingMap", "get");
 }
 
 /**
@@ -118,12 +123,14 @@ export function getUsersFollowingMap(map_name) {
 
 /**
  * Check if any user is following a specific map
+ *
+ * As with isFollowingMap, only the presence of a row matters.
  * @param {string} map_name - The map name
- * @returns {Object|null} - Row object if exists, null otherwise
+ * @returns {Object|undefined} - A truthy marker row if any follow exists, undefined otherwise
  */
 export function hasMap(map_name) {
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "hasMap/map_name");
-    return runStatement("SELECT * FROM players_follow WHERE map_name = ?", [validatedMapName], "hasMap", "get");
+    return runStatement("SELECT 1 FROM players_follow WHERE map_name = ?", [validatedMapName], "hasMap", "get");
 }
 
 /**
