@@ -99,16 +99,18 @@ export function countUserFollows(discord_id) {
 /**
  * Check if a user is following a specific map
  *
- * Selects a constant rather than columns: nothing reads a field off the result,
- * only its presence. Callers use it as a boolean.
+ * Selects a constant rather than columns and answers with a boolean: nothing
+ * reads a field off the row, only whether one exists. `.get()` yields undefined
+ * when it does not, which is what the comparison turns into `false`.
  * @param {string} discord_id - The Discord user ID
  * @param {string} map_name - The map name
- * @returns {Object|undefined} - A truthy marker row if following, undefined otherwise
+ * @returns {boolean} - Whether the user follows the map
  */
 export function isFollowingMap(discord_id, map_name) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "isFollowingMap/discord_id");
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "isFollowingMap/map_name");
-    return runStatement("SELECT 1 FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "isFollowingMap", "get");
+    const row = runStatement("SELECT 1 FROM players_follow WHERE discord_id = ? AND map_name = ?", [validatedDiscordId, validatedMapName], "isFollowingMap", "get");
+    return row !== undefined;
 }
 
 /**
@@ -126,11 +128,12 @@ export function getUsersFollowingMap(map_name) {
  *
  * As with isFollowingMap, only the presence of a row matters.
  * @param {string} map_name - The map name
- * @returns {Object|undefined} - A truthy marker row if any follow exists, undefined otherwise
+ * @returns {boolean} - Whether at least one user follows the map
  */
 export function hasMap(map_name) {
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "hasMap/map_name");
-    return runStatement("SELECT 1 FROM players_follow WHERE map_name = ?", [validatedMapName], "hasMap", "get");
+    const row = runStatement("SELECT 1 FROM players_follow WHERE map_name = ?", [validatedMapName], "hasMap", "get");
+    return row !== undefined;
 }
 
 /**
