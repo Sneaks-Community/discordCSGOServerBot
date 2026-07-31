@@ -15,23 +15,59 @@ import { replyWithPagedEmbed } from "../utils/pagination.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
 /**
+ * Validate the invoking user's Discord ID, answering the interaction if it is
+ * unusable. Every follow command needs the ID before it can do anything, so the
+ * caller only has to check for null.
+ *
+ * Module-private: nothing outside this file validates the invoker, and the admin
+ * commands validate an ID typed as a command option instead, which is a
+ * different check with a different failure message.
+ * @param {Object} interaction - Discord interaction object
+ * @returns {Promise<?string>} - The validated ID, or null if the user was replied to
+ */
+async function resolveUserId(interaction) {
+    const result = validateWithZod(discordIdSchema, interaction.user.id, "User ID");
+    if (result.valid) return result.data;
+
+    await interaction.reply({ content: result.error, flags: MessageFlags.Ephemeral });
+    return null;
+}
+
+/**
+ * Apply a per-minute rate limit, answering the interaction when the user is over it.
+ * @param {Object} interaction - Discord interaction object
+ * @param {Object} options - Options
+ * @param {string} options.action - Rate limit key, one bucket per action
+ * @param {string} options.gerund - How the action reads in "before ... another map"
+ * @param {number} options.limit - Allowed invocations per minute
+ * @param {string} options.userId - The validated invoker ID the bucket is keyed on
+ * @returns {Promise<boolean>} - Whether the command may proceed
+ */
+async function enforceRateLimit(interaction, { action, gerund, limit, userId }) {
+    const result = checkRateLimit(userId, action, limit);
+    if (result.allowed) return true;
+
+    await interaction.reply({ content: `Rate limit exceeded. Please wait ${result.retryAfter} seconds before ${gerund} another map.`, flags: MessageFlags.Ephemeral });
+    return false;
+}
+
+/**
  * Handle /follow slash command
  * @param {Object} interaction - Discord interaction object
  */
 export async function handleSlashFollow(interaction) {
     const rawMap = interaction.options.getString("map");
 
-    // Validate Discord ID first
-    const userIdValidation = validateWithZod(discordIdSchema, interaction.user.id, "User ID");
-    if (!userIdValidation.valid) {
-        return interaction.reply({ content: userIdValidation.error, flags: MessageFlags.Ephemeral });
-    }
-    const sanitizedUserId = userIdValidation.data;
+    const sanitizedUserId = await resolveUserId(interaction);
+    if (!sanitizedUserId) return;
 
-    const rateLimitResult = checkRateLimit(sanitizedUserId, "follow", CONFIG_VALUES.FOLLOW_RATE_LIMIT_PER_MINUTE);
-    if (!rateLimitResult.allowed) {
-        return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before following another map.`, flags: MessageFlags.Ephemeral });
-    }
+    const withinLimit = await enforceRateLimit(interaction, {
+        action: "follow",
+        gerund: "following",
+        limit: CONFIG_VALUES.FOLLOW_RATE_LIMIT_PER_MINUTE,
+        userId: sanitizedUserId
+    });
+    if (!withinLimit) return;
 
     // Validate map name using Zod v4 schema (includes lowercase transform)
     const mapValidation = validateWithZod(mapNameSchema, rawMap, "Map name");
@@ -70,17 +106,16 @@ export async function handleSlashFollow(interaction) {
 export async function handleSlashUnfollow(interaction) {
     const rawMap = interaction.options.getString("map");
 
-    // Validate Discord ID first
-    const userIdValidation = validateWithZod(discordIdSchema, interaction.user.id, "User ID");
-    if (!userIdValidation.valid) {
-        return interaction.reply({ content: userIdValidation.error, flags: MessageFlags.Ephemeral });
-    }
-    const sanitizedUserId = userIdValidation.data;
+    const sanitizedUserId = await resolveUserId(interaction);
+    if (!sanitizedUserId) return;
 
-    const rateLimitResult = checkRateLimit(sanitizedUserId, "unfollow", CONFIG_VALUES.UNFOLLOW_RATE_LIMIT_PER_MINUTE);
-    if (!rateLimitResult.allowed) {
-        return interaction.reply({ content: `Rate limit exceeded. Please wait ${rateLimitResult.retryAfter} seconds before unfollowing another map.`, flags: MessageFlags.Ephemeral });
-    }
+    const withinLimit = await enforceRateLimit(interaction, {
+        action: "unfollow",
+        gerund: "unfollowing",
+        limit: CONFIG_VALUES.UNFOLLOW_RATE_LIMIT_PER_MINUTE,
+        userId: sanitizedUserId
+    });
+    if (!withinLimit) return;
 
     // "all" is a special keyword that bypasses map name validation
     if (rawMap === "all") {
@@ -110,12 +145,8 @@ export async function handleSlashUnfollow(interaction) {
  * @param {Object} interaction - Discord interaction object
  */
 export async function handleSlashListfollows(interaction) {
-    // Validate Discord ID
-    const userIdValidation = validateWithZod(discordIdSchema, interaction.user.id, "User ID");
-    if (!userIdValidation.valid) {
-        return interaction.reply({ content: userIdValidation.error, flags: MessageFlags.Ephemeral });
-    }
-    const sanitizedUserId = userIdValidation.data;
+    const sanitizedUserId = await resolveUserId(interaction);
+    if (!sanitizedUserId) return;
 
     const follows = getUserFollows(sanitizedUserId);
   
