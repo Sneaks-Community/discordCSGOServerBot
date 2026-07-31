@@ -101,6 +101,24 @@ function readCounts(res) {
 }
 
 /**
+ * The data a server that could not be queried is represented by: enough for the
+ * embed and /players to name it, and nothing that would read as live state.
+ * Shared by getInfo's failed query and refresh's catch, which must produce the
+ * same shape or a caller would see fields on one path and not the other.
+ * @param {Object} server - Server configuration object
+ * @param {number} index - Server index
+ * @returns {Object} - Minimal offline server data
+ */
+function buildOfflineServerData(server, index) {
+    return {
+        index,
+        keywords: server.keywords,
+        name: server.nick,
+        online: false
+    };
+}
+
+/**
  * Query server information using GameDig
  * @param {Object} server - Server configuration object
  * @param {number} index - Server index
@@ -151,12 +169,7 @@ export async function getInfo(server, index) {
         };
     } else {
         // If the server is not valid, populate the data object with minimal information
-        data = {
-            index: index,
-            keywords: server.keywords,
-            name: server.nick,
-            online: false
-        };
+        data = buildOfflineServerData(server, index);
     }
 
     return data;
@@ -188,7 +201,7 @@ export async function refresh() {
                     } catch (err) {
                         serviceLogger.error({ err, server: name }, "Failed to query server");
                         // Return minimal data on error
-                        return [name, { index: index + 1, keywords: server.keywords, name: server.nick, online: false }];
+                        return [name, buildOfflineServerData(server, index + 1)];
                     }
                 })
             )
