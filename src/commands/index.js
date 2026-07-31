@@ -8,35 +8,7 @@ import { REST, Routes, MessageFlags } from "discord.js";
 import { config } from "../config/index.js";
 import { commandLogger } from "../utils/logger.js";
 import { hasAdminRole } from "./adminAuth.js";
-import { handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser } from "./adminCommands.js";
-import { buildSlashCommands } from "./definitions.js";
-import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
-import { handleSlashPlayers, handleSlashKeywords } from "./playerCommands.js";
-import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
-
-/**
- * Public command handlers map - O(1) lookup
- * @type {Map<string, Function>}
- */
-const publicCommands = new Map([
-    ["players", handleSlashPlayers],
-    ["keywords", handleSlashKeywords],
-    ["follow", handleSlashFollow],
-    ["unfollow", handleSlashUnfollow],
-    ["listfollows", handleSlashListfollows],
-    ["help", handleSlashHelp],
-    ["ping", handleSlashPing]
-]);
-
-/**
- * Admin command handlers map - O(1) lookup
- * @type {Map<string, Function>}
- */
-const adminCommands = new Map([
-    ["listallfollows", handleSlashListallfollows],
-    ["testnotify", handleSlashTestnotify],
-    ["removeuser", handleSlashRemoveuser]
-]);
+import { buildSlashCommands, COMMANDS_BY_NAME } from "./definitions.js";
 
 /**
  * Slash command definitions (JSON format for Discord API)
@@ -95,25 +67,24 @@ export async function handleInteraction(interaction) {
     const username = interaction.user?.username || "unknown";
 
     try {
-        // Check admin commands first (requires auth)
-        if (adminCommands.has(commandName)) {
+        // The same array Discord was registered from, so anything Discord can send
+        // has a handler here by construction.
+        const command = COMMANDS_BY_NAME.get(commandName);
+        if (!command) {
+            await interaction.reply({ content: "Unknown command.", flags: MessageFlags.Ephemeral });
+            return;
+        }
+
+        // Admin commands are hidden in the picker, but the role is what authorizes.
+        if (command.admin) {
             if (!isAdmin) {
                 commandLogger.info({ command: commandName, userId, username }, "Admin command attempt by non-admin user");
                 return interaction.reply({ content: "You do not have permission to use this command.", flags: MessageFlags.Ephemeral });
             }
             commandLogger.info({ command: commandName, userId, username }, "Admin command executed");
-            const handler = adminCommands.get(commandName);
-            return await handler(interaction);
         }
 
-        // Check public commands
-        if (publicCommands.has(commandName)) {
-            const handler = publicCommands.get(commandName);
-            return await handler(interaction);
-        }
-
-        // Unknown command
-        await interaction.reply({ content: "Unknown command.", flags: MessageFlags.Ephemeral });
+        return await command.handler(interaction);
     } catch (err) {
         commandLogger.error({ command: commandName, err }, "Error handling slash command");
         const content = "An error occurred while processing your command.";
