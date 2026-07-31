@@ -59,8 +59,7 @@ const baseConfig = {
         color: env.EMBED_COLOR
     },
     fallback: {
-        channelID: env.FALLBACK_CHANNEL_ID,
-        guildID: env.FALLBACK_GUILD_ID
+        channelID: env.FALLBACK_CHANNEL_ID
     },
     follows: {
         maxPerUser: env.MAX_FOLLOWS_PER_USER

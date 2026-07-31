@@ -28,19 +28,16 @@ export async function registerSlashCommands(bot) {
             throw new Error("Unable to get application ID - bot may not be fully initialized");
         }
     
-        if (config.discord.guildID) {
-            await rest.put(
-                Routes.applicationGuildCommands(applicationId, config.discord.guildID),
-                { body: slashCommands }
-            );
-            commandLogger.info(`Successfully registered ${slashCommands.length} guild slash commands`);
-        } else {
-            await rest.put(
-                Routes.applicationCommands(applicationId),
-                { body: slashCommands }
-            );
-            commandLogger.info(`Successfully registered ${slashCommands.length} global slash commands`);
-        }
+        // Discord keeps global and guild commands as separate sets, so commands an
+        // earlier run registered globally would stay visible in every guild forever.
+        // Clearing them here makes "this bot has no global commands" a guarantee.
+        await rest.put(Routes.applicationCommands(applicationId), { body: [] });
+
+        await rest.put(
+            Routes.applicationGuildCommands(applicationId, config.discord.guildID),
+            { body: slashCommands }
+        );
+        commandLogger.info(`Successfully registered ${slashCommands.length} guild slash commands`);
     } catch (err) {
         commandLogger.error({ err }, "Error registering slash commands");
         throw err;

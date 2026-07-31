@@ -11,6 +11,9 @@ import { config } from "../config/index.js";
 // Admin role ID from config. envSchema guarantees a snowflake or "" (disabled).
 const adminRoleId = config.security.adminRoleId;
 
+// The one guild this instance serves. envSchema guarantees a snowflake.
+const primaryGuildID = config.discord.guildID;
+
 /**
  * Check whether the invoking member may use the admin commands.
  * Discord Administrators and the guild owner qualify as well as the configured
@@ -23,6 +26,11 @@ const adminRoleId = config.security.adminRoleId;
  * @returns {boolean} - Whether the member may use the admin commands
  */
 export function hasAdminRole(interaction) {
+    // Admin commands act on the whole database, and Administrator or guild ownership
+    // is true of any guild, so only the served guild may drive them. The bot leaves
+    // every other guild, so this should be unreachable; it costs one comparison.
+    if (interaction.guildId !== primaryGuildID) return false;
+
     if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) === true) return true;
 
     const ownerId = interaction.guild?.ownerId;

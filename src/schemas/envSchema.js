@@ -244,7 +244,16 @@ export const envSchema = z.object({
         (value) => (value === undefined || String(value).trim() === "" ? "db.sqlite" : String(value).trim()),
         z.string().min(1, "cannot be empty")
     ),
-    DISCORD_GUILD_ID: optionalIdEnv(),
+    // Required: it is the guild this instance serves, and the bot leaves any other
+    // guild it is added to. Empty would leave the admin commands, which act on the
+    // whole database, open to an Administrator of any guild the bot is in.
+    DISCORD_GUILD_ID: z.preprocess(
+        (value) => (value === undefined ? "" : String(value).trim()),
+        z.string().refine(
+            (value) => discordIdSchema.safeParse(value).success,
+            "is required and must be a Discord ID (17-19 digits)"
+        )
+    ),
     // Trimmed because a pasted token often carries a trailing newline, which
     // Discord then rejects at login with an unhelpful message.
     DISCORD_TOKEN: z.preprocess(
@@ -256,7 +265,6 @@ export const envSchema = z.object({
     EMBEDS: embedsEnv,
     FALLBACK_AVATAR_URL: urlEnv("https://i.imgur.com/cBiDnMi.png"),
     FALLBACK_CHANNEL_ID: optionalIdEnv(),
-    FALLBACK_GUILD_ID: optionalIdEnv(),
     GAMEDIG_MAX_RETRIES: intEnv(4, 0, 10),
     MAP_IMAGE_BASE_URL: mapImageBaseUrlEnv,
     // p-limit throws on a concurrency below 1
@@ -288,23 +296,23 @@ export const envSchema = z.object({
  * Empty is legal, so these produce startup warnings rather than errors. Listing
  * them beside the declarations above keeps "is this valid?" and "what does
  * skipping it cost?" in one file.
- *
- * DISCORD_GUILD_ID is deliberately absent: empty does not disable anything, it
- * selects global rather than guild-scoped command registration.
  */
 const OPTIONAL_FEATURES = Object.freeze([
     { disables: "admin commands will be inaccessible", variable: "ADMIN_ROLE_ID" },
-    { disables: "fallback notifications will be disabled", variable: "FALLBACK_GUILD_ID" },
     { disables: "fallback notifications will be disabled", variable: "FALLBACK_CHANNEL_ID" },
     { disables: "server list embeds will not be updated", variable: "EMBEDS" }
 ]);
 
 /**
- * Placeholder used only to materialize the schema's defaults after validation has
- * already failed, since DISCORD_TOKEN is required and would otherwise throw.
- * Never reaches Discord: startup aborts before login.
+ * Placeholders used only to materialize the schema's defaults after validation has
+ * already failed. Every required variable needs one, or this parse throws in place of
+ * reporting the operator's real mistakes. Never reach Discord: startup aborts before
+ * login.
  */
-const PLACEHOLDER_TOKEN = "unvalidated";
+const PLACEHOLDER_ENV = Object.freeze({
+    DISCORD_GUILD_ID: "0".repeat(18),
+    DISCORD_TOKEN: "unvalidated"
+});
 
 /**
  * Report optional variables that are set to nothing.
@@ -348,7 +356,7 @@ export function parseEnv(env = process.env) {
     // left empty because they would describe defaults, not the real configuration.
     return {
         errors: result.error.issues.map(formatEnvIssue),
-        values: envSchema.parse({ DISCORD_TOKEN: PLACEHOLDER_TOKEN }),
+        values: envSchema.parse(PLACEHOLDER_ENV),
         warnings: []
     };
 }

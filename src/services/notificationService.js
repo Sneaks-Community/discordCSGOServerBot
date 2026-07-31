@@ -270,23 +270,25 @@ async function deliverNotification(user, event) {
  * @throws {TerminalError} If the channel does not resolve, or is in another guild
  */
 async function resolveFallbackChannel(bot) {
-    const { channelID, guildID } = config.fallback;
+    const { channelID } = config.fallback;
+    const guildID = config.discord.guildID;
 
     const channel = bot.channels.cache.get(channelID) ?? (await bot.channels.fetch(channelID));
     if (!channel) {
         throw new TerminalError(
             `Fallback channel ${channelID} not found`,
-            `FALLBACK_CHANNEL_ID ${channelID} does not resolve to a channel the bot can see; check the ID and that the bot is in that guild`
+            `FALLBACK_CHANNEL_ID ${channelID} does not resolve to a channel the bot can see; check the ID and that the channel is in guild ${guildID}`
         );
     }
 
-    // The channel is resolved through the client rather than through the guild now,
-    // so the configured guild is checked rather than assumed.
+    // The bot serves one guild, so the channel has to be in it. Still checked rather
+    // than assumed: fetch() also resolves DM channels, and an ID left over from a
+    // guild the bot has since left would otherwise fail further in.
     const channelGuildID = channel.guildId ?? channel.guild?.id;
     if (channelGuildID !== guildID) {
         throw new TerminalError(
-            `Fallback channel ${channelID} is in guild ${channelGuildID}, not the configured ${guildID}`,
-            `FALLBACK_CHANNEL_ID ${channelID} belongs to guild ${channelGuildID}; set FALLBACK_GUILD_ID to that guild, or point FALLBACK_CHANNEL_ID at a channel in ${guildID}`
+            `Fallback channel ${channelID} is in guild ${channelGuildID}, not the served guild ${guildID}`,
+            `FALLBACK_CHANNEL_ID ${channelID} is not a channel in guild ${guildID}; point it at one there`
         );
     }
 
@@ -305,9 +307,9 @@ async function sendFallbackNotification(event, undeliverable) {
     const { bot, mapName } = event;
 
     // Nothing to fall back to, so there is nothing to retry. Without this an
-    // unconfigured fallback costs three retried "guild not found" throws, with
+    // unconfigured fallback costs three retried "channel not found" throws, with
     // backoff, for every recipient whose DM failed, which dominated the fanout.
-    if (!config.fallback.guildID || !config.fallback.channelID) {
+    if (!config.fallback.channelID) {
         serviceLogger.debug({ map: mapName, undeliverable: undeliverable.total }, "No fallback channel configured, skipping fallback notification");
         return;
     }

@@ -85,6 +85,10 @@ bot.on(Events.ClientReady, async () => {
     try {
         botLogger.info("Started as " + bot.user.tag);
 
+        // Before serving anything: guilds joined while the bot was offline emit no
+        // guildCreate, so this is the only place they are caught.
+        await enforceSingleGuild();
+
         // Register slash commands
         await registerSlashCommands(bot);
 
@@ -161,13 +165,56 @@ async function intervalFunction() {
 }
 
 /**
- * Handle guild member remove event - clean up follows when member leaves.
- * Scoped to the primary guild so that leaving some other shared guild does not
- * wipe follows; if DISCORD_GUILD_ID is unset, any guild triggers cleanup.
+ * Leave a guild this instance does not serve.
+ * @param {Object} guild - The guild to leave
  */
-bot.on("guildMemberRemove", (member) => {
+async function leaveOtherGuild(guild) {
+    botLogger.warn({ guildId: guild.id, guildName: guild.name }, "Leaving a guild this instance does not serve");
+
+    try {
+        await guild.leave();
+    } catch (err) {
+        botLogger.error({ err, guildId: guild.id }, "Failed to leave that guild");
+    }
+}
+
+/**
+ * Leave every guild but DISCORD_GUILD_ID, so one instance serves one guild.
+ * Not being in the configured guild is fatal rather than another thing to fix by
+ * leaving: read that way round, a typo in the ID would evict the bot from the guild
+ * it actually belongs to.
+ * @throws {Error} If the bot is not in the configured guild
+ */
+async function enforceSingleGuild() {
     const primaryGuildID = config.discord.guildID;
-    if (primaryGuildID && member.guild?.id !== primaryGuildID) {
+
+    if (!bot.guilds.cache.has(primaryGuildID)) {
+        throw new Error(`The bot is not in DISCORD_GUILD_ID ${primaryGuildID}; check the ID and that the bot has been invited to that guild`);
+    }
+
+    await Promise.all(bot.guilds.cache.filter((guild) => guild.id !== primaryGuildID).map(leaveOtherGuild));
+}
+
+/**
+ * Decline an invite to any other guild by leaving it again.
+ * discord.js emits this only for genuinely new guilds while the shard is ready, so
+ * a guild coming back after an outage (guildAvailable) cannot trip it.
+ */
+bot.on(Events.GuildCreate, (guild) => {
+    if (guild.id === config.discord.guildID) {
+        return;
+    }
+
+    void leaveOtherGuild(guild);
+});
+
+/**
+ * Handle guild member remove event - clean up follows when member leaves.
+ * Scoped to the served guild: the bot is only ever in one, but an event from
+ * anywhere else must not wipe follows made in this one.
+ */
+bot.on(Events.GuildMemberRemove, (member) => {
+    if (member.guild?.id !== config.discord.guildID) {
         return;
     }
 
@@ -182,7 +229,7 @@ bot.on("guildMemberRemove", (member) => {
 /**
  * Handle slash command interactions
  */
-bot.on("interactionCreate", async (interaction) => {
+bot.on(Events.InteractionCreate, async (interaction) => {
     await handleInteraction(interaction);
 });
 

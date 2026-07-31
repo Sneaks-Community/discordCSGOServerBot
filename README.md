@@ -56,6 +56,12 @@ work but do not appear in their picker. All replies are ephemeral.
 
 ### Discord Application
 
+- **One guild per instance**: the bot serves the guild in `DISCORD_GUILD_ID` and leaves any
+  other guild it is added to, since its admin commands act on the whole database rather than
+  on one guild. Turning **Public Bot** off under Bot in the
+  [Discord Developer Portal](https://discord.com/developers/applications) stops anyone else
+  adding it in the first place.
+
 - **Permissions**, in every channel listed in `EMBEDS` and in the fallback channel:
   - View Channel and Embed Links, in both
   - Read Message History, in the `EMBEDS` channels, to fetch the message being edited
@@ -67,8 +73,7 @@ work but do not appear in their picker. All replies are ephemeral.
   under Bot → Privileged Gateway Intents in the
   [Discord Developer Portal](https://discord.com/developers/applications) before starting the
   bot, otherwise login fails with `Used disallowed intents`. It powers the follow cleanup
-  above, which is scoped to `DISCORD_GUILD_ID` when that is set, so a user leaving another
-  guild the bot shares keeps their follows; with it unset, leaving any shared guild clears them.
+  above, scoped to `DISCORD_GUILD_ID`.
 
 ## Setup
 
@@ -152,13 +157,12 @@ selects its default.
 | Variable | Required | Default | Valid range | Description |
 |----------|----------|---------|-------------|-------------|
 | `DISCORD_TOKEN` | Yes | - | non-empty | Your Discord bot token |
-| `DISCORD_GUILD_ID` | Recommended | - | snowflake or empty | Guild to register slash commands in. Empty registers them globally, which propagates slowly and exposes them in every guild the bot joins. `ADMIN_ROLE_ID` only ever resolves in the guild the command was run in |
+| `DISCORD_GUILD_ID` | Yes | - | snowflake | The one guild this instance serves. Slash commands are registered there, and the bot leaves any other guild it is added to |
 | `ADMIN_ROLE_ID` | Recommended | - | snowflake or empty | Role granting access to the [admin commands](#administrator-commands). Empty leaves them to Discord Administrators and the guild owner |
 | `BOT_ACTIVITY_TEXT` | No | `/follow <map> for map change alerts` | up to 128 characters, or empty | Activity text shown under the bot's name. Empty shows no activity. Sent with the gateway identify, so it survives reconnects |
 | `BOT_ACTIVITY_TYPE` | No | `custom` | `custom`, `playing`, `listening`, `watching`, `competing` | How `BOT_ACTIVITY_TEXT` renders. `custom` shows it verbatim; the others have their verb prepended by Discord (`Playing ...`, `Listening to ...`) |
 | `LOG_LEVEL` | No | `info` | `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent` | stdout verbosity. An unrecognized value falls back to `info` with a warning rather than aborting, since logging is how problems get reported |
-| `FALLBACK_GUILD_ID` | No | - | snowflake or empty | Guild holding the fallback channel. Empty disables fallback notifications |
-| `FALLBACK_CHANNEL_ID` | No | - | snowflake or empty | Channel used when a DM cannot be delivered. Must be in `FALLBACK_GUILD_ID`. Empty disables fallback notifications |
+| `FALLBACK_CHANNEL_ID` | No | - | snowflake or empty | Channel used when a DM cannot be delivered. Must be in `DISCORD_GUILD_ID`. Empty disables fallback notifications |
 | `EMBEDS` | No | `[]` | JSON array of `{channelID, messageID}` | Messages the bot keeps the server list in: `[{"channelID":"xxx","messageID":"yyy"}]`. Each message **must have been posted by the bot itself**, since Discord forbids editing anyone else's. Empty disables embed updates; malformed JSON is a startup error |
 | `EMBED_COLOR` | No | `7980240` | 0 to 16777215 | Embed color as a 24-bit decimal |
 | `DATABASE_PATH` | No | `db.sqlite` | non-empty | SQLite file path. In Docker it must stay on the mounted volume (`/app/data/db.sqlite`, the image default) |
