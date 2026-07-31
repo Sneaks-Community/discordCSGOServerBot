@@ -39,14 +39,18 @@ export function escapeForDiscord(text) {
 
 /**
  * Escape a list of items (e.g., player names) for rendering.
- * Filters out empty, undefined, and null values.
+ *
+ * Drops anything that is not a non-empty string before escaping, rather than
+ * escaping first and then filtering the strings "undefined" and "null" back out,
+ * which would also have discarded a player legitimately named "null". Escaping
+ * only ever adds characters, so a survivor can never come back empty.
  * @param {string[]} items - Array of strings to escape
  * @returns {string[]} Escaped, non-empty items
  */
 export function escapeLines(items) {
     return items
-        .map((item) => escapeForDiscord(item))
-        .filter((item) => item && item !== "undefined" && item !== "null");
+        .filter((item) => typeof item === "string" && item !== "")
+        .map((item) => escapeForDiscord(item));
 }
 
 /**
