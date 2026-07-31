@@ -75,7 +75,7 @@ export async function handleInteraction(interaction) {
             return;
         }
 
-        // Admin commands are hidden in the picker, but the role is what authorizes.
+        // Hiding a command in the picker is not a gate; this is.
         if (command.admin) {
             if (!isAdmin) {
                 commandLogger.info({ command: commandName, userId, username }, "Admin command attempt by non-admin user");

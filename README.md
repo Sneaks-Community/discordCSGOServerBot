@@ -31,7 +31,7 @@ keeps a channel message in sync with their status, and DMs users when a followed
 | `/follow` | Follow a map to receive DM notifications when it appears on a server |
 | `/unfollow` | Stop following a specific map or all maps |
 | `/listfollows` | Display all maps you are currently following |
-| `/help` | Show a list of all available commands. Lists the administrator commands only for holders of `ADMIN_ROLE_ID` |
+| `/help` | Show a list of all available commands. Lists the administrator commands only for those authorized to run them |
 | `/ping` | Check bot latency |
 
 ### Administrator Commands
@@ -42,10 +42,12 @@ keeps a channel message in sync with their status, and DMs users when a followed
 | `/testnotify <map>` | Test the map notification system |
 | `/removeuser <userID>` | Remove all map follows for a specific user |
 
-Discord hides these behind the **Administrator** permission while the bot authorizes on
-`ADMIN_ROLE_ID`. Both apply, so a role holder who is not a Discord Administrator will not see
-the commands in the picker even though the bot would accept them: give the role Administrator,
-or add a channel permission override that reveals them. All replies are ephemeral.
+The bot accepts these from a holder of `ADMIN_ROLE_ID`, from anyone with the Discord
+**Administrator** permission, and from the guild owner. Discord itself only shows them to the
+latter two, so a role holder who is not an Administrator has to be given visibility separately:
+either grant the role the Administrator permission, or add a channel or server permission
+override for the commands under **Server Settings -> Integrations**. Until then the commands
+work but do not appear in their picker. All replies are ephemeral.
 
 ## Requirements
 
@@ -151,7 +153,7 @@ selects its default.
 |----------|----------|---------|-------------|-------------|
 | `DISCORD_TOKEN` | Yes | - | non-empty | Your Discord bot token |
 | `DISCORD_GUILD_ID` | Recommended | - | snowflake or empty | Guild to register slash commands in. Empty registers them globally, which propagates slowly and exposes them in every guild the bot joins. `ADMIN_ROLE_ID` only ever resolves in the guild the command was run in |
-| `ADMIN_ROLE_ID` | Recommended | - | snowflake or empty | Role granting access to the [admin commands](#administrator-commands). Empty makes them inaccessible |
+| `ADMIN_ROLE_ID` | Recommended | - | snowflake or empty | Role granting access to the [admin commands](#administrator-commands). Empty leaves them to Discord Administrators and the guild owner |
 | `BOT_ACTIVITY_TEXT` | No | `/follow <map> for map change alerts` | up to 128 characters, or empty | Activity text shown under the bot's name. Empty shows no activity. Sent with the gateway identify, so it survives reconnects |
 | `BOT_ACTIVITY_TYPE` | No | `custom` | `custom`, `playing`, `listening`, `watching`, `competing` | How `BOT_ACTIVITY_TEXT` renders. `custom` shows it verbatim; the others have their verb prepended by Discord (`Playing ...`, `Listening to ...`) |
 | `LOG_LEVEL` | No | `info` | `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent` | stdout verbosity. An unrecognized value falls back to `info` with a warning rather than aborting, since logging is how problems get reported |
