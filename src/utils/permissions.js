@@ -47,25 +47,39 @@ function checkChannelPermissions(channel, requiredPermissions = []) {
 }
 
 /**
- * Validate bot can send messages to a channel
+ * Turn a permission check into the { valid, error } shape the call sites report.
+ *
+ * Every caller wants the same sentence, so the two wrappers below differ only in
+ * which permissions they name. The message is worded for an operator reading a
+ * log line: both call sites interpolate it into their remediation hint.
  * @param {import('discord.js').GuildChannel} channel - The channel to validate
+ * @param {string[]} requiredPermissions - Permission names the operation needs
  * @returns {Object} - { valid: boolean, error?: string }
  */
-export function validateChannelForSend(channel) {
-    const result = checkChannelPermissions(channel, [
-        REQUIRED_PERMISSIONS.VIEW_CHANNEL,
-        REQUIRED_PERMISSIONS.SEND_MESSAGES,
-        REQUIRED_PERMISSIONS.EMBED_LINKS
-    ]);
-    
+function validateChannel(channel, requiredPermissions) {
+    const result = checkChannelPermissions(channel, requiredPermissions);
+
     if (!result.hasPermissions) {
         return {
             error: `Missing permissions: ${result.missing.join(", ")}`,
             valid: false
         };
     }
-    
+
     return { valid: true };
+}
+
+/**
+ * Validate bot can send messages to a channel
+ * @param {import('discord.js').GuildChannel} channel - The channel to validate
+ * @returns {Object} - { valid: boolean, error?: string }
+ */
+export function validateChannelForSend(channel) {
+    return validateChannel(channel, [
+        REQUIRED_PERMISSIONS.VIEW_CHANNEL,
+        REQUIRED_PERMISSIONS.SEND_MESSAGES,
+        REQUIRED_PERMISSIONS.EMBED_LINKS
+    ]);
 }
 
 /**
@@ -74,18 +88,9 @@ export function validateChannelForSend(channel) {
  * @returns {Object} - { valid: boolean, error?: string }
  */
 export function validateChannelForEdit(channel) {
-    const result = checkChannelPermissions(channel, [
+    return validateChannel(channel, [
         REQUIRED_PERMISSIONS.VIEW_CHANNEL,
         REQUIRED_PERMISSIONS.READ_MESSAGE_HISTORY,
         REQUIRED_PERMISSIONS.EMBED_LINKS
     ]);
-    
-    if (!result.hasPermissions) {
-        return {
-            error: `Missing permissions: ${result.missing.join(", ")}`,
-            valid: false
-        };
-    }
-    
-    return { valid: true };
 }
