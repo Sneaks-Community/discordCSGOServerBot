@@ -159,6 +159,7 @@ export async function handleSlashListfollows(interaction) {
     const lines = follows.map((follow) => escapeForDiscord(follow.map_name));
 
     await replyWithPagedEmbed(interaction, {
+        ephemeral: true,
         lines,
         title: `List of maps you are following (${follows.length}):`
     });
