@@ -31,7 +31,7 @@ keeps a channel message in sync with their status, and DMs users when a followed
 | `/follow` | Follow a map to receive DM notifications when it appears on a server |
 | `/unfollow` | Stop following a specific map or all maps |
 | `/listfollows` | Display all maps you are currently following |
-| `/help` | Show a list of all available commands |
+| `/help` | Show a list of all available commands. Lists the administrator commands only for holders of `ADMIN_ROLE_ID` |
 | `/ping` | Check bot latency |
 
 ### Administrator Commands

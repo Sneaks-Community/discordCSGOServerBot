@@ -3,17 +3,16 @@
  * Handles command registration and routes interactions to handlers
  */
 
-import { SlashCommandBuilder, REST, Routes, MessageFlags } from "discord.js";
+import { REST, Routes, MessageFlags } from "discord.js";
 
 import { config } from "../config/index.js";
 import { commandLogger } from "../utils/logger.js";
+import { hasAdminRole } from "./adminAuth.js";
 import { handleSlashListallfollows, handleSlashTestnotify, handleSlashRemoveuser } from "./adminCommands.js";
+import { buildSlashCommands } from "./definitions.js";
 import { handleSlashFollow, handleSlashUnfollow, handleSlashListfollows } from "./followCommands.js";
 import { handleSlashPlayers, handleSlashKeywords } from "./playerCommands.js";
 import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
-
-// Admin role ID from config. envSchema guarantees a snowflake or "" (disabled).
-const adminRoleId = config.security.adminRoleId;
 
 /**
  * Public command handlers map - O(1) lookup
@@ -40,53 +39,9 @@ const adminCommands = new Map([
 ]);
 
 /**
- * Get command handler metadata for building slash commands
- * @returns {Array<{name: string, description: string, admin: boolean, options?: Function}>}
- */
-function getCommandDefinitions() {
-    return [
-        { admin: false, description: "Show players on a server", name: "players",
-            options: opt => opt.setName("server").setDescription("Server keyword or name").setRequired(false) },
-        { admin: false, description: "List all available server keywords", name: "keywords" },
-        { admin: false, description: "Follow a map to receive DM notifications", name: "follow",
-            options: opt => opt.setName("map").setDescription("Map name to follow").setRequired(true) },
-        { admin: false, description: "Stop following a map", name: "unfollow",
-            options: opt => opt.setName("map").setDescription("Map name to unfollow (or 'all' for all maps)").setRequired(true) },
-        { admin: false, description: "List all maps you are following", name: "listfollows" },
-        { admin: false, description: "Show list of available commands", name: "help" },
-        { admin: false, description: "Check bot latency", name: "ping" },
-        { admin: true, description: "List all users and their followed maps (Admin only)", name: "listallfollows" },
-        { admin: true, description: "Test map notification system (Admin only)", name: "testnotify",
-            options: opt => opt.setName("map").setDescription("Map name to test").setRequired(true) },
-        { admin: true, description: "Remove all follows for a user (Admin only)", name: "removeuser",
-            options: opt => opt.setName("userid").setDescription("Discord user ID").setRequired(true) }
-    ];
-}
-
-/**
- * Build SlashCommandBuilder instances from definitions
- * @returns {SlashCommandBuilder[]}
- */
-function buildSlashCommands() {
-    return getCommandDefinitions().map(def => {
-        const builder = new SlashCommandBuilder()
-            .setName(def.name)
-            .setDescription(def.description);
-        
-        if (def.admin) {
-            builder.setDefaultMemberPermissions(0);
-        }
-        if (def.options) {
-            builder.addStringOption(def.options);
-        }
-        return builder;
-    });
-}
-
-/**
  * Slash command definitions (JSON format for Discord API)
  */
-const slashCommands = buildSlashCommands().map(cmd => cmd.toJSON());
+const slashCommands = buildSlashCommands();
 
 /**
  * Register slash commands with Discord
@@ -128,23 +83,6 @@ export async function registerSlashCommands(bot) {
  */
 function logAdminCommandAttempt(commandName, userId, username) {
     commandLogger.info({ command: commandName, userId, username }, "Admin command attempt by non-admin user");
-}
-
-/**
- * Check whether the invoking member has the admin role.
- * `interaction.member` is a GuildMember when the guild is cached, but a raw
- * APIInteractionGuildMember when it is not, and there `roles` is an array of IDs
- * with no `cache`. Handle both so an admin is never denied over a cache miss.
- * @param {Object} interaction - Discord interaction object
- * @returns {boolean} - Whether the member has the admin role
- */
-function hasAdminRole(interaction) {
-    if (!adminRoleId) return false;
-
-    const roles = interaction.member?.roles;
-    if (!roles) return false;
-
-    return Array.isArray(roles) ? roles.includes(adminRoleId) : roles.cache?.has(adminRoleId) === true;
 }
 
 /**
