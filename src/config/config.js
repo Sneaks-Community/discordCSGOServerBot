@@ -126,5 +126,3 @@ export const REQUIRED_PERMISSIONS = {
 
 // Export the base config as the primary config
 export const config = baseConfig;
-
-export default config;

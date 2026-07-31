@@ -183,7 +183,7 @@ bot.on("guildMemberRemove", (member) => {
  * Handle slash command interactions
  */
 bot.on("interactionCreate", async (interaction) => {
-    await handleInteraction(interaction, bot);
+    await handleInteraction(interaction);
 });
 
 /**

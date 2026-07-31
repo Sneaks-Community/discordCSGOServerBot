@@ -47,7 +47,7 @@ export function isServerDataEmpty() {
  * Update server data atomically
  * @param {Object} newData - New server data from refresh
  */
-export function setServerData(newData) {
+function setServerData(newData) {
     _serverData = { ...newData };
 }
 

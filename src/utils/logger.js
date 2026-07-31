@@ -117,6 +117,3 @@ if (invalidLogLevel) {
         "Invalid LOG_LEVEL; falling back to default"
     );
 }
-
-// Export the full logger for child creation or advanced usage
-export default logger;

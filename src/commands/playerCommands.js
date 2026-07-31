@@ -1,6 +1,6 @@
 /**
  * Player-related slash command handlers
- * Handles /players, /map, and /keywords commands
+ * Handles /players and /keywords commands
  */
 
 import { MessageFlags } from "discord.js";

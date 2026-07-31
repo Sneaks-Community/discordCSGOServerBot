@@ -11,7 +11,7 @@ import { REQUIRED_PERMISSIONS } from "../config/index.js";
  * @param {string[]} requiredPermissions - Array of permission names to check
  * @returns {Object} - { hasPermissions: boolean, missing: string[] }
  */
-export function checkChannelPermissions(channel, requiredPermissions = []) {
+function checkChannelPermissions(channel, requiredPermissions = []) {
     if (!channel) {
         return { hasPermissions: false, missing: ["Channel not found"] };
     }

@@ -76,21 +76,10 @@ export async function registerSlashCommands(bot) {
 }
 
 /**
- * Audit log helper for admin command attempts
- * @param {string} commandName - The command that was attempted
- * @param {string} userId - The user ID that attempted the command
- * @param {string} username - The username of the user
- */
-function logAdminCommandAttempt(commandName, userId, username) {
-    commandLogger.info({ command: commandName, userId, username }, "Admin command attempt by non-admin user");
-}
-
-/**
  * Handle slash command interactions
  * @param {Object} interaction - Discord interaction object
- * @param {Object} bot - Discord bot client
  */
-export async function handleInteraction(interaction, bot) {
+export async function handleInteraction(interaction) {
     if (!interaction.isChatInputCommand()) return;
 
     // Ensure interaction is from a guild (not DM). inGuild() tests guildId + member,
@@ -109,15 +98,11 @@ export async function handleInteraction(interaction, bot) {
         // Check admin commands first (requires auth)
         if (adminCommands.has(commandName)) {
             if (!isAdmin) {
-                logAdminCommandAttempt(commandName, userId, username);
+                commandLogger.info({ command: commandName, userId, username }, "Admin command attempt by non-admin user");
                 return interaction.reply({ content: "You do not have permission to use this command.", flags: MessageFlags.Ephemeral });
             }
             commandLogger.info({ command: commandName, userId, username }, "Admin command executed");
             const handler = adminCommands.get(commandName);
-            // Some handlers need extra params
-            if (commandName === "testnotify") {
-                return await handler(interaction, bot);
-            }
             return await handler(interaction);
         }
 

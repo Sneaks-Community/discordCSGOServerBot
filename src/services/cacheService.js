@@ -13,8 +13,8 @@ const userCache = new Map();
 const userActionRateLimits = new Map();
 
 // Maximum cache sizes to prevent memory leaks
-export const MAX_USER_CACHE_SIZE = 1000;
-export const MAX_RATE_LIMIT_MAP_SIZE = 5000;
+const MAX_USER_CACHE_SIZE = 1000;
+const MAX_RATE_LIMIT_MAP_SIZE = 5000;
 
 /**
  * Get a cached user or fetch from Discord API
@@ -52,7 +52,7 @@ export async function getCachedUser(userId, bot) {
 /**
  * Clear expired entries from user cache
  */
-export function cleanupUserCache() {
+function cleanupUserCache() {
     if (userCache.size === 0) return;
     
     const now = Date.now();
@@ -121,7 +121,7 @@ export function checkRateLimit(userId, action, limit) {
 /**
  * Clear rate limit map periodically to prevent memory leaks
  */
-export function cleanupRateLimits() {
+function cleanupRateLimits() {
     if (userActionRateLimits.size === 0) return;
     
     const now = Date.now();
@@ -180,13 +180,12 @@ export function cleanupRateLimits() {
 let cleanupIntervalRefs = [];
 
 /**
- * Start cleanup intervals for cache and rate limits
- * @returns {NodeJS.Timeout[]} Array of interval IDs for external cleanup
+ * Start cleanup intervals for cache and rate limits.
+ * The handles stay module-private; clearCleanupIntervals is what cancels them.
  */
 export function startCleanupIntervals() {
     cleanupIntervalRefs.push(setInterval(cleanupUserCache, 300000)); // 5 minutes
     cleanupIntervalRefs.push(setInterval(cleanupRateLimits, 300000)); // 5 minutes
-    return cleanupIntervalRefs;
 }
 
 /**
