@@ -12,9 +12,19 @@ const userCache = new Map();
 // Rate limiting tracking - stores timestamp arrays per user/command
 const userActionRateLimits = new Map();
 
+// Recipients whose DM Discord refused, to when it happened. A closed DM is a
+// property of the recipient rather than of the attempt, so re-attempting on every
+// map change spends an API call and a fallback line and can never succeed.
+const dmRefusals = new Map();
+
+// Long enough that a popular map stops costing an attempt per map change, short
+// enough that reopening DMs takes effect within the hour and needs no restart.
+const DM_REFUSAL_COOLDOWN_MS = 3600000;
+
 // Maximum cache sizes to prevent memory leaks
 const MAX_USER_CACHE_SIZE = 1000;
 const MAX_RATE_LIMIT_MAP_SIZE = 5000;
+const MAX_DM_REFUSAL_SIZE = 5000;
 
 /**
  * Get a cached user or fetch from Discord API
@@ -174,6 +184,61 @@ function cleanupRateLimits() {
 }
 
 /**
+ * Check whether a recipient is inside their DM refusal cooldown.
+ * Prunes an expired entry as it reads it, so a user who reopens their DMs is
+ * eligible again on the next map change rather than at the next sweep.
+ * @param {string} userId - The Discord user ID
+ * @returns {boolean} - Whether DMs to this user should be skipped for now
+ */
+export function isDmRefused(userId) {
+    const refusedAt = dmRefusals.get(userId);
+    if (refusedAt === undefined) return false;
+
+    if (Date.now() - refusedAt >= DM_REFUSAL_COOLDOWN_MS) {
+        dmRefusals.delete(userId);
+        return false;
+    }
+
+    return true;
+}
+
+/**
+ * Record that Discord refused a DM to this user, starting their cooldown.
+ * @param {string} userId - The Discord user ID
+ */
+export function markDmRefused(userId) {
+    // Re-inserting keeps Map insertion order equal to recency order, so the first
+    // key is always the oldest refusal and eviction is O(1) rather than a scan.
+    dmRefusals.delete(userId);
+
+    if (dmRefusals.size >= MAX_DM_REFUSAL_SIZE) {
+        dmRefusals.delete(dmRefusals.keys().next().value);
+    }
+
+    dmRefusals.set(userId, Date.now());
+}
+
+/**
+ * Drop expired refusals for users who never come up in a fanout again
+ */
+function cleanupDmRefusals() {
+    if (dmRefusals.size === 0) return;
+
+    const now = Date.now();
+    let cleaned = 0;
+    for (const [userId, refusedAt] of dmRefusals) {
+        // Oldest first, so the first live entry means every later one is live too.
+        if (now - refusedAt < DM_REFUSAL_COOLDOWN_MS) break;
+        dmRefusals.delete(userId);
+        cleaned++;
+    }
+
+    if (cleaned > 0) {
+        serviceLogger.info(`DM refusal cleanup: removed ${cleaned} entries, current size: ${dmRefusals.size}`);
+    }
+}
+
+/**
  * Store cleanup interval references for proper shutdown
  * @type {NodeJS.Timeout[]}
  */
@@ -186,6 +251,7 @@ let cleanupIntervalRefs = [];
 export function startCleanupIntervals() {
     cleanupIntervalRefs.push(setInterval(cleanupUserCache, 300000)); // 5 minutes
     cleanupIntervalRefs.push(setInterval(cleanupRateLimits, 300000)); // 5 minutes
+    cleanupIntervalRefs.push(setInterval(cleanupDmRefusals, 300000)); // 5 minutes
 }
 
 /**

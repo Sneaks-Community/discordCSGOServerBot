@@ -58,6 +58,26 @@ export function getTerminalReason(error) {
 }
 
 /**
+ * The two terminal codes that describe the recipient rather than the request.
+ * Separated from the rest because they are the only ones worth remembering: the
+ * same user will refuse the next DM too, until they change something.
+ * @type {Set<number>}
+ */
+const RECIPIENT_REFUSAL_CODES = new Set([
+    RESTJSONErrorCodes.CannotSendMessagesToThisUser,
+    RESTJSONErrorCodes.CannotSendMessagesToThisUserDueToHavingNoMutualGuilds
+]);
+
+/**
+ * Whether a DM failed because of the recipient's own state.
+ * @param {any} error - Error thrown by a DM attempt
+ * @returns {boolean} - Whether this recipient will refuse the next DM too
+ */
+export function isRecipientRefusal(error) {
+    return RECIPIENT_REFUSAL_CODES.has(error?.code);
+}
+
+/**
  * Retry predicate for withRetry at any Discord call site.
  * @param {any} error - Error thrown by the attempt
  * @returns {boolean} - Whether another attempt could plausibly succeed
