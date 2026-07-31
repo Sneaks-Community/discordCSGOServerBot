@@ -240,10 +240,7 @@ export async function updateServerData(notifyCallback) {
 
             if (oldData[currentServer] !== "" && oldData[currentServer] !== currentMap) {
                 const newMap = currentMap;
-
-                currentServerObject["numPlayers"] = serverData[currentServer].numPlayers;
-                currentServerObject["numBots"] = serverData[currentServer].numBots;
-                currentServerObject["maxPlayers"] = serverData[currentServer].maxPlayers;
+                const live = serverData[currentServer];
 
                 // Record the change before notifying: if the notification fails, this
                 // server must not re-detect the same map change on every subsequent tick.
@@ -251,7 +248,16 @@ export async function updateServerData(notifyCallback) {
 
                 if (notifyCallback) {
                     try {
-                        await notifyCallback(newMap, currentServerObject);
+                        // A fresh object each time. Writing the live counts onto
+                        // serverObject[currentServer] polluted the loaded servers.json,
+                        // which /keywords and validateServersConfig read as config.
+                        await notifyCallback(newMap, {
+                            ...currentServerObject,
+                            fullIP: live.fullIP,
+                            maxPlayers: live.maxPlayers,
+                            numBots: live.numBots,
+                            numPlayers: live.numPlayers
+                        });
                     } catch (err) {
                         // Contained per server so the remaining servers still get notified.
                         serviceLogger.error({ err, map: newMap, server: currentServer }, "Map change notification failed");

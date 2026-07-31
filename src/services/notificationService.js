@@ -44,7 +44,10 @@ export function initNotificationService(bot) {
  */
 export async function notifyUsers(map, serverObj, bot = botInstance) {
     const server = serverObj?.nick ?? "unknown server";
-    const ip = serverObj?.ip ?? "unknown IP";
+
+    // gamedig's connect address when the caller has one: the configured ip may omit
+    // the port, and steam://connect needs the port the game actually listens on.
+    const ip = serverObj?.fullIP ?? serverObj?.ip ?? "unknown IP";
 
     // Strip any workshop path ("workshop/123456/surf_xyz" -> "surf_xyz") so lookups,
     // messages and image URLs all use the bare map name. Normally already done in
