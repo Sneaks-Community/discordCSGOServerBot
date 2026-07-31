@@ -16,7 +16,7 @@ import { validateWithZod } from "../utils/zodValidator.js";
  * @param {Object} interaction - Discord interaction object
  */
 export async function handleSlashListallfollows(interaction) {
-    const follows = await getAllFollows();
+    const follows = getAllFollows();
 
     // Guard before sorting: sorting a null/undefined result would throw first
     if (!follows || follows.length === 0) {
@@ -65,7 +65,7 @@ export async function handleSlashTestnotify(interaction, bot) {
     }
     const sanitizedMap = mapValidation.data;
 
-    if (!(await hasMap(sanitizedMap))) {
+    if (!hasMap(sanitizedMap)) {
         return interaction.editReply({ content: "No one is following this map." });
     }
 
@@ -90,7 +90,7 @@ export async function handleSlashRemoveuser(interaction) {
         return interaction.reply({ content: userIdValidation.error, flags: MessageFlags.Ephemeral });
     }
 
-    await unfollowAll(userIdValidation.data);
+    unfollowAll(userIdValidation.data);
     // The only reply that renders a real mention in content rather than in an embed.
     // Ephemeral replies do not notify anyone today, but P0-4 showed how easily that
     // flag gets dropped, so the mention is denied here rather than relied upon.

@@ -40,7 +40,7 @@ export async function handleSlashFollow(interaction) {
     }
     const sanitizedMap = mapValidation.data;
 
-    if (await isFollowingMap(sanitizedUserId, sanitizedMap)) {
+    if (isFollowingMap(sanitizedUserId, sanitizedMap)) {
         return interaction.reply({ content: "You are already following this map.", flags: MessageFlags.Ephemeral });
     }
 
@@ -48,7 +48,7 @@ export async function handleSlashFollow(interaction) {
     // on the list can never be refused. The per-minute rate limit only paces
     // follows; this is what actually bounds one user's rows, list length and
     // notification fanout.
-    const followCount = await countUserFollows(sanitizedUserId);
+    const followCount = countUserFollows(sanitizedUserId);
     if (followCount >= CONFIG_VALUES.MAX_FOLLOWS_PER_USER) {
         return interaction.reply({
             content: `You are already following the maximum of ${CONFIG_VALUES.MAX_FOLLOWS_PER_USER} maps. Use \`/unfollow <map>\` to make room, or \`/unfollow all\` to start over.`,
@@ -56,7 +56,7 @@ export async function handleSlashFollow(interaction) {
         });
     }
 
-    await followMap(sanitizedUserId, sanitizedMap);
+    followMap(sanitizedUserId, sanitizedMap);
 
     await interaction.reply({ content: `You are now following ${sanitizedMap}. You will be notified when the map comes on a server.`, flags: MessageFlags.Ephemeral });
 
@@ -84,7 +84,7 @@ export async function handleSlashUnfollow(interaction) {
 
     // "all" is a special keyword that bypasses map name validation
     if (rawMap === "all") {
-        await unfollowAll(sanitizedUserId);
+        unfollowAll(sanitizedUserId);
         await interaction.reply({ content: "You are no longer following any maps.", flags: MessageFlags.Ephemeral });
         commandLogger.info({ userId: sanitizedUserId, username: interaction.user.tag }, "User unfollowed all maps");
     } else {
@@ -95,11 +95,11 @@ export async function handleSlashUnfollow(interaction) {
         }
         const sanitizedMap = mapValidation.data;
 
-        if (!(await isFollowingMap(sanitizedUserId, sanitizedMap))) {
+        if (!isFollowingMap(sanitizedUserId, sanitizedMap)) {
             return interaction.reply({ content: "You are not following this map. Use `/listfollows` to see a list of maps you are following.", flags: MessageFlags.Ephemeral });
         }
 
-        await unfollowMap(sanitizedUserId, sanitizedMap);
+        unfollowMap(sanitizedUserId, sanitizedMap);
         await interaction.reply({ content: `You are no longer following ${sanitizedMap}.`, flags: MessageFlags.Ephemeral });
         commandLogger.info({ map: sanitizedMap, userId: sanitizedUserId, username: interaction.user.tag }, "User unfollowed map");
     }
@@ -117,7 +117,7 @@ export async function handleSlashListfollows(interaction) {
     }
     const sanitizedUserId = userIdValidation.data;
 
-    const follows = await getUserFollows(sanitizedUserId);
+    const follows = getUserFollows(sanitizedUserId);
   
     if (follows.length === 0) {
         return interaction.reply({ content: "You are not following any maps.", flags: MessageFlags.Ephemeral });

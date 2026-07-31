@@ -61,7 +61,7 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
         return;
     }
 
-    const followers = await getUsersFollowingMap(validatedMap.data);
+    const followers = getUsersFollowingMap(validatedMap.data);
 
     // Bound the fanout per event, and say so when it bites: a map that suddenly has
     // hundreds of followers is worth seeing in the log rather than discovering later.
