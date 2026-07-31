@@ -35,25 +35,24 @@ const MAX_DM_REFUSAL_SIZE = 5000;
 export async function getCachedUser(userId, bot) {
     const cached = userCache.get(userId);
     if (cached && Date.now() - cached.timestamp < CONFIG_VALUES.USER_CACHE_TTL) {
+        // Re-inserting on a hit is what makes the eviction below actually LRU, which
+        // the old comment claimed while the code evicted by fetch time. The timestamp
+        // rides along untouched: the TTL measures how stale the fetched user is, not
+        // how long ago it was last read.
+        userCache.delete(userId);
+        userCache.set(userId, cached);
         return cached.user;
     }
-    
-    // Enforce maximum cache size with LRU eviction
+
+    // Same idiom as markDmRefused: deleting first keeps Map insertion order equal to
+    // recency order, so the first key is always the least recently used and eviction
+    // is O(1) rather than a scan of all MAX_USER_CACHE_SIZE entries.
+    userCache.delete(userId);
+
     if (userCache.size >= MAX_USER_CACHE_SIZE) {
-        // Find and remove the oldest entry
-        let oldestKey = null;
-        let oldestTimestamp = Infinity;
-        for (const [key, value] of userCache.entries()) {
-            if (value.timestamp < oldestTimestamp) {
-                oldestTimestamp = value.timestamp;
-                oldestKey = key;
-            }
-        }
-        if (oldestKey) {
-            userCache.delete(oldestKey);
-        }
+        userCache.delete(userCache.keys().next().value);
     }
-    
+
     const user = await bot.users.fetch(userId);
     userCache.set(userId, { timestamp: Date.now(), user });
     return user;
@@ -74,16 +73,12 @@ function cleanupUserCache() {
         }
     }
     
-    // If cache is still over limit after TTL cleanup, evict oldest entries
-    if (userCache.size >= MAX_USER_CACHE_SIZE) {
-        const entries = [...userCache.entries()]
-            .sort((a, b) => a[1].timestamp - b[1].timestamp);
-        
-        const toDelete = entries.slice(0, userCache.size - MAX_USER_CACHE_SIZE + 1);
-        for (const [key] of toDelete) {
-            userCache.delete(key);
-            cleaned++;
-        }
+    // If cache is still over limit after TTL cleanup, evict least recently used first.
+    // Insertion order is recency order (see getCachedUser), so the front of the map is
+    // what to drop and no copy-and-sort of the whole cache is needed to find it.
+    while (userCache.size >= MAX_USER_CACHE_SIZE) {
+        userCache.delete(userCache.keys().next().value);
+        cleaned++;
     }
     
     if (cleaned > 0) {
