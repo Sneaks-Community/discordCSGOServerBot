@@ -265,6 +265,10 @@ export const envSchema = z.object({
     EMBEDS: embedsEnv,
     FALLBACK_AVATAR_URL: urlEnv("https://i.imgur.com/cBiDnMi.png"),
     FALLBACK_CHANNEL_ID: optionalIdEnv(),
+    // A multiplier over the ports gamedig tries, not a total attempt budget, so raising
+    // this multiplies how long one unreachable server takes. serverService caps a pass
+    // at a fraction of SERVER_UPDATE_INTERVAL regardless; past that point a high value
+    // buys nothing but servers reported offline for want of time.
     GAMEDIG_MAX_RETRIES: intEnv(4, 0, 10),
     MAP_IMAGE_BASE_URL: mapImageBaseUrlEnv,
     // p-limit throws on a concurrency below 1

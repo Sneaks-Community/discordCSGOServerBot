@@ -17,6 +17,24 @@ let _serverData = {};
 let _isRefreshing = false;
 let _isNotifying = false;
 
+/**
+ * Bounds one gamedig attempt rather than inheriting its 10s default. maxRetries is a
+ * multiplier over the ports gamedig tries, not a total attempt budget, so that default
+ * lets a single unreachable server occupy the better part of an update interval.
+ */
+const QUERY_ATTEMPT_TIMEOUT_MS = 3000;
+
+/** How long one unanswered packet waits. Matches gamedig's own default. */
+const QUERY_SOCKET_TIMEOUT_MS = 2000;
+
+/**
+ * Share of SERVER_UPDATE_INTERVAL a whole refresh pass may spend querying. Under 1 on
+ * purpose: a pass that runs into the next tick is dropped by the _isRefreshing guard,
+ * and the embed then republishes the previous snapshot under a description promising it
+ * is current, with map-change detection a full interval late.
+ */
+const REFRESH_BUDGET_FRACTION = 0.8;
+
 // Track old data for map change notifications
 const oldData = {};
 const serverObjectKeys = Object.keys(serverObject);
@@ -134,9 +152,11 @@ export async function getInfo(server, index) {
 
     // Query the server using Gamedig
     const res = await GameDig.query({
+        attemptTimeout: QUERY_ATTEMPT_TIMEOUT_MS,
         host: host,
         maxRetries: CONFIG_VALUES.GAMEDIG_MAX_RETRIES,
         port: port,
+        socketTimeout: QUERY_SOCKET_TIMEOUT_MS,
         type: server.protocol || "csgo"
     }).catch((err) => {
         serviceLogger.error({ err, serverIp: server.ip }, "GameDig query failed");
@@ -175,6 +195,44 @@ export async function getInfo(server, index) {
 }
 
 /**
+ * Query one server, giving up on it once the pass has no time left to spend.
+ *
+ * Both giving-up paths return the same shape a failed query does, because they mean
+ * the same thing to a caller: there is no live data for this server this tick. The
+ * gamedig timeouts bound one attempt each, and MAX_CONCURRENT_QUERIES turns the
+ * server list into batches, so neither one bounds the pass -- this does.
+ * @param {string} name - Server key in serverObject, for logging
+ * @param {Object} server - Server configuration object
+ * @param {number} index - Server index
+ * @param {number} deadline - Epoch ms the whole pass must be finished by
+ * @returns {Promise<Object>} - Server data, or the offline shape if time ran out
+ */
+async function getInfoWithinDeadline(name, server, index, deadline) {
+    const remainingMs = deadline - Date.now();
+
+    if (remainingMs <= 0) {
+        serviceLogger.warn({ server: name }, "Refresh ran out of time before this server was queried; reporting it offline");
+        return buildOfflineServerData(server, index);
+    }
+
+    let timer;
+    const ranOut = new Promise((resolve) => {
+        timer = setTimeout(() => {
+            serviceLogger.warn({ remainingMs, server: name }, "Server query outlasted the refresh budget; reporting it offline");
+            resolve(buildOfflineServerData(server, index));
+        }, remainingMs);
+    });
+
+    try {
+        // gamedig offers no cancellation, so a late answer is discarded rather than
+        // waited for. The socket work it leaves behind ends on its own timeouts.
+        return await Promise.race([getInfo(server, index), ranOut]);
+    } finally {
+        clearTimeout(timer);
+    }
+}
+
+/**
  * Refresh all server data with connection limits
  * @returns {Promise<void>}
  */
@@ -185,17 +243,20 @@ export async function refresh() {
     }
 
     _isRefreshing = true;
+    const startedAt = Date.now();
+
     try {
         const serverEntries = Object.entries(serverObject);
-    
+        const deadline = startedAt + Math.round(CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS * REFRESH_BUDGET_FRACTION);
+
         // Create a limiter for concurrent server queries
         const limit = pLimit(CONFIG_VALUES.MAX_CONCURRENT_SERVER_QUERIES);
-    
+
         const results = await Promise.all(
             serverEntries.map(([name, server], index) =>
                 limit(async () => {
                     try {
-                        const data = await getInfo(server, index + 1);
+                        const data = await getInfoWithinDeadline(name, server, index + 1, deadline);
                         return [name, data];
                     } catch (err) {
                         serviceLogger.error({ err, server: name }, "Failed to query server");
@@ -205,10 +266,22 @@ export async function refresh() {
                 })
             )
         );
-    
+
         setServerData(Object.fromEntries(results));
     } finally {
         _isRefreshing = false;
+
+        // Measured against the interval rather than the budget: hitting the budget is
+        // the deadline working, and is already logged per server. Passing the interval
+        // means the deadline did not hold, which costs the next tick entirely and is
+        // otherwise only visible as embeds that quietly stop matching the interval they
+        // advertise.
+        const elapsedMs = Date.now() - startedAt;
+        if (elapsedMs > CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS) {
+            serviceLogger.warn({ elapsedMs, intervalMs: CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS }, "Refresh pass outlasted the update interval; the next tick will be skipped");
+        } else {
+            serviceLogger.debug({ elapsedMs }, "Refresh pass complete");
+        }
     }
 }
 

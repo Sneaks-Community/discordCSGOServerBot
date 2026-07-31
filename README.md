@@ -171,7 +171,7 @@ selects its default.
 | `USER_CACHE_TTL` | No | `300` | 1 to 86400 | User cache TTL (seconds) |
 | `RETRY_MAX_RETRIES` | No | `3` | 1 to 10 | Attempts for a retried Discord operation. At least 1, since 0 would mean never attempting it |
 | `RETRY_BASE_DELAY` | No | `1` | 0 to 60 | Base delay for exponential backoff (seconds) |
-| `GAMEDIG_MAX_RETRIES` | No | `4` | 0 to 10 | Maximum retries for GameDig queries |
+| `GAMEDIG_MAX_RETRIES` | No | `4` | 0 to 10 | Maximum retries for GameDig queries. A multiplier over the ports GameDig tries, so raising it multiplies what an unreachable server costs. A refresh pass is capped at 80% of `SERVER_UPDATE_INTERVAL` regardless, and servers not reached by then are reported offline for that tick |
 | `FALLBACK_AVATAR_URL` | No | `https://i.imgur.com/cBiDnMi.png` | http(s) URL | Icon used in embed footers |
 | `OFFLINE_SERVER_IMAGE` | No | `https://i.imgur.com/WnS0Biz.png` | http(s) URL | Image used for an offline server |
 | `MAP_IMAGE_BASE_URL` | No | `https://bans.snksrv.com/images/maps/` | http(s) URL ending in `/`, or empty | Map thumbnails are requested as `<base><mapname>.jpg`. A map the host has no image for simply renders without one. Empty disables map images |
