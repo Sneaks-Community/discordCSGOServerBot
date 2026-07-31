@@ -3,7 +3,7 @@
  * Main bot module that initializes and runs the Discord client
  */
 
-import Discord, { Events, GatewayIntentBits } from "discord.js";
+import Discord, { Events, GatewayIntentBits, Options } from "discord.js";
 
 import { registerSlashCommands, handleInteraction } from "./commands/index.js";
 import { config, CONFIG_VALUES, validateConfig } from "./config/index.js";
@@ -35,6 +35,28 @@ function buildPresence() {
     return { activities: text ? [{ name: text, type }] : [] };
 }
 
+/**
+ * How often the caches below are swept. Growth here is measured in weeks of uptime,
+ * so the interval only has to be shorter than that.
+ */
+const CACHE_SWEEP_INTERVAL_SECONDS = 3600;
+
+/** How long a fetched message may sit in the cache before a sweep may drop it. */
+const MESSAGE_CACHE_LIFETIME_SECONDS = 7200;
+
+/**
+ * Match every cache entry but the bot's own. A GuildMember's id is its user's id, so
+ * this reads the same for the user and member caches.
+ * @param {{ id: string }} entry - A cached user or member
+ * @returns {boolean} - Whether the entry may be swept
+ */
+function isNotClient(entry) {
+    return entry.id !== bot.user?.id;
+}
+
+// discord.js calls a sweeper's filter once per sweep and uses the predicate it returns.
+const sweepAllButClient = () => isNotClient;
+
 // Create bot client with v14 intents
 const bot = new Discord.Client({
     intents: [
@@ -46,7 +68,24 @@ const bot = new Discord.Client({
         // login fails with "Used disallowed intents".
         GatewayIntentBits.GuildMembers
     ],
-    presence: buildPresence()
+    presence: buildPresence(),
+    // discord.js leaves the user and member caches unbounded and only sweeps threads
+    // by default, and nothing in this process ever releases either. Everything swept
+    // here is re-fetched on demand, so the only cost is a later cache miss. The
+    // sweeper intervals belong to discord.js and are cleared by bot.destroy().
+    sweepers: {
+        ...Options.DefaultSweeperSettings,
+        // The bot's own member is kept because every permission check resolves the bot's
+        // permissions through guild.members.me, which returns null rather than
+        // re-fetching, and validateChannelForEdit reads that null as a missing
+        // permission and gives up on the channel for good.
+        guildMembers: { filter: sweepAllButClient, interval: CACHE_SWEEP_INTERVAL_SECONDS },
+        // Only the embed messages are ever fetched, and they are re-fetched every tick.
+        messages: { interval: CACHE_SWEEP_INTERVAL_SECONDS, lifetime: MESSAGE_CACHE_LIFETIME_SECONDS },
+        // getCachedUser fetches through bot.users and keeps its own TTL cache in front
+        // of it, so discord.js's copy here is not authoritative for anything.
+        users: { filter: sweepAllButClient, interval: CACHE_SWEEP_INTERVAL_SECONDS }
+    }
 });
 
 /**
