@@ -3,10 +3,9 @@
  * Creates Discord embeds for server lists and status
  */
 
-import { EmbedBuilder } from "discord.js";
-
 import { CONFIG_VALUES } from "../config/index.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
+import { createBaseEmbed } from "./baseEmbed.js";
 
 /**
  * Describe an interval in words, for the embed description.
@@ -33,13 +32,8 @@ export function describeInterval(ms) {
  * @returns {EmbedBuilder} - The Discord embed
  */
 export function makeEmbed(serverData) {
-    // Create a new Discord embed with the title and other details using EmbedBuilder
-    const embed = new EmbedBuilder()
-        .setTitle("Server List")
-        .setDescription(`This list is updated every ${describeInterval(CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS)}.`)
-        .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
-        .setTimestamp(Date.now());
+    const embed = createBaseEmbed("Server List")
+        .setDescription(`This list is updated every ${describeInterval(CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS)}.`);
 
     // Iterate through the servers and add server details to the embed
     for (const server of Object.values(serverData)) {

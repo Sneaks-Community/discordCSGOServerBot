@@ -3,9 +3,9 @@
  * Handles /help and /ping commands
  */
 
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import { MessageFlags } from "discord.js";
 
-import { CONFIG_VALUES } from "../config/index.js";
+import { createBaseEmbed } from "../embeds/baseEmbed.js";
 import { hasAdminRole } from "./adminAuth.js";
 import { getHelpEntries } from "./definitions.js";
 
@@ -18,10 +18,9 @@ import { getHelpEntries } from "./definitions.js";
  * @param {Object} interaction - Discord interaction object
  */
 export async function handleSlashHelp(interaction) {
-    const embed = new EmbedBuilder()
-        .setTitle("List of commands")
-        .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setTimestamp(Date.now())
+    // No footer: the command list is not a snapshot of anything, so "Last Updated"
+    // would be misleading.
+    const embed = createBaseEmbed("List of commands", { footer: null })
         .addFields(getHelpEntries(hasAdminRole(interaction)).map(({ description, usage }) => ({ name: usage, value: description })));
 
     await interaction.reply({ embeds: [embed] });

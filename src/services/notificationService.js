@@ -3,11 +3,11 @@
  * Handles sending notifications to users when maps change
  */
 
-import { EmbedBuilder } from "discord.js";
 import pLimit from "p-limit";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
 import { getUsersFollowingMap } from "../db/index.js";
+import { createBaseEmbed } from "../embeds/baseEmbed.js";
 import { mapNameSchema } from "../schemas/validationSchemas.js";
 import { getTerminalReason, isRetryableDiscordError, TerminalError } from "../utils/discordErrors.js";
 import { serviceLogger } from "../utils/logger.js";
@@ -99,14 +99,10 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
  * @returns {EmbedBuilder} - The embed to send
  */
 function buildMapNotificationEmbed({ mapImage, mapName, server, serverObj }) {
-    const embed = new EmbedBuilder()
-        .setTitle(`${mapName} is now on ${server}`)
+    const embed = createBaseEmbed(`${mapName} is now on ${server}`)
         .setDescription(
             `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
-        )
-        .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
-        .setTimestamp(Date.now());
+        );
 
     if (mapImage) embed.setImage(mapImage);
 

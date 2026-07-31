@@ -3,11 +3,10 @@
  * Creates Discord embeds for player lists
  */
 
-import { EmbedBuilder } from "discord.js";
-
 import { CONFIG_VALUES } from "../config/index.js";
 import { escapeForDiscord, escapeLines } from "../utils/discordEscape.js";
 import { EMBED_DESCRIPTION_LIMIT, joinWithinLimit } from "../utils/truncate.js";
+import { createBaseEmbed } from "./baseEmbed.js";
 
 /**
  * Create a player list embed for a server
@@ -18,13 +17,8 @@ export function playerListEmbed(server) {
     let embed;
 
     if (server.online) {
-        // Create an embed for the online server using EmbedBuilder
         // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
-        embed = new EmbedBuilder()
-            .setTitle(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${escapeForDiscord(server.name)} on ${escapeForDiscord(server.map)}`)
-            .setColor(CONFIG_VALUES.EMBED_COLOR)
-            .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
-            .setTimestamp(Date.now());
+        embed = createBaseEmbed(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${escapeForDiscord(server.name)} on ${escapeForDiscord(server.map)}`);
 
         // Generate a list of player names and escape them properly
         // Use centralized escapeLines which applies escapeForDiscord to each item.
@@ -42,11 +36,7 @@ export function playerListEmbed(server) {
     } else {
         // Create an embed for the offline server
         // Use centralized escapeForDiscord for server name
-        embed = new EmbedBuilder()
-            .setTitle(`${escapeForDiscord(server.name)} is currently unavailable.`)
-            .setColor(CONFIG_VALUES.EMBED_COLOR)
-            .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
-            .setTimestamp(Date.now())
+        embed = createBaseEmbed(`${escapeForDiscord(server.name)} is currently unavailable.`)
             .setImage(CONFIG_VALUES.OFFLINE_SERVER_IMAGE);
     }
 
@@ -60,11 +50,7 @@ export function playerListEmbed(server) {
  */
 export function makeServerList(serverData) {
     // Create a server list embed for public commands
-    const embed = new EmbedBuilder()
-        .setTitle("Please specify what server you want to check.")
-        .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
-        .setTimestamp(Date.now());
+    const embed = createBaseEmbed("Please specify what server you want to check.");
 
     // Generate the server list with proper escaping, bounded to the description limit
     const lines = Object.values(serverData)

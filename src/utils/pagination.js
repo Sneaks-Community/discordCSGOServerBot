@@ -12,9 +12,9 @@
  * collector ends and the buttons are disabled in place.
  */
 
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, EmbedBuilder, MessageFlags } from "discord.js";
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } from "discord.js";
 
-import { CONFIG_VALUES } from "../config/index.js";
+import { createBaseEmbed } from "../embeds/baseEmbed.js";
 import { commandLogger } from "./logger.js";
 import { EMBED_DESCRIPTION_LIMIT } from "./truncate.js";
 
@@ -92,10 +92,8 @@ export async function replyWithPagedEmbed(interaction, { ephemeral = false, line
     const flags = ephemeral ? MessageFlags.Ephemeral : 0;
 
     const buildEmbed = (index) => {
-        const embed = new EmbedBuilder()
-            .setTitle(title)
-            .setColor(CONFIG_VALUES.EMBED_COLOR)
-            .setTimestamp(Date.now())
+        // The footer is the page counter here, so the shared one is left off.
+        const embed = createBaseEmbed(title, { footer: null })
             .setDescription(pages[index]);
 
         if (pages.length > 1) {
