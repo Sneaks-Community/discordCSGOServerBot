@@ -5,7 +5,7 @@
 
 import { MessageFlags } from "discord.js";
 
-import serverObject from "../../servers.json" with { type: "json" };
+import { serverObject } from "../config/index.js";
 import { playerListEmbed, makeServerList } from "../embeds/playerEmbeds.js";
 import { isServerDataEmpty, getServerData, getServerByKeyword } from "../services/serverService.js";
 import { joinWithinLimit, MESSAGE_CONTENT_LIMIT } from "../utils/truncate.js";

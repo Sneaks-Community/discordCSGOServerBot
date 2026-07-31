@@ -6,8 +6,7 @@
 import { GameDig } from "gamedig";
 import pLimit from "p-limit";
 
-import serverObject from "../../servers.json" with { type: "json" };
-import { CONFIG_VALUES } from "../config/index.js";
+import { CONFIG_VALUES, serverObject } from "../config/index.js";
 import { DEFAULT_SERVER_PORT, playerNameSchema } from "../schemas/validationSchemas.js";
 import { serviceLogger } from "../utils/logger.js";
 import { normalizeMapName } from "../utils/mapUtils.js";

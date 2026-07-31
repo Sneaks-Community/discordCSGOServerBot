@@ -1,13 +1,21 @@
 /**
- * servers.json validation
- * Validates the server list at startup so a typo (missing ip, wrong type,
- * duplicate keyword, too many servers) fails fast with a precise message
- * instead of surfacing later as a runtime query failure or a broken embed.
+ * servers.json: the single place the file is read, and its validation.
+ *
+ * Validating at startup means a typo (missing ip, wrong type, duplicate keyword,
+ * too many servers) fails fast with a precise message instead of surfacing later
+ * as a runtime query failure or a broken embed.
  */
 
 import serverObject from "../../servers.json" with { type: "json" };
 import { serversFileSchema } from "../schemas/validationSchemas.js";
 import { formatZodPathSuffix } from "../utils/zodValidator.js";
+
+/**
+ * The parsed server list, re-exported so nothing else reaches for the file.
+ * Consumers read it through config/index.js alongside the rest of the config.
+ * One owner also means P0-7's loader replaces one import rather than three.
+ */
+export { serverObject };
 
 /**
  * Fields a server entry may define. Anything else is reported as an ignored
