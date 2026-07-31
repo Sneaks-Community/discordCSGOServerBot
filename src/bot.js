@@ -234,16 +234,19 @@ bot.on(Events.InteractionCreate, async (interaction) => {
 });
 
 /**
- * Gateway lifecycle logging.
+ * Gateway lifecycle handling.
  *
- * These are observability only: the intervals keep running through a reconnect on
+ * Reconnects are observability only: the intervals keep running through one on
  * purpose. Server queries go to the game servers rather than Discord, and embed
  * edits are REST calls that do not depend on the gateway, are queued by discord.js,
  * and are already wrapped in withRetry plus a try/catch.
  */
 bot.on(Events.ShardDisconnect, (event, shardId) => {
-    // Only emitted for unrecoverable close codes; the shard will not come back.
-    botLogger.error({ code: event.code, shardId }, "Shard disconnected and will not reconnect");
+    // Only emitted for unrecoverable close codes, so the shard will not come back:
+    // staying up means every embed edit and DM fails and no interaction ever arrives,
+    // while the container's restart policy never fires because nothing exited.
+    botLogger.fatal({ code: event.code, shardId }, "Shard disconnected and will not reconnect");
+    void gracefulShutdown(`shardDisconnect(${event.code})`, 1);
 });
 
 bot.on(Events.ShardReconnecting, (shardId) => {
@@ -270,8 +273,11 @@ let isShuttingDown = false;
 /**
  * Graceful shutdown handling
  * @param {string} signal - The signal that triggered the shutdown
+ * @param {number} [initialExitCode] - Exit code for a shutdown that was itself caused by a
+ *   failure, so a supervisor restart loop is visible as one rather than as a clean stop
+ * @returns {Promise<void>} Resolves only if the process somehow survives the exit
  */
-async function gracefulShutdown(signal) {
+async function gracefulShutdown(signal, initialExitCode = 0) {
     if (isShuttingDown) {
         botLogger.debug(`Ignoring ${signal}, shutdown already in progress`);
         return;
@@ -297,7 +303,7 @@ async function gracefulShutdown(signal) {
     // Clear cleanup intervals for cache and rate limits
     clearCleanupIntervals();
 
-    let exitCode = 0;
+    let exitCode = initialExitCode;
 
     // Close the gateway instead of letting the process drop it, so discord.js stops
     // its own sweepers and in-flight REST calls are not abandoned mid-request.
