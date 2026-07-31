@@ -3,7 +3,7 @@
  * Builds a config object compatible with the previous config.json structure
  */
 
-import { parseEnv } from "../schemas/envSchema.js";
+import { ACTIVITY_TYPE_BY_NAME, parseEnv } from "../schemas/envSchema.js";
 
 const { errors, values: env, warnings } = parseEnv();
 
@@ -38,6 +38,12 @@ function toMs(seconds) {
  * or empty, and URLs are absolute http(s).
  */
 const baseConfig = {
+    // The bot's presence. `type` is already the discord.js ActivityType, so the
+    // name-to-type mapping lives in one place; empty `text` means show nothing.
+    activity: {
+        text: env.BOT_ACTIVITY_TEXT,
+        type: ACTIVITY_TYPE_BY_NAME[env.BOT_ACTIVITY_TYPE]
+    },
     cache: {
         userCacheTTLSeconds: env.USER_CACHE_TTL
     },

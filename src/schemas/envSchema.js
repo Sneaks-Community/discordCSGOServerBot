@@ -34,6 +34,7 @@
  *   there is nothing to validate.
  */
 
+import { ActivityType } from "discord.js";
 import * as z from "zod";
 
 import { formatZodPathSuffix } from "../utils/zodValidator.js";
@@ -129,6 +130,52 @@ const mapImageBaseUrlEnv = z.preprocess(
 );
 
 /**
+ * BOT_ACTIVITY_TYPE values, mapped to the discord.js activity type each selects.
+ * The accepted values below are derived from these keys, so this is the only list
+ * to extend.
+ *
+ * `custom` renders the text verbatim; every other type has its verb prepended by
+ * the client ("Playing ...", "Listening to ..."). Streaming is deliberately
+ * absent: it only renders alongside a Twitch or YouTube URL, and this bot has
+ * none to point at.
+ */
+export const ACTIVITY_TYPE_BY_NAME = Object.freeze({
+    competing: ActivityType.Competing,
+    custom: ActivityType.Custom,
+    listening: ActivityType.Listening,
+    playing: ActivityType.Playing,
+    watching: ActivityType.Watching
+});
+
+/**
+ * Accepted BOT_ACTIVITY_TYPE values, for validation and for error messages.
+ * @type {string[]}
+ */
+export const ACTIVITY_TYPES = Object.keys(ACTIVITY_TYPE_BY_NAME);
+
+/**
+ * Discord's limit on activity text, which applies to a custom status' state and
+ * to every other type's name alike.
+ */
+const ACTIVITY_TEXT_MAX_LENGTH = 128;
+
+/**
+ * Presence text used when BOT_ACTIVITY_TEXT is unset. Names no channel on
+ * purpose: where the commands are usable is the guild's decision, not the bot's.
+ */
+const ACTIVITY_TEXT_DEFAULT = "/follow <map> for map change alerts";
+
+/**
+ * BOT_ACTIVITY_TEXT: the presence text, or "" for no activity at all.
+ * An over-long value is rejected rather than truncated, so a status that would
+ * not display as written is visible as an operator error at startup.
+ */
+const activityTextEnv = z.preprocess(
+    (value) => (value === undefined ? ACTIVITY_TEXT_DEFAULT : String(value).trim()),
+    z.string().max(ACTIVITY_TEXT_MAX_LENGTH, `must be at most ${ACTIVITY_TEXT_MAX_LENGTH} characters (Discord's activity limit), or empty to show no activity`)
+);
+
+/**
  * One entry of the EMBEDS array: the message the bot keeps the server list in.
  */
 const embedEntrySchema = z.object({
@@ -188,6 +235,11 @@ export const logLevelSchema = z.preprocess(
  */
 export const envSchema = z.object({
     ADMIN_ROLE_ID: optionalIdEnv(),
+    BOT_ACTIVITY_TEXT: activityTextEnv,
+    BOT_ACTIVITY_TYPE: z.preprocess(
+        (value) => (value === undefined || String(value).trim() === "" ? "custom" : String(value).trim().toLowerCase()),
+        z.enum(ACTIVITY_TYPES, { error: `must be one of: ${ACTIVITY_TYPES.join(", ")}` })
+    ),
     DATABASE_PATH: z.preprocess(
         (value) => (value === undefined || String(value).trim() === "" ? "db.sqlite" : String(value).trim()),
         z.string().min(1, "cannot be empty")

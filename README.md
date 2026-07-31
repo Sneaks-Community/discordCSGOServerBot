@@ -152,6 +152,8 @@ selects its default.
 | `DISCORD_TOKEN` | Yes | - | non-empty | Your Discord bot token |
 | `DISCORD_GUILD_ID` | Recommended | - | snowflake or empty | Guild to register slash commands in. Empty registers them globally, which propagates slowly and exposes them in every guild the bot joins. `ADMIN_ROLE_ID` only ever resolves in the guild the command was run in |
 | `ADMIN_ROLE_ID` | Recommended | - | snowflake or empty | Role granting access to the [admin commands](#administrator-commands). Empty makes them inaccessible |
+| `BOT_ACTIVITY_TEXT` | No | `/follow <map> for map change alerts` | up to 128 characters, or empty | Activity text shown under the bot's name. Empty shows no activity. Sent with the gateway identify, so it survives reconnects |
+| `BOT_ACTIVITY_TYPE` | No | `custom` | `custom`, `playing`, `listening`, `watching`, `competing` | How `BOT_ACTIVITY_TEXT` renders. `custom` shows it verbatim; the others have their verb prepended by Discord (`Playing ...`, `Listening to ...`) |
 | `LOG_LEVEL` | No | `info` | `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent` | stdout verbosity. An unrecognized value falls back to `info` with a warning rather than aborting, since logging is how problems get reported |
 | `FALLBACK_GUILD_ID` | No | - | snowflake or empty | Guild holding the fallback channel. Empty disables fallback notifications |
 | `FALLBACK_CHANNEL_ID` | No | - | snowflake or empty | Channel used when a DM cannot be delivered. Must be in `FALLBACK_GUILD_ID`. Empty disables fallback notifications |

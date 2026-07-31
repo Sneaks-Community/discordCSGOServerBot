@@ -20,6 +20,21 @@ import { withRetry } from "./utils/retry.js";
 // Store interval references for cleanup during shutdown
 let embedInterval = null;
 
+/**
+ * The configured presence, in the shape ClientOptions takes.
+ *
+ * Sent with the IDENTIFY payload rather than set from the ready handler: that is
+ * one fewer gateway op, it leaves no window where the bot is online with no
+ * status, and it is re-sent automatically on every reconnect. discord.js turns a
+ * Custom activity's `name` into its `state` itself, so one field covers all types.
+ * @returns {import('discord.js').PresenceData} - Presence, with no activity when the text is empty
+ */
+function buildPresence() {
+    const { text, type } = config.activity;
+
+    return { activities: text ? [{ name: text, type }] : [] };
+}
+
 // Create bot client with v14 intents
 const bot = new Discord.Client({
     intents: [
@@ -30,7 +45,8 @@ const bot = new Discord.Client({
         // enabled as "Server Members Intent" in the Discord Developer Portal, or
         // login fails with "Used disallowed intents".
         GatewayIntentBits.GuildMembers
-    ]
+    ],
+    presence: buildPresence()
 });
 
 /**
@@ -68,7 +84,6 @@ export async function initBot() {
 bot.on(Events.ClientReady, async () => {
     try {
         botLogger.info("Started as " + bot.user.tag);
-        bot.user.setActivity("/follow <map> in #bot-commands");
 
         // Register slash commands
         await registerSlashCommands(bot);
