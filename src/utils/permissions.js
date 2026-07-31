@@ -3,12 +3,12 @@
  * Validates bot permissions in channels
  */
 
-import { REQUIRED_PERMISSIONS } from "../config/index.js";
+import { PermissionFlagsBits, PermissionsBitField } from "discord.js";
 
 /**
  * Check if bot has required permissions in a channel
  * @param {import('discord.js').GuildChannel} channel - The channel to check
- * @param {string[]} requiredPermissions - Array of permission names to check
+ * @param {bigint[]} requiredPermissions - Permission flags to check
  * @returns {Object} - { hasPermissions: boolean, missing: string[] }
  */
 function checkChannelPermissions(channel, requiredPermissions = []) {
@@ -33,10 +33,11 @@ function checkChannelPermissions(channel, requiredPermissions = []) {
         return { hasPermissions: false, missing: ["Could not resolve permissions"] };
     }
     
-    // Check each required permission
+    // Check each required permission. A missing flag is rendered back to its
+    // Discord name, so the message an operator reads is unchanged by the flags.
     for (const perm of requiredPermissions) {
         if (!permissions.has(perm)) {
-            missing.push(perm);
+            missing.push(...new PermissionsBitField(perm).toArray());
         }
     }
     
@@ -53,7 +54,7 @@ function checkChannelPermissions(channel, requiredPermissions = []) {
  * which permissions they name. The message is worded for an operator reading a
  * log line: both call sites interpolate it into their remediation hint.
  * @param {import('discord.js').GuildChannel} channel - The channel to validate
- * @param {string[]} requiredPermissions - Permission names the operation needs
+ * @param {bigint[]} requiredPermissions - Permission flags the operation needs
  * @returns {Object} - { valid: boolean, error?: string }
  */
 function validateChannel(channel, requiredPermissions) {
@@ -76,9 +77,9 @@ function validateChannel(channel, requiredPermissions) {
  */
 export function validateChannelForSend(channel) {
     return validateChannel(channel, [
-        REQUIRED_PERMISSIONS.VIEW_CHANNEL,
-        REQUIRED_PERMISSIONS.SEND_MESSAGES,
-        REQUIRED_PERMISSIONS.EMBED_LINKS
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
+        PermissionFlagsBits.EmbedLinks
     ]);
 }
 
@@ -89,8 +90,8 @@ export function validateChannelForSend(channel) {
  */
 export function validateChannelForEdit(channel) {
     return validateChannel(channel, [
-        REQUIRED_PERMISSIONS.VIEW_CHANNEL,
-        REQUIRED_PERMISSIONS.READ_MESSAGE_HISTORY,
-        REQUIRED_PERMISSIONS.EMBED_LINKS
+        PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.ReadMessageHistory,
+        PermissionFlagsBits.EmbedLinks
     ]);
 }

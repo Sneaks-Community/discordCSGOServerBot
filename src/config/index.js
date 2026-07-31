@@ -4,11 +4,11 @@
  */
 
 import { configLogger } from "../utils/logger.js";
-import { config, CONFIG_VALUES, ENV_ERRORS, ENV_WARNINGS, REQUIRED_PERMISSIONS } from "./config.js";
+import { config, CONFIG_VALUES, ENV_ERRORS, ENV_WARNINGS } from "./config.js";
 import { ConfigError } from "./configError.js";
 import { validateServersConfig } from "./servers.js";
 
-export { config, CONFIG_VALUES, ConfigError, REQUIRED_PERMISSIONS };
+export { config, CONFIG_VALUES, ConfigError };
 
 /**
  * Validate configuration, throwing if it cannot be honoured.

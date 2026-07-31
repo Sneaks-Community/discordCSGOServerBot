@@ -114,15 +114,5 @@ export const CONFIG_VALUES = {
     USER_CACHE_TTL: toMs(baseConfig.cache.userCacheTTLSeconds)
 };
 
-/**
- * Required permissions for bot operations
- */
-export const REQUIRED_PERMISSIONS = {
-    EMBED_LINKS: "EmbedLinks",
-    READ_MESSAGE_HISTORY: "ReadMessageHistory",
-    SEND_MESSAGES: "SendMessages",
-    VIEW_CHANNEL: "ViewChannel"
-};
-
 // Export the base config as the primary config
 export const config = baseConfig;
