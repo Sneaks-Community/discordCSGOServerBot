@@ -13,7 +13,7 @@ import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheSe
 import { notifyUsers, initNotificationService } from "./services/notificationService.js";
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
 import { getTerminalReason, isRetryableDiscordError, TerminalError } from "./utils/discordErrors.js";
-import { botLogger } from "./utils/logger.js";
+import { botLogger, flushLogs } from "./utils/logger.js";
 import { validateChannelForEdit } from "./utils/permissions.js";
 import { withRetry } from "./utils/retry.js";
 
@@ -108,6 +108,7 @@ bot.on(Events.ClientReady, async () => {
         startCleanupIntervals();
     } catch (err) {
         botLogger.fatal({ err }, "Failed during ready initialization");
+        await flushLogs();
         process.exit(1);
     }
 });
@@ -295,8 +296,9 @@ async function gracefulShutdown(signal, initialExitCode = 0) {
     // Hard exit so a hung destroy cannot wedge the container until Docker escalates
     // to SIGKILL. Deliberately not unref'd: an unref'd timer lets Node exit 0 the
     // moment the loop empties, which reports a stalled shutdown as a clean one.
-    const hardExit = setTimeout(() => {
+    const hardExit = setTimeout(async () => {
         botLogger.error(`Shutdown did not finish within ${SHUTDOWN_TIMEOUT_MS}ms, exiting anyway`);
+        await flushLogs();
         process.exit(1);
     }, SHUTDOWN_TIMEOUT_MS);
 
@@ -329,14 +331,17 @@ async function gracefulShutdown(signal, initialExitCode = 0) {
         exitCode = 1;
     }
 
-    clearTimeout(hardExit);
-
     if (exitCode === 0) {
         botLogger.info("Shutdown complete.");
     } else {
         botLogger.warn("Shutdown complete, with errors.");
     }
 
+    // Flushed before the exit, and while the hard exit is still armed, so a shutdown
+    // that says nothing is impossible either way.
+    await flushLogs();
+
+    clearTimeout(hardExit);
     process.exit(exitCode);
 }
 
@@ -350,7 +355,7 @@ process.on("unhandledRejection", (reason) => {
     botLogger.error({ err: reason }, "Unhandled promise rejection");
 });
 
-process.on("uncaughtException", (err) => {
+process.on("uncaughtException", async (err) => {
     botLogger.fatal({ err }, "Uncaught exception");
 
     // Best effort on the way out: the process is going down regardless, but leaving
@@ -360,6 +365,11 @@ process.on("uncaughtException", (err) => {
     } catch (dbError) {
         botLogger.error({ err: dbError }, "Failed to close the database during crash exit");
     }
+
+    // Registering this handler is what stops Node exiting on its own, so the loop is
+    // still turning and the flush can be awaited. It is capped, so an already-broken
+    // process cannot linger here.
+    await flushLogs();
 
     process.exit(1);
 });

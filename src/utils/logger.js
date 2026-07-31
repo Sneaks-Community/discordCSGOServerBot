@@ -110,6 +110,39 @@ export const serviceLogger = logger.child({ module: "services" });
 export const configLogger = logger.child({ module: "config" });
 export const mainLogger = logger.child({ module: "main" });
 
+/**
+ * Longest a flush may wait before the caller exits without it. A lost log line is
+ * better than a process that will not die.
+ */
+const FLUSH_TIMEOUT_MS = 1000;
+
+/**
+ * Drain the logger before the process exits.
+ *
+ * In development createLogger() uses a pino `transport`, which writes through a
+ * worker thread, and pino documents that a process.exit() in the same tick as a log
+ * call discards whatever that worker still holds. Unflushed, the most valuable line
+ * the bot ever writes ("here is why it is exiting") is the one most likely to vanish
+ * on a developer's terminal. Production JSON logging to stdout is synchronous, which
+ * is why this hides rather than announces itself.
+ * @returns {Promise<void>} Resolves once the logger has drained, or on timeout
+ */
+export function flushLogs() {
+    return new Promise((resolve) => {
+        // Deliberately not unref'd: thread-stream waits on the worker with
+        // Atomics.waitAsync, which does not hold the event loop open, so an unref'd
+        // timer lets Node exit the moment the loop empties and the flush never
+        // settles. Cleared below as soon as it does, so this costs nothing.
+        const timer = setTimeout(resolve, FLUSH_TIMEOUT_MS);
+
+        // A flush error is not actionable here; the caller is already on its way out.
+        logger.flush(() => {
+            clearTimeout(timer);
+            resolve();
+        });
+    });
+}
+
 // Surface a bad LOG_LEVEL now that there is a logger to report it with.
 if (invalidLogLevel) {
     configLogger.warn(
