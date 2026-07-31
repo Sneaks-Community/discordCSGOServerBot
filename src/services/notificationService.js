@@ -93,6 +93,37 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
 }
 
 /**
+ * Build the embed announcing a map change. The DM and the fallback message show the
+ * same thing, so both call this.
+ * @param {Object} event - Loop-invariant event details shared by every recipient
+ * @returns {EmbedBuilder} - The embed to send
+ */
+function buildMapNotificationEmbed({ mapImage, mapName, server, serverObj }) {
+    const embed = new EmbedBuilder()
+        .setTitle(`${mapName} is now on ${server}`)
+        .setDescription(
+            `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
+        )
+        .setColor(CONFIG_VALUES.EMBED_COLOR)
+        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
+        .setTimestamp(Date.now());
+
+    if (mapImage) embed.setImage(mapImage);
+
+    return embed;
+}
+
+/**
+ * Build the message content announcing a map change, carrying the connect link that
+ * an embed cannot make clickable.
+ * @param {Object} event - Loop-invariant event details shared by every recipient
+ * @returns {string} - The message content
+ */
+function buildNotificationContent({ ip, mapName, server }) {
+    return `${mapName} is now on ${server}!\nsteam://connect/${ip}`;
+}
+
+/**
  * Deliver one notification, falling back to the log channel when the DM fails.
  * Resolves rather than throwing on any per-recipient failure, so one bad recipient
  * cannot abandon the rest of the fanout.
@@ -101,7 +132,7 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
  * @returns {Promise<void>}
  */
 async function deliverNotification(user, event) {
-    const { bot, ip, mapImage, mapName, server, serverObj, validatedMapName } = event;
+    const { bot, mapName, server, validatedMapName } = event;
 
     // Fetch user first to ensure we have a valid reference
     let u;
@@ -146,26 +177,14 @@ async function deliverNotification(user, event) {
             return;
         }
 
-        // Prepare the embed for the direct message
-        const dmEmbed = new EmbedBuilder()
-            .setTitle(`${mapName} is now on ${server}`)
-            .setDescription(
-                `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
-            )
-            .setColor(CONFIG_VALUES.EMBED_COLOR)
-            .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
-            .setTimestamp(Date.now());
-
-        if (mapImage) dmEmbed.setImage(mapImage);
-
         // Send the direct message to the user with proper error handling.
         // allowedMentions denies every mention type: the map name and server nick
         // come from the game server, and escapeForDiscord neutralizes markdown but
         // not "@", so nothing here should ever be able to ping.
         await u.send({
             allowedMentions: { parse: [] },
-            content: `${mapName} is now on ${server}!\nsteam://connect/${ip}`,
-            embeds: [dmEmbed]
+            content: buildNotificationContent(event),
+            embeds: [buildMapNotificationEmbed(event)]
         });
 
         serviceLogger.info({ map: mapName, userId: u.id, username: u.tag }, "Sent notification");
@@ -227,7 +246,7 @@ async function resolveFallbackChannel(bot) {
 async function sendFallbackNotification(event) {
     // Uses the client threaded through from notifyUsers rather than the module-level
     // botInstance, so an explicitly passed client is honoured.
-    const { bot, ip, mapImage, mapName, server, serverObj } = event;
+    const { bot, mapName } = event;
 
     // Nothing to fall back to, so there is nothing to retry. Without this an
     // unconfigured fallback costs three retried "guild not found" throws, with
@@ -243,19 +262,6 @@ async function sendFallbackNotification(event) {
         serviceLogger.error({ map: mapName }, "No Discord client available, skipping fallback notification");
         return;
     }
-
-    const backupEmbed = new EmbedBuilder()
-        .setTitle(`${mapName} is now on ${server}`)
-        .setDescription(
-            `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
-        )
-        .setColor(CONFIG_VALUES.EMBED_COLOR)
-        .setFooter({ iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" })
-        .setTimestamp(Date.now());
-
-    if (mapImage) backupEmbed.setImage(mapImage);
-
-    const fallbackContent = `${mapName} is now on ${server}!\nsteam://connect/${ip}`;
 
     try {
         await withRetry(async () => {
@@ -273,8 +279,8 @@ async function sendFallbackNotification(event) {
             // channel, so an @everyone slipping through would reach the whole guild.
             await channel.send({
                 allowedMentions: { parse: [] },
-                content: fallbackContent,
-                embeds: [backupEmbed]
+                content: buildNotificationContent(event),
+                embeds: [buildMapNotificationEmbed(event)]
             });
         }, { isRetryable: isRetryableDiscordError });
     } catch (fallbackError) {
