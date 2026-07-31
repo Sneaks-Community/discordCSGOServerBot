@@ -52,16 +52,3 @@ export function escapeLines(items) {
         .filter((item) => typeof item === "string" && item !== "")
         .map((item) => escapeForDiscord(item));
 }
-
-/**
- * Escape a list of items (e.g., player names) for Discord embed description.
- * Filters out empty, undefined, and null values.
- *
- * Callers that render into a length-limited field should use escapeLines with
- * joinWithinLimit instead, so the result can be bounded line by line.
- * @param {string[]} items - Array of strings to escape and join
- * @returns {string} Escaped and joined string
- */
-export function escapeList(items) {
-    return escapeLines(items).join("\n");
-}

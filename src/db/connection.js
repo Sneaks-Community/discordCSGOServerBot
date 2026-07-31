@@ -83,14 +83,6 @@ export function closeDB() {
 }
 
 /**
- * Get the database instance
- * @returns {Database|null} - The database instance or null if not initialized
- */
-export function getDB() {
-    return db;
-}
-
-/**
  * Get a prepared statement for the given SQL, preparing it on first use
  * @param {string} sql - SQL statement
  * @returns {import("better-sqlite3").Statement} - The cached prepared statement
