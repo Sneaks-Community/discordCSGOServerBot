@@ -89,8 +89,14 @@ bot.on(Events.ClientReady, async () => {
         // guildCreate, so this is the only place they are caught.
         await enforceSingleGuild();
 
-        // Register slash commands
-        await registerSlashCommands(bot);
+        // Non-fatal on purpose: the commands Discord already holds from the previous run
+        // stay usable, so a 5xx or a REST timeout on this one PUT must not crash-loop the
+        // bot under the container restart policy. @discordjs/rest has already retried.
+        try {
+            await registerSlashCommands(bot);
+        } catch (err) {
+            botLogger.error({ err }, "Failed to register slash commands; continuing with the set Discord already has");
+        }
 
         // Start the interval function
         await intervalFunction();

@@ -16,32 +16,31 @@ import { buildSlashCommands, COMMANDS_BY_NAME } from "./definitions.js";
 const slashCommands = buildSlashCommands();
 
 /**
- * Register slash commands with Discord
+ * Register slash commands with Discord.
+ *
+ * Throws without logging: only the caller knows whether a failure is fatal, and
+ * logging here as well would report every failure twice.
  * @param {Object} bot - The Discord bot client
+ * @throws {Error} If the application ID is unavailable or either REST call fails
  */
 export async function registerSlashCommands(bot) {
-    try {
-        const rest = new REST({ version: "10" }).setToken(config.discord.token);
-        
-        const applicationId = bot.application?.id || bot.user?.id;
-        if (!applicationId) {
-            throw new Error("Unable to get application ID - bot may not be fully initialized");
-        }
-    
-        // Discord keeps global and guild commands as separate sets, so commands an
-        // earlier run registered globally would stay visible in every guild forever.
-        // Clearing them here makes "this bot has no global commands" a guarantee.
-        await rest.put(Routes.applicationCommands(applicationId), { body: [] });
+    const rest = new REST({ version: "10" }).setToken(config.discord.token);
 
-        await rest.put(
-            Routes.applicationGuildCommands(applicationId, config.discord.guildID),
-            { body: slashCommands }
-        );
-        commandLogger.info(`Successfully registered ${slashCommands.length} guild slash commands`);
-    } catch (err) {
-        commandLogger.error({ err }, "Error registering slash commands");
-        throw err;
+    const applicationId = bot.application?.id || bot.user?.id;
+    if (!applicationId) {
+        throw new Error("Unable to get application ID - bot may not be fully initialized");
     }
+
+    // Discord keeps global and guild commands as separate sets, so commands an
+    // earlier run registered globally would stay visible in every guild forever.
+    // Clearing them here makes "this bot has no global commands" a guarantee.
+    await rest.put(Routes.applicationCommands(applicationId), { body: [] });
+
+    await rest.put(
+        Routes.applicationGuildCommands(applicationId, config.discord.guildID),
+        { body: slashCommands }
+    );
+    commandLogger.info(`Successfully registered ${slashCommands.length} guild slash commands`);
 }
 
 /**
