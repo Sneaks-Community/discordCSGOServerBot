@@ -18,16 +18,11 @@ import { validateWithZod } from "../utils/zodValidator.js";
 export async function handleSlashListallfollows(interaction) {
     const follows = getAllFollows();
 
-    // Guard before sorting: sorting a null/undefined result would throw first
+    // An empty result has nothing to page. getAllFollows returns the rows already
+    // ordered by user, so there is nothing to sort here.
     if (!follows || follows.length === 0) {
         return interaction.reply({ content: "There are no users following any maps.", flags: MessageFlags.Ephemeral });
     }
-
-    follows.sort((a, b) => {
-        if (a.discord_id < b.discord_id) return -1;
-        if (a.discord_id > b.discord_id) return 1;
-        return 0;
-    });
 
     // This list grows with every follow in the database and would blow past the
     // 4096 character embed description limit at roughly 130 rows, so it is paged

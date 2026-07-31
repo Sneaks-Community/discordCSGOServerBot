@@ -68,11 +68,14 @@ export function unfollowMap(discord_id, map_name) {
 }
 
 /**
- * Get all follows from the database
- * @returns {Array} - Array of all rows from players_follow
+ * Get all follows from the database, grouped by user.
+ *
+ * Ordered here rather than by the caller: UNIQUE(discord_id, map_name) already covers
+ * both columns, so SQLite reads the rows out in this order instead of sorting them.
+ * @returns {Array} - Array of all rows from players_follow, ordered by user then map
  */
 export function getAllFollows() {
-    return runStatement("SELECT discord_id, map_name FROM players_follow", [], "getAllFollows", "all");
+    return runStatement("SELECT discord_id, map_name FROM players_follow ORDER BY discord_id, map_name", [], "getAllFollows", "all");
 }
 
 /**
