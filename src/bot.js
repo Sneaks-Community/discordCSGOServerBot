@@ -101,7 +101,7 @@ export async function initBot() {
     validateConfig();
 
     // Initialize database before logging in
-    await initDB();
+    initDB();
 
     // Initialize notification service with bot instance
     initNotificationService(bot);
