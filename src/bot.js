@@ -295,6 +295,10 @@ bot.on(Events.ShardDisconnect, (event, shardId) => {
     void gracefulShutdown(`shardDisconnect(${event.code})`, 1);
 });
 
+bot.on(Events.ShardError, (error, shardId) => {
+    botLogger.error({ err: error, shardId }, "Shard websocket error");
+});
+
 bot.on(Events.ShardReconnecting, (shardId) => {
     botLogger.warn({ shardId }, "Shard reconnecting to Discord");
 });
