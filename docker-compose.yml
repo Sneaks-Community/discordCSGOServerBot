@@ -13,6 +13,9 @@ services:
     cap_drop:
       - ALL
     read_only: true
+    # For SQLite temp directory
+    tmpfs:
+      - /tmp:size=32m
     restart: unless-stopped
     env_file:
       - .env
