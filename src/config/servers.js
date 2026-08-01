@@ -6,16 +6,46 @@
  * as a runtime query failure or a broken embed.
  */
 
-import serverObject from "../../servers.json" with { type: "json" };
+import { readFileSync } from "node:fs";
+
 import { serversFileSchema } from "../schemas/validationSchemas.js";
 import { formatZodPathSuffix } from "../utils/zodValidator.js";
 
+/** Beside the sources rather than inside them; both Docker paths bind-mount it here. */
+const SERVERS_PATH = new URL("../../servers.json", import.meta.url);
+
 /**
- * The parsed server list, re-exported so nothing else reaches for the file.
- * Consumers read it through config/index.js alongside the rest of the config.
- * One owner also means P0-7's loader replaces one import rather than three.
+ * A read or parse failure, kept as data rather than thrown.
+ *
+ * The file is read at module load because consumers bind `serverObject` directly,
+ * but that is far too early to report anything: an import assertion or a throw here
+ * produces a bare stack before pino and before validateConfig exist. Holding the
+ * message lets validateServersConfig hand it to the same ConfigError path as a
+ * malformed entry.
+ * @type {string | null}
  */
-export { serverObject };
+let loadError = null;
+
+/**
+ * The parsed server list, the only place the file is read. Consumers read it
+ * through config/index.js alongside the rest of the config.
+ * Empty when the load failed, which validateServersConfig turns into a fatal error.
+ */
+export const serverObject = readServers();
+
+/**
+ * @returns {Object} - The parsed file, or `{}` after recording why it could not be read
+ */
+function readServers() {
+    try {
+        return JSON.parse(readFileSync(SERVERS_PATH, "utf8"));
+    } catch (err) {
+        // A missing file is the one failure with an obvious remedy; a syntax error is not.
+        const hint = err.code === "ENOENT" ? " (copy servers.json.example to the project root; in Docker check the bind mount)" : "";
+        loadError = `servers.json: ${err.message}${hint}`;
+        return {};
+    }
+}
 
 /**
  * Fields a server entry may define. Anything else is reported as an ignored
@@ -86,6 +116,11 @@ function collectWarnings(servers) {
  * @returns {{ errors: string[], warnings: string[] }}
  */
 export function validateServersConfig(servers = serverObject) {
+    // Only the file itself can fail to load; an explicit argument is the caller's own object.
+    if (loadError !== null && servers === serverObject) {
+        return { errors: [loadError], warnings: [] };
+    }
+
     const result = serversFileSchema.safeParse(servers);
 
     if (!result.success) {
