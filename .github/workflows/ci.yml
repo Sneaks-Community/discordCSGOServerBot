@@ -60,6 +60,6 @@ jobs:
           context: .
           push: false
           target: production
-          tags: discordcsgobot:test
+          tags: discordserverbot:test
           cache-from: type=gha
           cache-to: type=gha,mode=max

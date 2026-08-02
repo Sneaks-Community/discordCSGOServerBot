@@ -3,8 +3,8 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: discord-csgo-bot:latest
-    container_name: discord-server-bot
+    image: discordserverbot:latest
+    container_name: discordserverbot
     # Security
     security_opt:
       - "apparmor=docker-default"

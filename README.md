@@ -83,8 +83,8 @@ git.
 1. **Clone the repository**
 
    ```bash
-   git clone https://github.com/Sneaks-Community/discordCSGOServerBot.git
-   cd discordCSGOServerBot
+   git clone https://github.com/Sneaks-Community/discordserverbot.git
+   cd discordserverbot
    ```
 
 2. **Create the configuration files from their examples**
@@ -118,15 +118,15 @@ docker compose logs -f    # follow the logs
 The image is a multi-stage `node:24-alpine` build, roughly 100MB. To run it without Compose:
 
 ```bash
-docker build -t discord-csgo-bot .
+docker build -t discordserverbot .
 
 docker run -d \
-  --name csgo-server-bot \
+  --name discordserverbot \
   --env-file .env \
   -e DATABASE_PATH=/app/data/db.sqlite \
   -v $(pwd)/servers.json:/app/servers.json:ro \
   -v bot-data:/app/data \
-  discord-csgo-bot
+  discordserverbot
 ```
 
 Follows are the only state on disk, and they live in the SQLite file at `DATABASE_PATH`, so it

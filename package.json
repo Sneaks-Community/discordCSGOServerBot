@@ -1,5 +1,5 @@
 {
-  "name": "discordcsgoserverbot",
+  "name": "discordserverbot",
   "version": "7.0.0",
   "description": "Server info bot",
   "main": "src/index.js",
@@ -19,12 +19,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Sneaks-Community/discordCSGOServerBot.git"
+    "url": "git+https://github.com/Sneaks-Community/discordserverbot.git"
   },
   "bugs": {
-    "url": "https://github.com/Sneaks-Community/discordCSGOServerBot/issues"
+    "url": "https://github.com/Sneaks-Community/discordserverbot/issues"
   },
-  "homepage": "https://github.com/Sneaks-Community/discordCSGOServerBot#readme",
+  "homepage": "https://github.com/Sneaks-Community/discordserverbot#readme",
   "dependencies": {
     "better-sqlite3": "^13.0.2",
     "discord.js": "^14.27.0",

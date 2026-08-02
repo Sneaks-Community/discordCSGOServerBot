@@ -40,7 +40,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v6.2.0
         with:
-          images: ghcr.io/sneaks-community/discordCSGOServerBot
+          images: ghcr.io/sneaks-community/discordserverbot
           tags: |
             type=raw,value=latest,enable=${{ github.event_name == 'release' }}
             type=semver,pattern={{version}},enable=${{ github.event_name == 'release' }}
