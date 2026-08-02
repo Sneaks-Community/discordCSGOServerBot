@@ -5,6 +5,7 @@ import { config, CONFIG_VALUES, validateConfig } from "./config/index.js";
 import { initDB, closeDB, unfollowAll } from "./db/index.js";
 import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheService.js";
+import { recordTick, startHealthServer, stopHealthServer } from "./services/healthService.js";
 import { notifyUsers, initNotificationService } from "./services/notificationService.js";
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
 import { getTerminalReason, isRetryableDiscordError, TerminalError } from "./utils/discordErrors.js";
@@ -100,6 +101,9 @@ bot.on(Events.ClientReady, async () => {
         // this is the only place they are caught.
         await enforceSingleGuild();
 
+        // Before the first tick, so a wedge in the steps below still answers.
+        startHealthServer(bot);
+
         // Non-fatal: the commands Discord already holds stay usable, so a 5xx on
         // this one PUT must not crash-loop the bot under the restart policy.
         try {
@@ -123,6 +127,8 @@ bot.on(Events.ClientReady, async () => {
  * shares this timer so it always reads the snapshot refresh() just wrote.
  */
 async function intervalFunction() {
+    recordTick();
+
     try {
         await refresh();
     } catch (err) {
@@ -298,6 +304,9 @@ async function gracefulShutdown(signal, initialExitCode = 0) {
     }
 
     clearCleanupIntervals();
+
+    // Before destroy(): the listener must not outlive the shutdown.
+    stopHealthServer();
 
     let exitCode = initialExitCode;
 

@@ -57,6 +57,10 @@ const baseConfig = {
     gamedig: {
         defaultMaxRetries: env.GAMEDIG_MAX_RETRIES
     },
+    health: {
+        host: env.HEALTH_HOST,
+        port: env.HEALTH_PORT
+    },
     images: {
         fallbackAvatar: env.FALLBACK_AVATAR_URL,
         offlineServer: env.OFFLINE_SERVER_IMAGE
@@ -90,6 +94,8 @@ export const CONFIG_VALUES = {
     FALLBACK_AVATAR: baseConfig.images.fallbackAvatar,
     FOLLOW_RATE_LIMIT_PER_MINUTE: baseConfig.rateLimit.followPerMinute,
     GAMEDIG_MAX_RETRIES: baseConfig.gamedig.defaultMaxRetries,
+    HEALTH_HOST: baseConfig.health.host,
+    HEALTH_PORT: baseConfig.health.port,
     MAX_CONCURRENT_SERVER_QUERIES: baseConfig.serverUpdate.maxConcurrentQueries,
     MAX_FOLLOWS_PER_USER: baseConfig.follows.maxPerUser,
     MAX_NOTIFICATION_RECIPIENTS: baseConfig.notifications.maxRecipientsPerEvent,

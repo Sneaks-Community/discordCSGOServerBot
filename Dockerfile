@@ -53,10 +53,17 @@ RUN mkdir -p /app/data && \
     chown -R nodejs:nodejs /app
 
 ENV NODE_ENV=production \
-    DATABASE_PATH=/app/data/db.sqlite
+    DATABASE_PATH=/app/data/db.sqlite \
+    HEALTH_PORT=3000
 
 # Switch to non-root user
 USER nodejs
+
+# Liveness only: a stalled update loop, not a Discord outage. No EXPOSE and no
+# published port, since HEALTH_HOST is loopback and this check is the only thing
+# that reaches it. busybox wget beats spawning a second Node every minute.
+HEALTHCHECK --interval=60s --timeout=5s --start-period=60s --retries=3 \
+    CMD wget -q -O- "http://127.0.0.1:${HEALTH_PORT}/health" || exit 1
 
 # Run the bot
 CMD ["node", "src/index.js"]

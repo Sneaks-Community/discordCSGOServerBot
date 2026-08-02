@@ -209,6 +209,14 @@ export const envSchema = z.object({
     // A multiplier over the ports gamedig tries, not a total attempt budget, so
     // raising this multiplies how long one unreachable server takes.
     GAMEDIG_MAX_RETRIES: intEnv(4, 0, 10),
+    // Loopback by default: only reachable from the container's own HEALTHCHECK
+    HEALTH_HOST: z.preprocess(
+        (value) => (value === undefined || String(value).trim() === "" ? "127.0.0.1" : String(value).trim()),
+        z.string().min(1, "cannot be empty")
+    ),
+    // 0 means disabled, not "pick a port", so npm start opens no socket. The
+    // image sets 3000.
+    HEALTH_PORT: intEnv(0, 0, 65535),
     MAP_IMAGE_BASE_URL: mapImageBaseUrlEnv,
     // p-limit throws on a concurrency below 1
     MAX_CONCURRENT_QUERIES: intEnv(10, 1, 100),
