@@ -1,4 +1,4 @@
-# Discord CS:GO Server Bot
+# Discord Server Bot
 
 A Discord bot that monitors Counter-Strike: Global Offensive (and other supported) servers,
 keeps a channel message in sync with their status, and DMs users when a followed map appears.
