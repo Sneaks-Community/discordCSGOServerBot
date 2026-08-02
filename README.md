@@ -126,6 +126,8 @@ docker run -d \
   -e DATABASE_PATH=/app/data/db.sqlite \
   -v $(pwd)/servers.json:/app/servers.json:ro \
   -v bot-data:/app/data \
+  --log-opt max-size=10m \
+  --log-opt max-file=5 \
   discordserverbot
 ```
 

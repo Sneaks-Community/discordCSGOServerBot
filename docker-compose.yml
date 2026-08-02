@@ -17,6 +17,11 @@ services:
     tmpfs:
       - /tmp:size=32m
     restart: unless-stopped
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "5"
     env_file:
       - .env
     environment:
