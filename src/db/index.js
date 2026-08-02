@@ -11,6 +11,7 @@ export {
     unfollowMap,
     countUserFollows,
     getAllFollows,
+    getFollowerIds,
     getUserFollows,
     isFollowingMap,
     getUsersFollowingMap,

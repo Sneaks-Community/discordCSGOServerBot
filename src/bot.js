@@ -5,6 +5,7 @@ import { config, CONFIG_VALUES, validateConfig } from "./config/index.js";
 import { initDB, closeDB, unfollowAll } from "./db/index.js";
 import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheService.js";
+import { reconcileFollows } from "./services/followReconciliation.js";
 import { recordTick, startHealthServer, stopHealthServer } from "./services/healthService.js";
 import { notifyUsers, initNotificationService } from "./services/notificationService.js";
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
@@ -115,6 +116,10 @@ bot.on(Events.ClientReady, async () => {
         await intervalFunction();
         embedInterval = setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
         startCleanupIntervals();
+
+        // Last and not awaited: a full member fetch on a large guild is slow, and
+        // nothing else depends on it. It handles its own failures.
+        void reconcileFollows(bot);
     } catch (err) {
         botLogger.fatal({ err }, "Failed during ready initialization");
         await flushLogs();

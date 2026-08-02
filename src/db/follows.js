@@ -74,6 +74,16 @@ export function getAllFollows() {
 }
 
 /**
+ * Every user holding at least one follow. DISTINCT because the table is one row
+ * per (user, map).
+ * @returns {Array<string>} - Discord user IDs
+ */
+export function getFollowerIds() {
+    const rows = runStatement("SELECT DISTINCT discord_id FROM players_follow", [], "getFollowerIds", "all");
+    return rows.map((row) => row.discord_id);
+}
+
+/**
  * @param {string} discord_id
  * @returns {Array} - Rows with a map_name property
  */
