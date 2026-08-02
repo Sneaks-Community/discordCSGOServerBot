@@ -14,8 +14,8 @@ import { formatEnvIssue, parseEnv } from "../src/schemas/envSchema.js";
 const REQUIRED = Object.freeze({ DISCORD_GUILD_ID: "123456789012345678", DISCORD_TOKEN: "a-token" });
 
 /**
- * @param {Object} [extra] - Variables to add to a valid baseline
- * @returns {Object} - An environment that parses unless `extra` breaks it
+ * @param {object} [extra] - Variables to add to a valid baseline
+ * @returns {object} - An environment that parses unless `extra` breaks it
  */
 function env(extra = {}) {
     return { ...REQUIRED, ...extra };

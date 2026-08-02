@@ -1,8 +1,3 @@
-/**
- * Configuration module - main entry point
- * Handles config loading and validation from environment variables
- */
-
 import { configLogger } from "../utils/logger.js";
 import { config, CONFIG_VALUES, ENV_ERRORS, ENV_WARNINGS } from "./config.js";
 import { ConfigError } from "./configError.js";
@@ -11,22 +6,16 @@ import { serverObject, validateServersConfig } from "./servers.js";
 export { config, CONFIG_VALUES, ConfigError, serverObject };
 
 /**
- * Validate configuration, throwing if it cannot be honoured.
- *
- * The environment is described entirely by schemas/envSchema.js, which is what
- * produced ENV_ERRORS and ENV_WARNINGS at import time; this function reports
- * those and then checks the one input that does not come from the environment,
- * servers.json.
- *
- * Warnings are logged here because they are not fatal. Errors are thrown rather
- * than exited on, so the caller owns the exit and the function stays testable.
+ * Reports the ENV_ERRORS and ENV_WARNINGS envSchema produced at import time,
+ * then checks the one input that is not environmental, servers.json. Throws
+ * rather than exits, so the caller owns the exit and this stays testable.
  * @returns {{ warnings: string[] }} - The non-fatal findings, already logged
  * @throws {ConfigError} If the environment or servers.json is unusable
  */
 export function validateConfig() {
-    // Malformed variables come first and abort immediately: when envSchema rejects
-    // anything, every value in `config` has fallen back to its default, so nothing
-    // further would be describing the operator's actual configuration.
+    // First and fatal: once envSchema rejects anything, every value in `config`
+    // has fallen back to its default, so nothing after this describes the
+    // operator's actual configuration.
     if (ENV_ERRORS.length > 0) {
         throw new ConfigError(
             "Invalid environment variables; fix the values listed in errors (see .env.example for the accepted range of each)",

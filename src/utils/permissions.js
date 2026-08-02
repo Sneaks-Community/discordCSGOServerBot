@@ -1,22 +1,15 @@
-/**
- * Discord permission checking utilities
- * Validates bot permissions in channels
- */
-
 import { PermissionFlagsBits, PermissionsBitField } from "discord.js";
 
 /**
- * Check if bot has required permissions in a channel
- * @param {import('discord.js').GuildChannel} channel - The channel to check
- * @param {bigint[]} requiredPermissions - Permission flags to check
- * @returns {Object} - { hasPermissions: boolean, missing: string[] }
+ * @param {import('discord.js').GuildChannel} channel
+ * @param {bigint[]} [requiredPermissions] - Permission flags to check
+ * @returns {{hasPermissions: boolean, missing: string[]}}
  */
 function checkChannelPermissions(channel, requiredPermissions = []) {
     if (!channel) {
         return { hasPermissions: false, missing: ["Channel not found"] };
     }
-    
-    // Check if channel is a text-based channel
+
     if (!channel.isTextBased?.()) {
         return { hasPermissions: false, missing: ["Channel is not text-based"] };
     }
@@ -33,8 +26,8 @@ function checkChannelPermissions(channel, requiredPermissions = []) {
         return { hasPermissions: false, missing: ["Could not resolve permissions"] };
     }
     
-    // Check each required permission. A missing flag is rendered back to its
-    // Discord name, so the message an operator reads is unchanged by the flags.
+    // A missing flag is rendered back to its Discord name, so an operator reads
+    // the same wording the client shows.
     for (const perm of requiredPermissions) {
         if (!permissions.has(perm)) {
             missing.push(...new PermissionsBitField(perm).toArray());
@@ -48,14 +41,11 @@ function checkChannelPermissions(channel, requiredPermissions = []) {
 }
 
 /**
- * Turn a permission check into the { valid, error } shape the call sites report.
- *
- * Every caller wants the same sentence, so the two wrappers below differ only in
- * which permissions they name. The message is worded for an operator reading a
- * log line: both call sites interpolate it into their remediation hint.
- * @param {import('discord.js').GuildChannel} channel - The channel to validate
- * @param {bigint[]} requiredPermissions - Permission flags the operation needs
- * @returns {Object} - { valid: boolean, error?: string }
+ * The { valid, error } shape the call sites report. Callers interpolate `error`
+ * into their own remediation hint, so it is worded for an operator.
+ * @param {import('discord.js').GuildChannel} channel
+ * @param {bigint[]} requiredPermissions
+ * @returns {{valid: boolean, error?: string}}
  */
 function validateChannel(channel, requiredPermissions) {
     const result = checkChannelPermissions(channel, requiredPermissions);
@@ -71,9 +61,8 @@ function validateChannel(channel, requiredPermissions) {
 }
 
 /**
- * Validate bot can send messages to a channel
- * @param {import('discord.js').GuildChannel} channel - The channel to validate
- * @returns {Object} - { valid: boolean, error?: string }
+ * @param {import('discord.js').GuildChannel} channel
+ * @returns {{valid: boolean, error?: string}}
  */
 export function validateChannelForSend(channel) {
     return validateChannel(channel, [
@@ -84,9 +73,8 @@ export function validateChannelForSend(channel) {
 }
 
 /**
- * Validate bot can edit messages in a channel
- * @param {import('discord.js').GuildChannel} channel - The channel to validate
- * @returns {Object} - { valid: boolean, error?: string }
+ * @param {import('discord.js').GuildChannel} channel
+ * @returns {{valid: boolean, error?: string}}
  */
 export function validateChannelForEdit(channel) {
     return validateChannel(channel, [

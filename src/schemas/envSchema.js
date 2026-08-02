@@ -1,37 +1,13 @@
 /**
- * Environment variable validation: the single source of truth for what the bot
- * accepts from its environment.
+ * The single source of truth for what the bot accepts from its environment.
+ * Nothing else reads process.env for a configuration value; consumers read the
+ * shaped `config` object built in config/config.js.
  *
- * Every variable is declared exactly once here, together with its default, its
- * accepted range, and (when it is optional) a note on what leaving it empty
- * switches off. No other module reads process.env for a configuration value;
- * they read the shaped `config` object built from these values in
- * config/config.js.
+ * Throughout: unset or empty takes the documented default; an optional ID or URL
+ * may be empty to disable its feature but must otherwise be well formed; numbers
+ * must be whole and in range.
  *
- * Validating up front matters because a bad value used to fail invisibly:
- * - `MAX_CONCURRENT_QUERIES=0` makes p-limit throw inside refresh(), which the
- *   embed loop catches, so the bot stayed up and never queried a server again.
- * - `RETRY_MAX_RETRIES=0` made withRetry() skip its loop body entirely and
- *   return undefined, so embed edits and fallback notifications became silent
- *   no-ops.
- * - A malformed `EMBEDS` value was swallowed by a try/catch and replaced with
- *   `[]`, so a JSON typo disabled the server list embed with no diagnostic.
- *
- * Rules that hold throughout:
- * - An unset or empty variable takes its documented default.
- * - An optional ID or URL may be empty to disable the feature it controls, but a
- *   non-empty value must be well formed. A typo is an operator error, not a
- *   reason to run half configured.
- * - Numbers must be whole and in range. `parseInt` used to accept "10s" as 10
- *   and negatives as-is; both are now rejected.
- *
- * Two deliberate exceptions, both in utils/logger.js:
- * - LOG_LEVEL's contract lives here as `logLevelSchema` but is applied there,
- *   because an unusable level must not stop the process: logging is how the
- *   problem gets reported. It degrades to DEFAULT_LOG_LEVEL with a warning.
- * - NODE_ENV is read there directly. It selects a log transport rather than
- *   configuring the bot, and any value is legitimate ("test", "staging"), so
- *   there is nothing to validate.
+ * LOG_LEVEL and NODE_ENV are the exceptions, both handled in utils/logger.js.
  */
 
 import { ActivityType } from "discord.js";
@@ -41,11 +17,10 @@ import { formatZodPathSuffix } from "../utils/zodValidator.js";
 import { discordIdSchema } from "./validationSchemas.js";
 
 /**
- * Check that a string is an absolute http or https URL.
- * Used for the image URLs, which discord.js rejects at embed build time; an
- * invalid one would make every embed throw rather than fail visibly here.
- * @param {string} value - Candidate URL
- * @returns {boolean} - Whether the value is an http(s) URL
+ * Checked here because discord.js only rejects a bad image URL at embed build
+ * time, which would make every embed throw instead of failing at startup.
+ * @param {string} value
+ * @returns {boolean}
  */
 function isHttpUrl(value) {
     let parsed;
@@ -60,11 +35,11 @@ function isHttpUrl(value) {
 }
 
 /**
- * Build a schema for a whole-number variable, defaulted when unset or empty.
- * @param {number} defaultValue - Value used when the variable is unset or empty
- * @param {number} min - Smallest accepted value
- * @param {number} max - Largest accepted value
- * @returns {z.ZodType} - Schema producing a number
+ * A whole-number variable, inclusive of both bounds.
+ * @param {number} defaultValue - Used when the variable is unset or empty
+ * @param {number} min
+ * @param {number} max
+ * @returns {import('zod').ZodType}
  */
 function intEnv(defaultValue, min, max) {
     return z.preprocess(
@@ -78,10 +53,9 @@ function intEnv(defaultValue, min, max) {
 }
 
 /**
- * Build a schema for an optional Discord snowflake.
  * Empty means "feature disabled", which OPTIONAL_FEATURES turns into a startup
  * warning; a non-empty value has to be a real ID.
- * @returns {z.ZodType} - Schema producing a snowflake string or ""
+ * @returns {import('zod').ZodType}
  */
 function optionalIdEnv() {
     return z.preprocess(
@@ -96,9 +70,9 @@ function optionalIdEnv() {
 }
 
 /**
- * Build a schema for a required URL variable that falls back to a default.
- * @param {string} defaultValue - URL used when the variable is unset or empty
- * @returns {z.ZodType} - Schema producing an http(s) URL string
+ * A required URL variable that falls back to a default.
+ * @param {string} defaultValue
+ * @returns {import('zod').ZodType}
  */
 function urlEnv(defaultValue) {
     return z.preprocess(
@@ -107,16 +81,11 @@ function urlEnv(defaultValue) {
     );
 }
 
-/**
- * Default base URL for map thumbnails.
- * Unlike the other image URLs this one distinguishes "unset" (use the default)
- * from "explicitly empty" (disable map images), which is why it cannot reuse
- * urlEnv.
- */
 const MAP_IMAGE_BASE_URL_DEFAULT = "https://bans.snksrv.com/images/maps/";
 
 /**
- * Base URL for map thumbnails, or "" to disable them.
+ * Base URL for map thumbnails, or "" to disable them. Cannot reuse urlEnv: this
+ * one distinguishes unset (use the default) from explicitly empty (disable).
  * The trailing slash is required because getMapImage concatenates directly.
  */
 const mapImageBaseUrlEnv = z.preprocess(
@@ -130,14 +99,10 @@ const mapImageBaseUrlEnv = z.preprocess(
 );
 
 /**
- * BOT_ACTIVITY_TYPE values, mapped to the discord.js activity type each selects.
- * The accepted values below are derived from these keys, so this is the only list
- * to extend.
- *
- * `custom` renders the text verbatim; every other type has its verb prepended by
- * the client ("Playing ...", "Listening to ..."). Streaming is deliberately
- * absent: it only renders alongside a Twitch or YouTube URL, and this bot has
- * none to point at.
+ * The accepted BOT_ACTIVITY_TYPE values derive from these keys, so this is the
+ * only list to extend. `custom` renders the text verbatim; the others have their
+ * verb prepended by the client. Streaming is absent: it needs a Twitch or
+ * YouTube URL, and this bot has none.
  */
 export const ACTIVITY_TYPE_BY_NAME = Object.freeze({
     competing: ActivityType.Competing,
@@ -147,45 +112,33 @@ export const ACTIVITY_TYPE_BY_NAME = Object.freeze({
     watching: ActivityType.Watching
 });
 
-/**
- * Accepted BOT_ACTIVITY_TYPE values, for validation and for error messages.
- * @type {string[]}
- */
+/** @type {string[]} */
 export const ACTIVITY_TYPES = Object.keys(ACTIVITY_TYPE_BY_NAME);
 
-/**
- * Discord's limit on activity text, which applies to a custom status' state and
- * to every other type's name alike.
- */
+// Discord's activity text limit, the same for a custom state and every name.
 const ACTIVITY_TEXT_MAX_LENGTH = 128;
 
-/**
- * Presence text used when BOT_ACTIVITY_TEXT is unset. Names no channel on
- * purpose: where the commands are usable is the guild's decision, not the bot's.
- */
+// Names no channel: where the commands are usable is the guild's decision.
 const ACTIVITY_TEXT_DEFAULT = "/follow <map> for map change alerts";
 
 /**
- * BOT_ACTIVITY_TEXT: the presence text, or "" for no activity at all.
- * An over-long value is rejected rather than truncated, so a status that would
- * not display as written is visible as an operator error at startup.
+ * The presence text, or "" for no activity. Over-long is rejected rather than
+ * truncated, so a status that would not display as written is an error.
  */
 const activityTextEnv = z.preprocess(
     (value) => (value === undefined ? ACTIVITY_TEXT_DEFAULT : String(value).trim()),
     z.string().max(ACTIVITY_TEXT_MAX_LENGTH, `must be at most ${ACTIVITY_TEXT_MAX_LENGTH} characters (Discord's activity limit), or empty to show no activity`)
 );
 
-/**
- * One entry of the EMBEDS array: the message the bot keeps the server list in.
- */
+/** One entry of EMBEDS: the message the bot keeps the server list in. */
 const embedEntrySchema = z.object({
     channelID: z.string({ error: "is required and must be a string" }).pipe(discordIdSchema),
     messageID: z.string({ error: "is required and must be a string" }).pipe(discordIdSchema)
 });
 
 /**
- * EMBEDS: a JSON array of embed targets. Malformed JSON is an error rather than
- * an empty list, so a typo cannot quietly switch the embed feature off.
+ * A JSON array of embed targets. Malformed JSON is an error rather than an empty
+ * list, so a typo cannot quietly switch the embed feature off.
  */
 const embedsEnv = z.preprocess(
     (value) => (value === undefined || String(value).trim() === "" ? "[]" : String(value)),
@@ -205,34 +158,23 @@ const embedsEnv = z.preprocess(
         .pipe(z.array(embedEntrySchema, { error: "must be a JSON array of {channelID, messageID} objects" }))
 );
 
-/**
- * Log levels pino accepts, least to most severe. Pino emits the standard numeric
- * levels itself (trace 10, debug 20, info 30, warn 40, error 50, fatal 60), so no
- * custom level formatter is needed.
- */
+/** Levels pino accepts, least to most severe. */
 export const LOG_LEVELS = Object.freeze(["trace", "debug", "info", "warn", "error", "fatal", "silent"]);
 
-/**
- * Level used when LOG_LEVEL is unset, empty, or unrecognized.
- */
+/** Used when LOG_LEVEL is unset, empty, or unrecognized. */
 export const DEFAULT_LOG_LEVEL = "info";
 
 /**
- * LOG_LEVEL, normalized to lowercase.
- * Kept out of envSchema on purpose: pino throws on an unrecognized level at
- * import time, before any logger exists to say why, so utils/logger.js applies
- * this schema and degrades to DEFAULT_LOG_LEVEL with a warning instead of
- * aborting startup.
+ * Kept out of envSchema: pino throws on an unrecognized level at import time,
+ * before a logger exists to say why. utils/logger.js applies this and degrades
+ * to DEFAULT_LOG_LEVEL with a warning rather than aborting startup.
  */
 export const logLevelSchema = z.preprocess(
     (value) => (value === undefined || String(value).trim() === "" ? DEFAULT_LOG_LEVEL : String(value).trim().toLowerCase()),
     z.enum(LOG_LEVELS, { error: `must be one of: ${LOG_LEVELS.join(", ")}` })
 );
 
-/**
- * The full environment contract. Unknown variables are ignored, so the rest of
- * the process environment passes through untouched.
- */
+/** The full contract. Unknown variables are ignored. */
 export const envSchema = z.object({
     ADMIN_ROLE_ID: optionalIdEnv(),
     BOT_ACTIVITY_TEXT: activityTextEnv,
@@ -244,9 +186,8 @@ export const envSchema = z.object({
         (value) => (value === undefined || String(value).trim() === "" ? "db.sqlite" : String(value).trim()),
         z.string().min(1, "cannot be empty")
     ),
-    // Required: it is the guild this instance serves, and the bot leaves any other
-    // guild it is added to. Empty would leave the admin commands, which act on the
-    // whole database, open to an Administrator of any guild the bot is in.
+    // Required: the bot leaves every other guild. Empty would open the admin
+    // commands, which act on the whole database, to any guild's Administrator.
     DISCORD_GUILD_ID: z.preprocess(
         (value) => (value === undefined ? "" : String(value).trim()),
         z.string().refine(
@@ -254,8 +195,8 @@ export const envSchema = z.object({
             "is required and must be a Discord ID (17-19 digits)"
         )
     ),
-    // Trimmed because a pasted token often carries a trailing newline, which
-    // Discord then rejects at login with an unhelpful message.
+    // Trimmed: a pasted token often carries a newline, which Discord rejects at
+    // login with an unhelpful message.
     DISCORD_TOKEN: z.preprocess(
         (value) => (value === undefined ? "" : String(value).trim()),
         z.string().min(1, "is required and must not be empty")
@@ -265,26 +206,20 @@ export const envSchema = z.object({
     EMBEDS: embedsEnv,
     FALLBACK_AVATAR_URL: urlEnv("https://i.imgur.com/cBiDnMi.png"),
     FALLBACK_CHANNEL_ID: optionalIdEnv(),
-    // A multiplier over the ports gamedig tries, not a total attempt budget, so raising
-    // this multiplies how long one unreachable server takes. serverService caps a pass
-    // at a fraction of SERVER_UPDATE_INTERVAL regardless; past that point a high value
-    // buys nothing but servers reported offline for want of time.
+    // A multiplier over the ports gamedig tries, not a total attempt budget, so
+    // raising this multiplies how long one unreachable server takes.
     GAMEDIG_MAX_RETRIES: intEnv(4, 0, 10),
     MAP_IMAGE_BASE_URL: mapImageBaseUrlEnv,
     // p-limit throws on a concurrency below 1
     MAX_CONCURRENT_QUERIES: intEnv(10, 1, 100),
-    // Lifetime cap per user. The per-minute rate limit only slows accumulation
-    // down; without a ceiling one user can grow the table, their own /listfollows
-    // and the notification fanout without bound.
+    // Lifetime cap per user; the per-minute rate limit only paces accumulation.
     MAX_FOLLOWS_PER_USER: intEnv(50, 1, 10000),
-    // Recipients notified per map change. Discord treats unsolicited bulk DMs as
-    // spam and quarantines bots for it; every DM here is opt-in via /follow, and
-    // this bounds how large a single fanout can get regardless.
+    // Recipients per map change. Discord quarantines bots for bulk DMs, so cap
+    // the fanout even though every DM here is opt-in via /follow.
     MAX_NOTIFICATION_RECIPIENTS: intEnv(200, 1, 10000),
     OFFLINE_SERVER_IMAGE: urlEnv("https://i.imgur.com/WnS0Biz.png"),
     RATE_LIMIT_FOLLOW_PER_MINUTE: intEnv(5, 1, 1000),
-    // Ceiling on map-change DMs per user per minute. Repeats of one map are
-    // collapsed separately, in notificationService, and never counted here.
+    // Repeats of one map are collapsed separately, in notificationService.
     RATE_LIMIT_NOTIFICATION_PER_MINUTE: intEnv(10, 1, 1000),
     RATE_LIMIT_UNFOLLOW_PER_MINUTE: intEnv(5, 1, 1000),
     RETRY_BASE_DELAY: intEnv(1, 0, 60),
@@ -296,10 +231,8 @@ export const envSchema = z.object({
 });
 
 /**
- * Optional variables and the feature each one switches off when left empty.
- * Empty is legal, so these produce startup warnings rather than errors. Listing
- * them beside the declarations above keeps "is this valid?" and "what does
- * skipping it cost?" in one file.
+ * Optional variables and what each one switches off. Empty is legal, so these
+ * produce startup warnings rather than errors.
  */
 const OPTIONAL_FEATURES = Object.freeze([
     { disables: "admin commands will be inaccessible", variable: "ADMIN_ROLE_ID" },
@@ -308,10 +241,9 @@ const OPTIONAL_FEATURES = Object.freeze([
 ]);
 
 /**
- * Placeholders used only to materialize the schema's defaults after validation has
- * already failed. Every required variable needs one, or this parse throws in place of
- * reporting the operator's real mistakes. Never reach Discord: startup aborts before
- * login.
+ * Only used to materialize the schema's defaults after validation has already
+ * failed, so startup aborts before these reach Discord. Every required variable
+ * needs one, or that parse throws instead of reporting the real mistakes.
  */
 const PLACEHOLDER_ENV = Object.freeze({
     DISCORD_GUILD_ID: "0".repeat(18),
@@ -319,7 +251,6 @@ const PLACEHOLDER_ENV = Object.freeze({
 });
 
 /**
- * Report optional variables that are set to nothing.
  * Both strings and the EMBEDS array answer to `.length`, so one check covers all.
  * @param {object} values - Validated environment values
  * @returns {string[]} - Warning messages
@@ -331,9 +262,8 @@ function collectOptionalFeatureWarnings(values) {
 }
 
 /**
- * Render a Zod issue as a message prefixed with the variable it came from.
- * @param {import('zod').core.$ZodIssue} issue - Zod issue
- * @returns {string} - e.g. `EMBEDS[0].channelID: Discord ID must contain only digits`
+ * @param {import('zod').core.$ZodIssue} issue
+ * @returns {string} - e.g. `EMBEDS[0].channelID: must contain only digits`
  */
 export function formatEnvIssue(issue) {
     const [name, ...rest] = issue.path;
@@ -342,10 +272,10 @@ export function formatEnvIssue(issue) {
 }
 
 /**
- * Validate the environment, collecting every failure rather than stopping at the
- * first, so one restart reports all of an operator's mistakes.
- * @param {Record<string, string|undefined>} [env] - Variables to validate
- * @returns {{ errors: string[], values: object, warnings: string[] }} - Failures, usable values, and disabled-feature notices
+ * Collects every failure rather than stopping at the first, so one restart
+ * reports all of an operator's mistakes.
+ * @param {Record<string, string|undefined>} [env]
+ * @returns {{ errors: string[], values: object, warnings: string[] }}
  */
 export function parseEnv(env = process.env) {
     const result = envSchema.safeParse(env);
@@ -354,10 +284,9 @@ export function parseEnv(env = process.env) {
         return { errors: [], values: result.data, warnings: collectOptionalFeatureWarnings(result.data) };
     }
 
-    // Startup aborts whenever errors is non-empty, so these values are never read.
-    // They exist only so that importing the config module cannot throw before
-    // there is a logger available to report the real problem with. Warnings are
-    // left empty because they would describe defaults, not the real configuration.
+    // Startup aborts whenever errors is non-empty, so these values are never
+    // read; they exist so importing the config module cannot throw before a
+    // logger exists. Warnings stay empty: they would describe defaults.
     return {
         errors: result.error.issues.map(formatEnvIssue),
         values: envSchema.parse(PLACEHOLDER_ENV),

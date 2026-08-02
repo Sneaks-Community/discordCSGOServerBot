@@ -1,8 +1,6 @@
 /**
- * Database follow operations
- * Handles all follow/unfollow database operations
- *
- * Uses Zod v4 schemas for validation and parameterized queries for SQL injection prevention.
+ * Every input is Zod-validated and every query is parameterized; do not build
+ * SQL by interpolation here.
  */
 
 import { discordIdSchema, mapNameSchema } from "../schemas/validationSchemas.js";
@@ -12,7 +10,7 @@ import { getStatement } from "./connection.js";
 
 /**
  * Helper to validate and execute database operations using Zod v4 schemas
- * @param {z.ZodType} schema - Zod v4 schema to validate against
+ * @param {import('zod').ZodType} schema - Zod v4 schema to validate against
  * @param {any} value - Value to validate
  * @param {string} operationName - Name of the operation for error messages
  * @returns {any} Validated and transformed value
@@ -51,8 +49,7 @@ function runStatement(sql, params, operationName, mode) {
 export function followMap(discord_id, map_name) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "followMap/discord_id");
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "followMap/map_name");
-    // Columns are named rather than positional so that adding one later cannot
-    // silently shift these two values into the wrong places.
+    // Columns named, not positional: adding one later must not shift these.
     runStatement("INSERT INTO players_follow (discord_id, map_name) VALUES (?, ?)", [validatedDiscordId, validatedMapName], "followMap", "run");
 }
 
@@ -68,20 +65,17 @@ export function unfollowMap(discord_id, map_name) {
 }
 
 /**
- * Get all follows from the database, grouped by user.
- *
- * Ordered here rather than by the caller: UNIQUE(discord_id, map_name) already covers
- * both columns, so SQLite reads the rows out in this order instead of sorting them.
- * @returns {Array} - Array of all rows from players_follow, ordered by user then map
+ * Ordered by user then map. Free: UNIQUE(discord_id, map_name) already covers
+ * both columns, so SQLite reads the rows out in that order rather than sorting.
+ * @returns {Array} - Rows with discord_id and map_name properties
  */
 export function getAllFollows() {
     return runStatement("SELECT discord_id, map_name FROM players_follow ORDER BY discord_id, map_name", [], "getAllFollows", "all");
 }
 
 /**
- * Get maps followed by a user
- * @param {string} discord_id - The Discord user ID
- * @returns {Array} - Array of objects with map_name property
+ * @param {string} discord_id
+ * @returns {Array} - Rows with a map_name property
  */
 export function getUserFollows(discord_id) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "getUserFollows/discord_id");
@@ -89,9 +83,8 @@ export function getUserFollows(discord_id) {
 }
 
 /**
- * Count the maps a user follows
- * @param {string} discord_id - The Discord user ID
- * @returns {number} - Number of maps the user follows
+ * @param {string} discord_id
+ * @returns {number}
  */
 export function countUserFollows(discord_id) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "countUserFollows/discord_id");
@@ -100,14 +93,11 @@ export function countUserFollows(discord_id) {
 }
 
 /**
- * Check if a user is following a specific map
- *
- * Selects a constant rather than columns and answers with a boolean: nothing
- * reads a field off the row, only whether one exists. `.get()` yields undefined
- * when it does not, which is what the comparison turns into `false`.
- * @param {string} discord_id - The Discord user ID
- * @param {string} map_name - The map name
- * @returns {boolean} - Whether the user follows the map
+ * Selects a constant, not columns: only the row's existence matters, and
+ * `.get()` yields undefined when there is none.
+ * @param {string} discord_id
+ * @param {string} map_name
+ * @returns {boolean}
  */
 export function isFollowingMap(discord_id, map_name) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "isFollowingMap/discord_id");
@@ -117,9 +107,8 @@ export function isFollowingMap(discord_id, map_name) {
 }
 
 /**
- * Get users following a specific map
- * @param {string} map_name - The map name
- * @returns {Array} - Array of objects with discord_id property
+ * @param {string} map_name
+ * @returns {Array} - Rows with a discord_id property
  */
 export function getUsersFollowingMap(map_name) {
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "getUsersFollowingMap/map_name");
@@ -127,11 +116,9 @@ export function getUsersFollowingMap(map_name) {
 }
 
 /**
- * Check if any user is following a specific map
- *
  * As with isFollowingMap, only the presence of a row matters.
- * @param {string} map_name - The map name
- * @returns {boolean} - Whether at least one user follows the map
+ * @param {string} map_name
+ * @returns {boolean}
  */
 export function hasMap(map_name) {
     const validatedMapName = validateOrThrow(mapNameSchema, map_name, "hasMap/map_name");
@@ -139,10 +126,7 @@ export function hasMap(map_name) {
     return row !== undefined;
 }
 
-/**
- * Unfollow all maps for a user
- * @param {string} discord_id - The Discord user ID
- */
+/** @param {string} discord_id */
 export function unfollowAll(discord_id) {
     const validatedDiscordId = validateOrThrow(discordIdSchema, discord_id, "unfollowAll/discord_id");
     runStatement("DELETE FROM players_follow WHERE discord_id = ?", [validatedDiscordId], "unfollowAll", "run");

@@ -36,6 +36,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.8.0",
+    "eslint-plugin-jsdoc": "^63.3.2",
     "eslint-plugin-n": "^18.2.2",
     "eslint-plugin-perfectionist": "^5.10.0",
     "eslint-plugin-unicorn": "^72.0.0",

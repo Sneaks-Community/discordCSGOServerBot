@@ -1,52 +1,43 @@
-/**
- * Cache and rate limiting service
- * Handles user caching and rate limit tracking
- */
-
 import { CONFIG_VALUES } from "../config/index.js";
 import { serviceLogger } from "../utils/logger.js";
 
-// User cache for reducing API calls
 const userCache = new Map();
 
-// Rate limiting tracking - stores timestamp arrays per user/command
+// Timestamp arrays, keyed by user then action.
 const userActionRateLimits = new Map();
 
-// Recipients whose DM Discord refused, to when it happened. A closed DM is a
-// property of the recipient rather than of the attempt, so re-attempting on every
-// map change spends an API call and a fallback line and can never succeed.
+// Recipients whose DM Discord refused, to when. A closed DM belongs to the
+// recipient, not the attempt, so retrying every map change can never succeed.
 const dmRefusals = new Map();
 
-// Long enough that a popular map stops costing an attempt per map change, short
-// enough that reopening DMs takes effect within the hour and needs no restart.
 const DM_REFUSAL_COOLDOWN_MS = 3600000;
 
-// Maximum cache sizes to prevent memory leaks
+// Caps, so none of the three maps can grow without bound.
 const MAX_USER_CACHE_SIZE = 1000;
 const MAX_RATE_LIMIT_MAP_SIZE = 5000;
 const MAX_DM_REFUSAL_SIZE = 5000;
 
+const CLEANUP_INTERVAL_MS = 300000;
+
 /**
- * Get a cached user or fetch from Discord API
- * @param {string} userId - The Discord user ID
- * @param {Object} bot - The Discord bot client
- * @returns {Promise<Object>} - The user object
+ * Fetches from Discord on a miss.
+ * @param {string} userId
+ * @param {import('discord.js').Client} bot
+ * @returns {Promise<import('discord.js').User>}
  */
 export async function getCachedUser(userId, bot) {
     const cached = userCache.get(userId);
     if (cached && Date.now() - cached.timestamp < CONFIG_VALUES.USER_CACHE_TTL) {
-        // Re-inserting on a hit is what makes the eviction below actually LRU, which
-        // the old comment claimed while the code evicted by fetch time. The timestamp
-        // rides along untouched: the TTL measures how stale the fetched user is, not
-        // how long ago it was last read.
+        // Re-inserting on a hit is what makes the eviction below LRU. The
+        // timestamp rides along untouched: the TTL measures how stale the
+        // fetched user is, not how long ago it was read.
         userCache.delete(userId);
         userCache.set(userId, cached);
         return cached.user;
     }
 
-    // Same idiom as markDmRefused: deleting first keeps Map insertion order equal to
-    // recency order, so the first key is always the least recently used and eviction
-    // is O(1) rather than a scan of all MAX_USER_CACHE_SIZE entries.
+    // Delete-then-set keeps insertion order equal to recency order, so the first
+    // key is the least recently used and eviction is O(1) rather than a scan.
     userCache.delete(userId);
 
     if (userCache.size >= MAX_USER_CACHE_SIZE) {
@@ -58,9 +49,6 @@ export async function getCachedUser(userId, bot) {
     return user;
 }
 
-/**
- * Clear expired entries from user cache
- */
 function cleanupUserCache() {
     if (userCache.size === 0) return;
     
@@ -73,9 +61,8 @@ function cleanupUserCache() {
         }
     }
     
-    // If cache is still over limit after TTL cleanup, evict least recently used first.
-    // Insertion order is recency order (see getCachedUser), so the front of the map is
-    // what to drop and no copy-and-sort of the whole cache is needed to find it.
+    // Still over the cap after the TTL pass: insertion order is recency order
+    // (see getCachedUser), so the front of the map is what to drop.
     while (userCache.size >= MAX_USER_CACHE_SIZE) {
         userCache.delete(userCache.keys().next().value);
         cleaned++;
@@ -87,17 +74,15 @@ function cleanupUserCache() {
 }
 
 /**
- * Check if a user has exceeded their rate limit for a specific action
- * @param {string} userId - The Discord user ID
- * @param {string} action - The action type (follow, unfollow, etc.)
+ * @param {string} userId
+ * @param {string} action - One bucket per action
  * @param {number} limit - Maximum actions allowed per minute
- * @returns {Object} - { allowed: boolean, retryAfter: number }
+ * @returns {{allowed: boolean, retryAfter: number}} - retryAfter is in seconds
  */
 export function checkRateLimit(userId, action, limit) {
     const now = Date.now();
     const oneMinuteAgo = now - 60000;
-    
-    // Initialize or get existing action history for user
+
     if (!userActionRateLimits.has(userId)) {
         userActionRateLimits.set(userId, {});
     }
@@ -108,24 +93,18 @@ export function checkRateLimit(userId, action, limit) {
         userActions[action] = [];
     }
     
-    // Filter out actions older than 1 minute
     userActions[action] = userActions[action].filter(timestamp => timestamp > oneMinuteAgo);
-    
-    // Check if limit exceeded
+
     if (userActions[action].length >= limit) {
         const oldestAction = userActions[action][0];
         const retryAfter = Math.ceil((oldestAction + 60000 - now) / 1000);
         return { allowed: false, retryAfter };
     }
     
-    // Record this action
     userActions[action].push(now);
     return { allowed: true, retryAfter: 0 };
 }
 
-/**
- * Clear rate limit map periodically to prevent memory leaks
- */
 function cleanupRateLimits() {
     if (userActionRateLimits.size === 0) return;
     
@@ -148,9 +127,9 @@ function cleanupRateLimits() {
         }
     }
     
-    // Enforce maximum size with LRU eviction if still over limit
+    // Still over the cap: evict the users whose oldest action is oldest. No
+    // recency ordering here, unlike userCache, so this has to sort.
     if (userActionRateLimits.size >= MAX_RATE_LIMIT_MAP_SIZE) {
-        // Find users with oldest action timestamps
         const userTimestamps = [];
         for (const [userId, actions] of userActionRateLimits.entries()) {
             let oldestTs = Infinity;
@@ -164,7 +143,6 @@ function cleanupRateLimits() {
             }
         }
         
-        // Sort by oldest timestamp and remove oldest users
         userTimestamps.sort((a, b) => a.oldestTs - b.oldestTs);
         const toDelete = userTimestamps.slice(0, userActionRateLimits.size - MAX_RATE_LIMIT_MAP_SIZE + 100);
         for (const { userId } of toDelete) {
@@ -179,11 +157,10 @@ function cleanupRateLimits() {
 }
 
 /**
- * Check whether a recipient is inside their DM refusal cooldown.
  * Prunes an expired entry as it reads it, so a user who reopens their DMs is
  * eligible again on the next map change rather than at the next sweep.
- * @param {string} userId - The Discord user ID
- * @returns {boolean} - Whether DMs to this user should be skipped for now
+ * @param {string} userId
+ * @returns {boolean}
  */
 export function isDmRefused(userId) {
     const refusedAt = dmRefusals.get(userId);
@@ -198,12 +175,12 @@ export function isDmRefused(userId) {
 }
 
 /**
- * Record that Discord refused a DM to this user, starting their cooldown.
- * @param {string} userId - The Discord user ID
+ * Records a refused DM and starts the user's cooldown.
+ * @param {string} userId
  */
 export function markDmRefused(userId) {
-    // Re-inserting keeps Map insertion order equal to recency order, so the first
-    // key is always the oldest refusal and eviction is O(1) rather than a scan.
+    // Same delete-then-set idiom as getCachedUser: insertion order stays recency
+    // order, so the first key is the oldest refusal.
     dmRefusals.delete(userId);
 
     if (dmRefusals.size >= MAX_DM_REFUSAL_SIZE) {
@@ -213,9 +190,7 @@ export function markDmRefused(userId) {
     dmRefusals.set(userId, Date.now());
 }
 
-/**
- * Drop expired refusals for users who never come up in a fanout again
- */
+/** Drops expired refusals for users who never come up in a fanout again. */
 function cleanupDmRefusals() {
     if (dmRefusals.size === 0) return;
 
@@ -233,25 +208,16 @@ function cleanupDmRefusals() {
     }
 }
 
-/**
- * Store cleanup interval references for proper shutdown
- * @type {NodeJS.Timeout[]}
- */
+/** @type {NodeJS.Timeout[]} */
 let cleanupIntervalRefs = [];
 
-/**
- * Start cleanup intervals for cache and rate limits.
- * The handles stay module-private; clearCleanupIntervals is what cancels them.
- */
+/** Handles stay module-private; clearCleanupIntervals is what cancels them. */
 export function startCleanupIntervals() {
-    cleanupIntervalRefs.push(setInterval(cleanupUserCache, 300000)); // 5 minutes
-    cleanupIntervalRefs.push(setInterval(cleanupRateLimits, 300000)); // 5 minutes
-    cleanupIntervalRefs.push(setInterval(cleanupDmRefusals, 300000)); // 5 minutes
+    cleanupIntervalRefs.push(setInterval(cleanupUserCache, CLEANUP_INTERVAL_MS));
+    cleanupIntervalRefs.push(setInterval(cleanupRateLimits, CLEANUP_INTERVAL_MS));
+    cleanupIntervalRefs.push(setInterval(cleanupDmRefusals, CLEANUP_INTERVAL_MS));
 }
 
-/**
- * Clear all cleanup intervals
- */
 export function clearCleanupIntervals() {
     cleanupIntervalRefs.forEach(id => clearInterval(id));
     cleanupIntervalRefs = [];

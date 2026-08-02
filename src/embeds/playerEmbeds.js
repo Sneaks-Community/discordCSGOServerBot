@@ -1,41 +1,30 @@
-/**
- * Player embed builders
- * Creates Discord embeds for player lists
- */
-
 import { CONFIG_VALUES } from "../config/index.js";
 import { escapeForDiscord, escapeLines } from "../utils/discordEscape.js";
 import { EMBED_DESCRIPTION_LIMIT, joinWithinLimit } from "../utils/truncate.js";
 import { createBaseEmbed } from "./baseEmbed.js";
 
 /**
- * Create a player list embed for a server
- * @param {Object} server - The server data object
- * @returns {EmbedBuilder} - The Discord embed
+ * @param {object} server - One entry from the serverService snapshot
+ * @returns {import('discord.js').EmbedBuilder}
  */
 export function playerListEmbed(server) {
     let embed;
 
     if (server.online) {
-        // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
         embed = createBaseEmbed(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${escapeForDiscord(server.name)} on ${escapeForDiscord(server.map)}`);
 
-        // Generate a list of player names and escape them properly
-        // Use centralized escapeLines which applies escapeForDiscord to each item.
-        // A full 64-slot server with long names can exceed the 4096 character
-        // description limit, which would reject the whole reply, so bound it.
+        // A full 64-slot server with long names can pass the 4096 character
+        // description limit, which would reject the whole reply.
         const allPlayerNames = [
             ...server.players.map((player) => player.name),
             ...server.bots.map((bot) => bot.name)
         ];
         const list = joinWithinLimit(escapeLines(allPlayerNames), EMBED_DESCRIPTION_LIMIT);
 
-        // An empty description is rejected by the embed builder, and an online
-        // server with nobody on it is perfectly normal.
+        // The embed builder rejects an empty description, and an online server
+        // with nobody on it is normal.
         embed.setDescription(list || "No players connected.");
     } else {
-        // Create an embed for the offline server
-        // Use centralized escapeForDiscord for server name
         embed = createBaseEmbed(`${escapeForDiscord(server.name)} is currently unavailable.`)
             .setImage(CONFIG_VALUES.OFFLINE_SERVER_IMAGE);
     }
@@ -44,15 +33,12 @@ export function playerListEmbed(server) {
 }
 
 /**
- * Create a server list embed for public commands
- * @param {Object} serverData - The server data object
- * @returns {EmbedBuilder} - The Discord embed
+ * @param {object} serverData - The full serverService snapshot
+ * @returns {import('discord.js').EmbedBuilder}
  */
 export function makeServerList(serverData) {
-    // Create a server list embed for public commands
     const embed = createBaseEmbed("Please specify what server you want to check.");
 
-    // Generate the server list with proper escaping, bounded to the description limit
     const lines = Object.values(serverData)
         .map((server) => {
             const escapedName = escapeForDiscord(server.name);

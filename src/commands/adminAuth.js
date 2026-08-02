@@ -1,34 +1,31 @@
 /**
- * Admin authorization for slash commands.
  * Separate from the dispatcher so /help can ask the same question when deciding
- * whether to list the admin commands, and so there is only one answer to it.
+ * what to list, and get the same answer.
  */
 
 import { PermissionFlagsBits } from "discord.js";
 
 import { config } from "../config/index.js";
 
-// Admin role ID from config. envSchema guarantees a snowflake or "" (disabled).
+// envSchema guarantees a snowflake, or "" (disabled) for the role.
 const adminRoleId = config.security.adminRoleId;
-
-// The one guild this instance serves. envSchema guarantees a snowflake.
 const primaryGuildID = config.discord.guildID;
 
 /**
- * Check whether the invoking member may use the admin commands.
- * Discord Administrators and the guild owner qualify as well as the configured
- * role: setDefaultMemberPermissions(0) shows the commands to exactly those two,
- * so authorizing them here stops the picker and the gate from disagreeing.
- * `interaction.member` is a GuildMember when the guild is cached, but a raw
- * APIInteractionGuildMember when it is not, and there `roles` is an array of IDs
- * with no `cache`. Handle both so an admin is never denied over a cache miss.
- * @param {Object} interaction - Discord interaction object
- * @returns {boolean} - Whether the member may use the admin commands
+ * Administrators and the guild owner qualify alongside the configured role,
+ * because setDefaultMemberPermissions(0) shows the commands to exactly those
+ * two and the picker must not disagree with the gate.
+ *
+ * `interaction.member` is a GuildMember when the guild is cached and a raw
+ * APIInteractionGuildMember when it is not, where `roles` is an array of IDs
+ * with no `cache`. Both are handled, so a cache miss never denies an admin.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * @returns {boolean}
  */
 export function hasAdminRole(interaction) {
-    // Admin commands act on the whole database, and Administrator or guild ownership
-    // is true of any guild, so only the served guild may drive them. The bot leaves
-    // every other guild, so this should be unreachable; it costs one comparison.
+    // Administrator and ownership are true of any guild, and these commands act
+    // on the whole database. Unreachable in practice, since the bot leaves every
+    // other guild, but it costs one comparison.
     if (interaction.guildId !== primaryGuildID) return false;
 
     if (interaction.memberPermissions?.has(PermissionFlagsBits.Administrator) === true) return true;

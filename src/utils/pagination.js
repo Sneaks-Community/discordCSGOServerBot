@@ -1,15 +1,8 @@
 /**
- * Button driven pagination for long embed listings.
- *
- * Listings that grow with real usage (every follow in the database, every map a
- * single user follows) will eventually exceed the 4096 character embed
- * description limit and fail the whole request. Rather than dropping rows, the
- * lines are split into pages and paged through with Discord's own message
- * components.
- *
- * The buttons are collected on the reply itself, so no global component router
- * is needed and nothing is persisted: after PAGE_IDLE_MS with no interaction the
- * collector ends and the buttons are disabled in place.
+ * Button-driven pagination, for listings that would otherwise pass the embed
+ * description limit and fail the whole request. Buttons are collected on the
+ * reply itself, so nothing is persisted and no global component router is
+ * needed; the collector ends after PAGE_IDLE_MS and disables them in place.
  */
 
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ComponentType, MessageFlags } from "discord.js";
@@ -21,10 +14,8 @@ import { EMBED_DESCRIPTION_LIMIT } from "./truncate.js";
 /** Stop listening after this long without a button press. */
 const PAGE_IDLE_MS = 120_000;
 
-/**
- * Hard stop for the collector. An interaction token is only valid for 15
- * minutes, after which the buttons cannot be disabled any more.
- */
+// Inside the 15 minute interaction token, after which the buttons can no longer
+// be disabled.
 const PAGE_MAX_MS = 14 * 60 * 1000;
 
 /** Lines per page, so a page stays readable well before the character limit. */
@@ -35,11 +26,10 @@ const NEXT_ID = "page:next";
 const COUNTER_ID = "page:counter";
 
 /**
- * Split lines into page-sized description strings.
- * @param {string[]} lines - Lines to split
- * @param {Object} [options] - Options
- * @param {number} [options.limit] - Character limit per page
- * @param {number} [options.maxLines] - Line limit per page
+ * @param {string[]} lines
+ * @param {object} [options]
+ * @param {number} [options.limit] - Character budget per page
+ * @param {number} [options.maxLines] - Line budget per page
  * @returns {string[]} One description string per page
  */
 export function paginateLines(lines, { limit = EMBED_DESCRIPTION_LIMIT, maxLines = MAX_LINES_PER_PAGE } = {}) {
@@ -71,19 +61,17 @@ export function paginateLines(lines, { limit = EMBED_DESCRIPTION_LIMIT, maxLines
 }
 
 /**
- * Reply to an interaction with a listing, paginated if it does not fit one embed.
- *
- * A single page is sent as a plain embed with no components; only a genuine
- * overflow adds buttons.
- * @param {Object} interaction - Discord interaction object
- * @param {Object} options - Options
- * @param {boolean} [options.ephemeral] - Whether the reply is only visible to the invoker
+ * A single page is a plain embed with no components; only a real overflow adds
+ * buttons.
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction
+ * @param {object} options
+ * @param {boolean} [options.ephemeral]
  * @param {string[]} options.lines - The listing, one entry per line
- * @param {string} options.title - Embed title
+ * @param {string} options.title
  * @returns {Promise<void>}
  */
 export async function replyWithPagedEmbed(interaction, { ephemeral = false, lines, title }) {
-    // An embed description may not be empty, so an empty listing still needs a body.
+    // An embed description may not be empty, so an empty listing needs a body.
     const pages = paginateLines(lines);
     if (pages.length === 0) {
         pages.push("*Nothing to show.*");
@@ -128,8 +116,8 @@ export async function replyWithPagedEmbed(interaction, { ephemeral = false, line
     let page = 0;
     const response = await interaction.reply({ components: [buildRow(page)], embeds: [buildEmbed(page)], flags });
 
-    // Collecting on the interaction response matches on the interaction's own id,
-    // so this works for ephemeral replies where there is no cached message.
+    // Collecting on the response matches the interaction's own id, so this works
+    // for ephemeral replies, where there is no cached message.
     const collector = response.createMessageComponentCollector({
         componentType: ComponentType.Button,
         idle: PAGE_IDLE_MS,

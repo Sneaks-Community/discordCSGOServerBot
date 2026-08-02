@@ -1,8 +1,3 @@
-/**
- * Follow-related slash command handlers
- * Handles /follow, /unfollow, and /listfollows commands
- */
-
 import { MessageFlags } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
@@ -14,16 +9,15 @@ import { commandLogger } from "../utils/logger.js";
 import { replyWithPagedEmbed } from "../utils/pagination.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
+/** @typedef {import('discord.js').ChatInputCommandInteraction} Interaction */
+/** @typedef {import('discord.js').InteractionResponse} Reply */
+
 /**
- * Validate the invoking user's Discord ID, answering the interaction if it is
- * unusable. Every follow command needs the ID before it can do anything, so the
- * caller only has to check for null.
- *
- * Module-private: nothing outside this file validates the invoker, and the admin
- * commands validate an ID typed as a command option instead, which is a
- * different check with a different failure message.
- * @param {Object} interaction - Discord interaction object
- * @returns {Promise<?string>} - The validated ID, or null if the user was replied to
+ * Validates the invoker's ID, replying itself if it is unusable, so callers only
+ * have to check for null. Not shared with the admin commands: those validate an
+ * ID typed as an option, a different check with a different message.
+ * @param {Interaction} interaction
+ * @returns {Promise<?string>} - The validated ID, or null if already replied to
  */
 async function resolveUserId(interaction) {
     const result = validateWithZod(discordIdSchema, interaction.user.id, "User ID");
@@ -34,13 +28,13 @@ async function resolveUserId(interaction) {
 }
 
 /**
- * Apply a per-minute rate limit, answering the interaction when the user is over it.
- * @param {Object} interaction - Discord interaction object
- * @param {Object} options - Options
+ * Replies itself when the user is over the limit.
+ * @param {Interaction} interaction
+ * @param {object} options
  * @param {string} options.action - Rate limit key, one bucket per action
- * @param {string} options.gerund - How the action reads in "before ... another map"
- * @param {number} options.limit - Allowed invocations per minute
- * @param {string} options.userId - The validated invoker ID the bucket is keyed on
+ * @param {string} options.gerund - Reads as "before ... another map"
+ * @param {number} options.limit
+ * @param {string} options.userId
  * @returns {Promise<boolean>} - Whether the command may proceed
  */
 async function enforceRateLimit(interaction, { action, gerund, limit, userId }) {
@@ -52,8 +46,8 @@ async function enforceRateLimit(interaction, { action, gerund, limit, userId }) 
 }
 
 /**
- * Handle /follow slash command
- * @param {Object} interaction - Discord interaction object
+ * @param {Interaction} interaction
+ * @returns {Promise<void|Reply>} - Early returns carry the reply; no caller reads it
  */
 export async function handleSlashFollow(interaction) {
     const rawMap = interaction.options.getString("map");
@@ -69,7 +63,7 @@ export async function handleSlashFollow(interaction) {
     });
     if (!withinLimit) return;
 
-    // Validate map name using Zod v4 schema (includes lowercase transform)
+    // The schema lowercases, which is the casing follows are stored under.
     const mapValidation = validateWithZod(mapNameSchema, rawMap, "Map name");
     if (!mapValidation.valid) {
         return interaction.reply({ content: mapValidation.error, flags: MessageFlags.Ephemeral });
@@ -80,10 +74,8 @@ export async function handleSlashFollow(interaction) {
         return interaction.reply({ content: "You are already following this map.", flags: MessageFlags.Ephemeral });
     }
 
-    // Lifetime cap, checked after the duplicate test so re-following a map already
-    // on the list can never be refused. The per-minute rate limit only paces
-    // follows; this is what actually bounds one user's rows, list length and
-    // notification fanout.
+    // Lifetime cap, checked after the duplicate test so re-following a map
+    // already on the list can never be refused.
     const followCount = countUserFollows(sanitizedUserId);
     if (followCount >= CONFIG_VALUES.MAX_FOLLOWS_PER_USER) {
         return interaction.reply({
@@ -100,8 +92,8 @@ export async function handleSlashFollow(interaction) {
 }
 
 /**
- * Handle /unfollow slash command
- * @param {Object} interaction - Discord interaction object
+ * @param {Interaction} interaction
+ * @returns {Promise<void|Reply>} - Early returns carry the reply; no caller reads it
  */
 export async function handleSlashUnfollow(interaction) {
     const rawMap = interaction.options.getString("map");
@@ -117,13 +109,12 @@ export async function handleSlashUnfollow(interaction) {
     });
     if (!withinLimit) return;
 
-    // "all" is a special keyword that bypasses map name validation
+    // "all" bypasses map name validation.
     if (rawMap === "all") {
         unfollowAll(sanitizedUserId);
         await interaction.reply({ content: "You are no longer following any maps.", flags: MessageFlags.Ephemeral });
         commandLogger.info({ userId: sanitizedUserId, username: interaction.user.tag }, "User unfollowed all maps");
     } else {
-        // Validate map name using Zod v4 schema (includes lowercase transform)
         const mapValidation = validateWithZod(mapNameSchema, rawMap, "Map name");
         if (!mapValidation.valid) {
             return interaction.reply({ content: mapValidation.error, flags: MessageFlags.Ephemeral });
@@ -141,8 +132,8 @@ export async function handleSlashUnfollow(interaction) {
 }
 
 /**
- * Handle /listfollows slash command
- * @param {Object} interaction - Discord interaction object
+ * @param {Interaction} interaction
+ * @returns {Promise<void|Reply>} - Early returns carry the reply; no caller reads it
  */
 export async function handleSlashListfollows(interaction) {
     const sanitizedUserId = await resolveUserId(interaction);
@@ -154,8 +145,8 @@ export async function handleSlashListfollows(interaction) {
         return interaction.reply({ content: "You are not following any maps.", flags: MessageFlags.Ephemeral });
     }
 
-    // Until follows are capped per user this list is unbounded, so page it rather
-    // than risk a rejected reply once it passes the description limit.
+    // Paged: MAX_FOLLOWS_PER_USER still allows a list past the embed description
+    // limit, which would reject the whole reply.
     const lines = follows.map((follow) => escapeForDiscord(follow.map_name));
 
     await replyWithPagedEmbed(interaction, {

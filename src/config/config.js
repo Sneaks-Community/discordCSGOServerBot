@@ -1,45 +1,35 @@
-/**
- * Configuration module - reads from validated environment variables
- * Builds a config object compatible with the previous config.json structure
- */
-
 import { ACTIVITY_TYPE_BY_NAME, parseEnv } from "../schemas/envSchema.js";
 
 const { errors, values: env, warnings } = parseEnv();
 
 /**
- * Environment validation failures, in the order the variables are declared.
- * Reported and acted on by validateConfig(); non-empty means every value below
- * has fallen back to its default and must not be trusted.
+ * Acted on by validateConfig(). Non-empty means every value below has fallen
+ * back to its default and must not be trusted.
  * @type {string[]}
  */
 export const ENV_ERRORS = errors;
 
 /**
  * Optional variables left empty, each naming the feature it disables.
- * Reported by validateConfig(); harmless, but worth saying out loud at startup.
  * @type {string[]}
  */
 export const ENV_WARNINGS = warnings;
 
 /**
- * Convert seconds to milliseconds
- * @param {number} seconds - Seconds
- * @returns {number} Milliseconds
+ * @param {number} seconds
+ * @returns {number}
  */
 function toMs(seconds) {
     return seconds * 1000;
 }
 
 /**
- * Build the base configuration object from the validated environment.
- * Every value here has already been range-checked by envSchema, so consumers
- * can treat them as trusted: numbers are whole and in range, IDs are snowflakes
- * or empty, and URLs are absolute http(s).
+ * envSchema has already range-checked everything here, so consumers can treat
+ * these as trusted: whole in-range numbers, snowflake-or-empty IDs, absolute
+ * http(s) URLs.
  */
 const baseConfig = {
-    // The bot's presence. `type` is already the discord.js ActivityType, so the
-    // name-to-type mapping lives in one place; empty `text` means show nothing.
+    // `type` is already the discord.js ActivityType; empty `text` shows nothing.
     activity: {
         text: env.BOT_ACTIVITY_TEXT,
         type: ACTIVITY_TYPE_BY_NAME[env.BOT_ACTIVITY_TYPE]
@@ -93,9 +83,7 @@ const baseConfig = {
     }
 };
 
-/**
- * Configuration values with milliseconds conversion
- */
+/** The flat view consumers read, with every duration already in milliseconds. */
 export const CONFIG_VALUES = {
     EMBED_COLOR: baseConfig.embedsConfig.color,
     EMBED_UPDATE_INTERVAL_MS: toMs(baseConfig.serverUpdate.intervalSeconds),
@@ -113,5 +101,4 @@ export const CONFIG_VALUES = {
     USER_CACHE_TTL: toMs(baseConfig.cache.userCacheTTLSeconds)
 };
 
-// Export the base config as the primary config
 export const config = baseConfig;

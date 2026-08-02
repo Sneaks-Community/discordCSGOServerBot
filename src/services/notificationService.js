@@ -1,8 +1,3 @@
-/**
- * Notification service
- * Handles sending notifications to users when maps change
- */
-
 import pLimit from "p-limit";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
@@ -17,21 +12,19 @@ import { withRetry } from "../utils/retry.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 import { checkRateLimit, getCachedUser, isDmRefused, markDmRefused } from "./cacheService.js";
 
-// Store bot reference for fallback notifications
 let botInstance = null;
 
 // Per user per map per minute. Not configurable: above 1 just means sending the
 // duplicate. The overall ceiling is RATE_LIMIT_NOTIFICATION_PER_MINUTE.
 const NOTIFICATION_MAX_PER_MAP = 1;
 
-// Concurrent DM sends per map change. Not configurable: discord.js's REST queue is
-// the real throttle, so a larger number would only queue deeper, not send faster.
+// Concurrent DM sends per map change. Not configurable: discord.js's REST queue
+// is the real throttle, so a larger number only queues deeper.
 const NOTIFICATION_CONCURRENCY = 5;
 
 /**
- * What became of one recipient's DM. Only the last two are undeliverable and
- * reach the fallback channel; a suppressed duplicate is a deliberate drop.
- * @type {Readonly<Object<string, string>>}
+ * What became of one recipient's DM. Only `failed` and `refused` reach the
+ * fallback channel; a suppressed duplicate is a deliberate drop.
  */
 const DELIVERY = Object.freeze({
     delivered: "delivered",
@@ -40,36 +33,31 @@ const DELIVERY = Object.freeze({
     suppressed: "suppressed"
 });
 
-/**
- * Initialize the notification service with bot instance
- * @param {Object} bot - The Discord bot client
- */
+/** @param {import('discord.js').Client} bot */
 export function initNotificationService(bot) {
     botInstance = bot;
 }
 
 /**
- * Send notifications to users following a map
  * @param {string} map - The map name as reported by the game server
- * @param {Object} serverObj - The server object with player info
- * @param {Object} [bot] - The Discord bot client (defaults to the instance set via initNotificationService)
+ * @param {object} serverObj - The server the change happened on
+ * @param {import('discord.js').Client} [bot] - Defaults to the client set via
+ *   initNotificationService
+ * @returns {Promise<void>}
  */
 export async function notifyUsers(map, serverObj, bot = botInstance) {
     const server = serverObj?.nick ?? "unknown server";
 
-    // gamedig's connect address when the caller has one: the configured ip may omit
-    // the port, and steam://connect needs the port the game actually listens on.
+    // gamedig's connect address when there is one: the configured ip may omit the
+    // port, and steam://connect needs the port the game actually listens on.
     const ip = serverObj?.fullIP ?? serverObj?.ip ?? "unknown IP";
 
-    // Strip any workshop path ("workshop/123456/surf_xyz" -> "surf_xyz") so lookups,
-    // messages and image URLs all use the bare map name. Normally already done in
-    // getInfo; repeated here because this is also reachable from /testnotify.
+    // Normally already done in getInfo, repeated because /testnotify reaches here.
     const mapName = normalizeMapName(map);
 
-    // Map names come from the game server, so they can still be values the follow
-    // schema rejects. Nobody can be following such a map, since /follow validates
-    // against the same schema, so treat it as "no followers" rather than throwing:
-    // an escaping throw would stall map-change detection for this server entirely.
+    // Game servers can report names the follow schema rejects, and nobody can be
+    // following one of those. Treated as "no followers" rather than thrown: an
+    // escaping throw would stall map-change detection for this server.
     const validatedMap = validateWithZod(mapNameSchema, mapName, "notifyUsers/map");
     if (!validatedMap.valid) {
         serviceLogger.debug({ map: mapName, reason: validatedMap.error, server }, "Skipping notifications for unfollowable map name");
@@ -78,13 +66,13 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
 
     const followers = getUsersFollowingMap(validatedMap.data);
 
-    // Drop recipients still inside a refusal cooldown before the cap is applied, so
-    // the fanout budget is spent on people who can actually receive a DM.
+    // Dropped before the cap, so the fanout budget goes to people who can
+    // actually receive a DM.
     const deliverable = followers.filter((follower) => !isDmRefused(follower.discord_id));
     const inCooldown = followers.length - deliverable.length;
 
-    // Bound the fanout per event, and say so when it bites: a map that suddenly has
-    // hundreds of followers is worth seeing in the log rather than discovering later.
+    // Logged when it bites: a map that suddenly has hundreds of followers should
+    // be visible rather than discovered later.
     const recipients = deliverable.slice(0, CONFIG_VALUES.MAX_NOTIFICATION_RECIPIENTS);
     if (recipients.length < deliverable.length) {
         serviceLogger.warn(
@@ -99,20 +87,18 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
         );
     }
 
-    // Loop-invariant, so built once per event rather than once per recipient. Uses the
-    // validated lowercase name, matching the casing follows are stored under.
+    // Built once per event, from the validated lowercase name that follows are
+    // stored under.
     const mapImage = getMapImage(validatedMap.data);
 
     const event = { bot, ip, mapImage, mapName, server, serverObj, validatedMapName: validatedMap.data };
 
-    // Concurrency is about our own wall clock, not about protecting Discord: the REST
-    // queue in discord.js already enforces the 50 requests/second global limit and
-    // sleeps on a 429. Serially awaiting each DM could occupy this loop for minutes.
+    // This is about our own wall clock, not about protecting Discord: discord.js's
+    // REST queue already enforces the global rate limit and sleeps on a 429.
     const limit = pLimit(NOTIFICATION_CONCURRENCY);
     const outcomes = await Promise.all(recipients.map((user) => limit(() => deliverNotification(user, event))));
 
-    // One fallback message per map change, not one per failing recipient: ten
-    // followers with closed DMs used to post ten identical messages to the channel.
+    // One fallback message per map change, not one per failing recipient.
     const undeliverable = tallyUndeliverable(outcomes, inCooldown);
     if (undeliverable.total > 0) {
         await sendFallbackNotification(event, undeliverable);
@@ -120,10 +106,9 @@ export async function notifyUsers(map, serverObj, bot = botInstance) {
 }
 
 /**
- * Count the recipients this map change could not reach.
  * @param {string[]} outcomes - One DELIVERY value per attempted recipient
- * @param {number} inCooldown - Recipients skipped before the attempt, still in cooldown
- * @returns {{failed: number, inCooldown: number, refused: number, total: number}} - Undeliverable tally
+ * @param {number} inCooldown - Recipients skipped before the attempt
+ * @returns {{failed: number, inCooldown: number, refused: number, total: number}}
  */
 function tallyUndeliverable(outcomes, inCooldown) {
     const failed = outcomes.filter((outcome) => outcome === DELIVERY.failed).length;
@@ -133,10 +118,14 @@ function tallyUndeliverable(outcomes, inCooldown) {
 }
 
 /**
- * Describe the undeliverable tally in one line, so the channel message says who
- * missed out rather than only repeating the announcement.
- * @param {{failed: number, inCooldown: number, refused: number, total: number}} undeliverable - Tally from tallyUndeliverable
- * @returns {string} - A sentence naming the counts
+ * One line, so the channel message says who missed out rather than only
+ * repeating the announcement.
+ * @param {object} undeliverable - Tally from tallyUndeliverable
+ * @param {number} undeliverable.failed
+ * @param {number} undeliverable.inCooldown
+ * @param {number} undeliverable.refused
+ * @param {number} undeliverable.total
+ * @returns {string}
  */
 function describeUndeliverable({ failed, inCooldown, refused, total }) {
     const parts = [];
@@ -148,10 +137,13 @@ function describeUndeliverable({ failed, inCooldown, refused, total }) {
 }
 
 /**
- * Build the embed announcing a map change. The DM and the fallback message show the
- * same thing, so both call this.
- * @param {Object} event - Loop-invariant event details shared by every recipient
- * @returns {EmbedBuilder} - The embed to send
+ * The DM and the fallback message show the same thing, so both call this.
+ * @param {object} event - Loop-invariant details shared by every recipient
+ * @param {string|false} event.mapImage
+ * @param {string} event.mapName
+ * @param {string} event.server
+ * @param {object} event.serverObj
+ * @returns {import('discord.js').EmbedBuilder}
  */
 function buildMapNotificationEmbed({ mapImage, mapName, server, serverObj }) {
     const embed = createBaseEmbed(`${mapName} is now on ${server}`)
@@ -165,27 +157,27 @@ function buildMapNotificationEmbed({ mapImage, mapName, server, serverObj }) {
 }
 
 /**
- * Build the message content announcing a map change, carrying the connect link that
- * an embed cannot make clickable.
- * @param {Object} event - Loop-invariant event details shared by every recipient
- * @returns {string} - The message content
+ * Carries the connect link, which an embed cannot make clickable.
+ * @param {object} event - Loop-invariant details shared by every recipient
+ * @param {string} event.ip
+ * @param {string} event.mapName
+ * @param {string} event.server
+ * @returns {string}
  */
 function buildNotificationContent({ ip, mapName, server }) {
     return `${mapName} is now on ${server}!\nsteam://connect/${ip}`;
 }
 
 /**
- * Deliver one notification. Reports its outcome rather than throwing, so one bad
- * recipient cannot abandon the rest of the fanout, and notifyUsers can send a
- * single fallback message covering everyone it could not reach.
- * @param {Object} user - Follow row with a discord_id
- * @param {Object} event - Loop-invariant event details shared by every recipient
+ * Reports its outcome rather than throwing, so one bad recipient cannot abandon
+ * the rest of the fanout.
+ * @param {object} user - Follow row with a discord_id
+ * @param {object} event - Loop-invariant details shared by every recipient
  * @returns {Promise<string>} - One of the DELIVERY values
  */
 async function deliverNotification(user, event) {
     const { bot, mapName, server, validatedMapName } = event;
 
-    // Fetch user first to ensure we have a valid reference
     let u;
     try {
         u = await getCachedUser(user.discord_id, bot);
@@ -222,10 +214,8 @@ async function deliverNotification(user, event) {
             return DELIVERY.suppressed;
         }
 
-        // Send the direct message to the user with proper error handling.
-        // allowedMentions denies every mention type: the map name and server nick
-        // come from the game server, and escapeForDiscord neutralizes markdown but
-        // not "@", so nothing here should ever be able to ping.
+        // Mentions denied: the map name and server nick come from the game
+        // server, and escapeForDiscord neutralizes markdown but not "@".
         await u.send({
             allowedMentions: { parse: [] },
             content: buildNotificationContent(event),
@@ -235,14 +225,12 @@ async function deliverNotification(user, event) {
         serviceLogger.info({ map: mapName, userId: u.id, username: u.tag }, "Sent notification");
         return DELIVERY.delivered;
     } catch (e) {
-        // Handle failed DM (user may have DMs disabled or other issues). A refusal is
-        // a property of the recipient, so it is never worth another attempt.
         const userId = u?.id || user.discord_id;
         const reason = getTerminalReason(e);
 
         if (isRecipientRefusal(e)) {
-            // Remembered, so the next map change skips them instead of spending
-            // another refused call on a state only the recipient can change.
+            // A refusal belongs to the recipient and only they can change it, so
+            // remember it and skip them until the cooldown expires.
             markDmRefused(userId);
             serviceLogger.warn({ err: e, map: mapName, userId }, `DM refused by Discord, skipping this recipient until the cooldown expires. ${reason}`);
             return DELIVERY.refused;
@@ -259,14 +247,11 @@ async function deliverNotification(user, event) {
 }
 
 /**
- * Resolve the configured fallback channel, fetching it when the cache misses.
- *
- * The cache is only populated for channels the gateway has told us about, so a
- * cache-only lookup fails permanently after a restart until something happens in
- * that channel. fetch() fills the cache and raises Unknown Channel (10003) for a
- * wrong ID, which isRetryableDiscordError already classifies as terminal.
- * @param {Object} bot - The Discord client to resolve through
- * @returns {Promise<Object>} - The resolved channel
+ * Fetches on a cache miss: the cache only holds channels the gateway has
+ * mentioned, so a cache-only lookup fails permanently after a restart until
+ * something happens in that channel.
+ * @param {import('discord.js').Client} bot
+ * @returns {Promise<object>} - The resolved channel
  * @throws {TerminalError} If the channel does not resolve, or is in another guild
  */
 async function resolveFallbackChannel(bot) {
@@ -281,9 +266,8 @@ async function resolveFallbackChannel(bot) {
         );
     }
 
-    // The bot serves one guild, so the channel has to be in it. Still checked rather
-    // than assumed: fetch() also resolves DM channels, and an ID left over from a
-    // guild the bot has since left would otherwise fail further in.
+    // Checked rather than assumed: fetch() also resolves DM channels, and an ID
+    // left over from a guild the bot has since left would fail further in.
     const channelGuildID = channel.guildId ?? channel.guild?.id;
     if (channelGuildID !== guildID) {
         throw new TerminalError(
@@ -296,26 +280,25 @@ async function resolveFallbackChannel(bot) {
 }
 
 /**
- * Send the one fallback message for a map change, covering every recipient it
- * could not reach.
- * @param {Object} event - The same event details deliverNotification received
- * @param {{failed: number, inCooldown: number, refused: number, total: number}} undeliverable - Tally from tallyUndeliverable
+ * The one message per map change covering every recipient it could not reach.
+ * @param {object} event - Loop-invariant details shared by every recipient
+ * @param {{failed: number, inCooldown: number, refused: number, total: number}} undeliverable
+ * @returns {Promise<void>}
  */
 async function sendFallbackNotification(event, undeliverable) {
-    // Uses the client threaded through from notifyUsers rather than the module-level
-    // botInstance, so an explicitly passed client is honoured.
+    // The client threaded through from notifyUsers, not module-level botInstance,
+    // so an explicitly passed client is honoured.
     const { bot, mapName } = event;
 
-    // Nothing to fall back to, so there is nothing to retry. Without this an
-    // unconfigured fallback costs three retried "channel not found" throws, with
-    // backoff, for every recipient whose DM failed, which dominated the fanout.
+    // Nothing to fall back to, so nothing to retry. Without this an unconfigured
+    // fallback costs three retried throws, with backoff, per failed DM.
     if (!config.fallback.channelID) {
         serviceLogger.debug({ map: mapName, undeliverable: undeliverable.total }, "No fallback channel configured, skipping fallback notification");
         return;
     }
 
-    // Only reachable if initNotificationService was never called and no client was
-    // passed; without this the retries would be three TypeErrors deep in withRetry.
+    // Only reachable if initNotificationService was never called and no client
+    // was passed; otherwise the retries are three TypeErrors deep in withRetry.
     if (!bot) {
         serviceLogger.error({ map: mapName }, "No Discord client available, skipping fallback notification");
         return;
@@ -324,8 +307,7 @@ async function sendFallbackNotification(event, undeliverable) {
     try {
         await withRetry(async () => {
             const channel = await resolveFallbackChannel(bot);
-            // Validate permissions before sending. Terminal: another attempt cannot
-            // grant the bot a permission it does not have.
+            // Terminal: another attempt cannot grant a missing permission.
             const permCheck = validateChannelForSend(channel);
             if (!permCheck.valid) {
                 throw new TerminalError(
@@ -333,8 +315,8 @@ async function sendFallbackNotification(event, undeliverable) {
                     `${permCheck.error} in the fallback channel ${config.fallback.channelID}; grant the bot those permissions there`
                 );
             }
-            // Same reasoning as the DM, and it matters more here: this goes to a
-            // channel, so an @everyone slipping through would reach the whole guild.
+            // As with the DM, and it matters more here: an @everyone slipping
+            // through would reach the whole guild.
             await channel.send({
                 allowedMentions: { parse: [] },
                 content: `${buildNotificationContent(event)}\n${describeUndeliverable(undeliverable)}`,

@@ -1,24 +1,15 @@
-/**
- * Retry logic with exponential backoff
- * Used for handling transient failures in async operations
- */
-
 import { CONFIG_VALUES } from "../config/index.js";
 
 /**
- * Execute a function with retry logic and exponential backoff.
- *
- * At least one attempt is always made. The attempt count is clamped rather than
- * trusted because a `maxRetries` of 0 used to skip the loop body entirely and
- * return undefined, turning every caller (embed edits, fallback notifications)
- * into a silent no-op with nothing logged. envSchema now rejects
- * RETRY_MAX_RETRIES below 1, and the clamp here keeps direct callers safe too.
- * @param {Function} fn - The async function to execute
- * @param {Object} [options] - Retry behaviour overrides
- * @param {number} [options.baseDelay] - Base delay in milliseconds between retries
- * @param {Function} [options.isRetryable] - Predicate deciding whether an error is worth another attempt; defaults to retrying everything
- * @param {number} [options.maxRetries] - Total attempts to make, clamped to at least 1
- * @returns {Promise<any>} - The result of the function
+ * Retries with exponential backoff. The attempt count is clamped, not trusted:
+ * a `maxRetries` of 0 would skip the loop and return undefined, making every
+ * caller a silent no-op.
+ * @param {Function} fn - The async operation to attempt
+ * @param {object} [options]
+ * @param {number} [options.baseDelay] - Base delay in milliseconds
+ * @param {Function} [options.isRetryable] - Defaults to retrying everything
+ * @param {number} [options.maxRetries] - Total attempts, clamped to at least 1
+ * @returns {Promise<any>}
  * @throws {any} - The error from the final attempt, or the first terminal error
  */
 export async function withRetry(fn, options = {}) {
@@ -38,8 +29,8 @@ export async function withRetry(fn, options = {}) {
             return await fn();
         } catch (error) {
             lastError = error;
-            // A permanent failure (a deleted message, a missing permission) is thrown
-            // straight back rather than retried on a growing delay, forever.
+            // A permanent failure (deleted message, missing permission) is thrown
+            // straight back rather than retried on a growing delay.
             if (i === attempts - 1 || !isRetryable(error)) break;
             // Equal jitter: half the backoff fixed, half random, so parallel retries
             // (one per configured embed) stop landing on the same tick.
@@ -48,8 +39,7 @@ export async function withRetry(fn, options = {}) {
         }
     }
 
-    // Reached only when every attempt threw, so lastError is always set. Rethrowing
-    // here rather than inside the loop guarantees the function never resolves with
-    // undefined on the failure path.
+    // Only reached when every attempt threw, so lastError is set. Rethrowing here
+    // rather than in the loop is what stops the failure path resolving undefined.
     throw lastError;
 }

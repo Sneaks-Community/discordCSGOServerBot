@@ -1,16 +1,11 @@
 /**
- * Output size helpers for Discord's hard payload limits.
- *
- * Discord rejects the entire request with an HTTP 400 when an embed description
- * exceeds 4096 characters or message content exceeds 2000, which surfaces to the
- * user as the generic "An error occurred" reply. Any listing whose length grows
- * with real usage has to be bounded before it is sent.
+ * Discord 400s the whole request when a payload passes one of these limits, and
+ * the user sees only a generic "An error occurred". Any listing that grows with
+ * real usage has to be bounded before it is sent.
  */
 
-/** Maximum length of a single embed description. */
 export const EMBED_DESCRIPTION_LIMIT = 4096;
 
-/** Maximum length of plain message content. */
 export const MESSAGE_CONTENT_LIMIT = 2000;
 
 /**
@@ -23,14 +18,13 @@ function defaultSuffix(remaining) {
 }
 
 /**
- * Join lines, stopping before `limit` and reporting what was left out.
- *
- * Non-strings and empty strings are dropped first, so callers can pass a raw
- * mapped array. The worst case notice length is reserved up front, which means
- * the notice itself can never push the result back over the limit.
+ * Joins lines, stopping before `limit` and reporting what was left out. Non- and
+ * empty strings are dropped first, so callers can pass a raw mapped array. The
+ * worst-case notice length is reserved up front, so the notice itself can never
+ * push the result back over.
  * @param {string[]} lines - Lines to join
  * @param {number} limit - Maximum length of the returned string
- * @param {Object} [options] - Options
+ * @param {object} [options] - Options
  * @param {string} [options.separator] - Separator between lines, default newline
  * @param {Function} [options.suffix] - Builds the overflow notice from a remaining count
  * @returns {string} The joined text, never longer than `limit`

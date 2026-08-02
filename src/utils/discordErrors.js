@@ -1,19 +1,14 @@
 /**
- * Classification of Discord failures into retryable and terminal.
- *
- * Retrying a permanent condition is worse than useless: the embed loop used to
- * retry "Unknown Message" three times with backoff every 90 seconds forever, and
- * the real cause never appeared in the logs as anything but a generic failure.
- * Each terminal code below carries the remediation, because these are setup
- * mistakes or per-recipient conditions rather than runtime faults.
+ * Splits Discord failures into retryable and terminal, so a permanent condition
+ * is not retried on backoff forever with only a generic failure in the log. Each
+ * terminal code carries its remediation: these are setup mistakes or recipient
+ * conditions, not runtime faults.
  */
 
 import { RESTJSONErrorCodes } from "discord.js";
 
 /**
- * DiscordAPIError codes that cannot succeed on a retry, mapped to what to do.
- * The last two are per-recipient conditions on a DM rather than setup mistakes:
- * the user has to reopen their DMs or rejoin, so nothing the bot does helps.
+ * Codes that cannot succeed on a retry, mapped to what to do about them.
  * @type {Map<number, string>}
  */
 const TERMINAL_API_CODES = new Map([
@@ -43,24 +38,23 @@ export class TerminalError extends Error {
 }
 
 /**
- * Describe why an error is terminal, if it is.
- * @param {any} error - Error from a Discord call or a pre-check
- * @returns {string|null} - Remediation hint, or null when the error is retryable
+ * @param {any} error - From a Discord call or one of our own pre-checks
+ * @returns {string|null} - Remediation hint, or null when retryable
  */
 export function getTerminalReason(error) {
     if (error instanceof TerminalError) {
         return error.hint;
     }
 
-    // DiscordAPIError exposes the API error code as a number; node's own errors
-    // use string codes, so there is nothing to disambiguate.
+    // DiscordAPIError codes are numbers and node's own are strings, so a plain
+    // lookup cannot confuse the two.
     return TERMINAL_API_CODES.get(error?.code) ?? null;
 }
 
 /**
- * The two terminal codes that describe the recipient rather than the request.
- * Separated from the rest because they are the only ones worth remembering: the
- * same user will refuse the next DM too, until they change something.
+ * The terminal codes describing the recipient rather than the request. Separate
+ * because they are the only ones worth remembering: nothing the bot does helps
+ * until the user reopens their DMs or rejoins.
  * @type {Set<number>}
  */
 const RECIPIENT_REFUSAL_CODES = new Set([
@@ -69,9 +63,9 @@ const RECIPIENT_REFUSAL_CODES = new Set([
 ]);
 
 /**
- * Whether a DM failed because of the recipient's own state.
- * @param {any} error - Error thrown by a DM attempt
- * @returns {boolean} - Whether this recipient will refuse the next DM too
+ * Whether this recipient will refuse the next DM too.
+ * @param {any} error
+ * @returns {boolean}
  */
 export function isRecipientRefusal(error) {
     return RECIPIENT_REFUSAL_CODES.has(error?.code);
@@ -79,8 +73,8 @@ export function isRecipientRefusal(error) {
 
 /**
  * Retry predicate for withRetry at any Discord call site.
- * @param {any} error - Error thrown by the attempt
- * @returns {boolean} - Whether another attempt could plausibly succeed
+ * @param {any} error
+ * @returns {boolean}
  */
 export function isRetryableDiscordError(error) {
     return getTerminalReason(error) === null;

@@ -1,16 +1,11 @@
 /**
- * Database module - main entry point
- * Re-exports all database functions for easy importing
- *
- * Every export below is synchronous: better-sqlite3 blocks the process
- * for the duration of the query, so awaiting one buys nothing and only suggests
- * a yield point that does not exist. `initDB` is the one exception.
+ * Every export here is synchronous: better-sqlite3 blocks the process for the
+ * duration of a query, so awaiting one only implies a yield point that is not
+ * there.
  */
 
-// Connection management
 export { initDB, closeDB } from "./connection.js";
 
-// Follow operations
 export {
     followMap,
     unfollowMap,

@@ -1,8 +1,3 @@
-/**
- * Discord bot client setup and event handlers
- * Main bot module that initializes and runs the Discord client
- */
-
 import Discord, { Events, GatewayIntentBits, Options } from "discord.js";
 
 import { registerSlashCommands, handleInteraction } from "./commands/index.js";
@@ -17,17 +12,14 @@ import { botLogger, flushLogs } from "./utils/logger.js";
 import { validateChannelForEdit } from "./utils/permissions.js";
 import { withRetry } from "./utils/retry.js";
 
-// Store interval references for cleanup during shutdown
 let embedInterval = null;
 
 /**
- * The configured presence, in the shape ClientOptions takes.
- *
- * Sent with the IDENTIFY payload rather than set from the ready handler: that is
- * one fewer gateway op, it leaves no window where the bot is online with no
- * status, and it is re-sent automatically on every reconnect. discord.js turns a
- * Custom activity's `name` into its `state` itself, so one field covers all types.
- * @returns {import('discord.js').PresenceData} - Presence, with no activity when the text is empty
+ * The configured presence, in the shape ClientOptions takes. Sent with IDENTIFY
+ * rather than from the ready handler, so there is no window where the bot is
+ * online with no status and it is re-sent on every reconnect. discord.js maps a
+ * Custom activity's `name` to its `state`, so one field covers every type.
+ * @returns {import('discord.js').PresenceData}
  */
 function buildPresence() {
     const { text, type } = config.activity;
@@ -35,18 +27,14 @@ function buildPresence() {
     return { activities: text ? [{ name: text, type }] : [] };
 }
 
-/**
- * How often the caches below are swept. Growth here is measured in weeks of uptime,
- * so the interval only has to be shorter than that.
- */
+// Cache growth here is measured in weeks of uptime, so hourly is ample.
 const CACHE_SWEEP_INTERVAL_SECONDS = 3600;
 
-/** How long a fetched message may sit in the cache before a sweep may drop it. */
 const MESSAGE_CACHE_LIFETIME_SECONDS = 7200;
 
 /**
- * Match every cache entry but the bot's own. A GuildMember's id is its user's id, so
- * this reads the same for the user and member caches.
+ * Matches every cache entry but the bot's own. A GuildMember's id is its user's
+ * id, so this reads the same for the user and member caches.
  * @param {{ id: string }} entry - A cached user or member
  * @returns {boolean} - Whether the entry may be swept
  */
@@ -54,10 +42,9 @@ function isNotClient(entry) {
     return entry.id !== bot.user?.id;
 }
 
-// discord.js calls a sweeper's filter once per sweep and uses the predicate it returns.
+// discord.js calls a sweeper's filter once per sweep, then uses what it returns.
 const sweepAllButClient = () => isNotClient;
 
-// Create bot client with v14 intents
 const bot = new Discord.Client({
     intents: [
         // Populates guilds/channels/roles caches, which the fallback notification
@@ -69,81 +56,60 @@ const bot = new Discord.Client({
         GatewayIntentBits.GuildMembers
     ],
     presence: buildPresence(),
-    // discord.js leaves the user and member caches unbounded and only sweeps threads
-    // by default, and nothing in this process ever releases either. Everything swept
-    // here is re-fetched on demand, so the only cost is a later cache miss. The
-    // sweeper intervals belong to discord.js and are cleared by bot.destroy().
+    // By default discord.js sweeps only threads and leaves the user and member
+    // caches unbounded. Everything swept here is re-fetched on demand, and
+    // bot.destroy() clears the intervals.
     sweepers: {
         ...Options.DefaultSweeperSettings,
-        // The bot's own member is kept because every permission check resolves the bot's
-        // permissions through guild.members.me, which returns null rather than
-        // re-fetching, and validateChannelForEdit reads that null as a missing
-        // permission and gives up on the channel for good.
+        // Keep the bot's own member: guild.members.me returns null if swept
+        // rather than re-fetching, and validateChannelForEdit reads that null as
+        // a missing permission and gives up on the channel for good.
         guildMembers: { filter: sweepAllButClient, interval: CACHE_SWEEP_INTERVAL_SECONDS },
-        // Only the embed messages are ever fetched, and they are re-fetched every tick.
+        // Only the embed messages are fetched, and they are re-fetched every tick.
         messages: { interval: CACHE_SWEEP_INTERVAL_SECONDS, lifetime: MESSAGE_CACHE_LIFETIME_SECONDS },
-        // getCachedUser fetches through bot.users and keeps its own TTL cache in front
-        // of it, so discord.js's copy here is not authoritative for anything.
+        // getCachedUser keeps its own TTL cache in front of bot.users, so this
+        // copy is not authoritative.
         users: { filter: sweepAllButClient, interval: CACHE_SWEEP_INTERVAL_SECONDS }
     }
 });
 
 /**
- * Initialize the bot and start all services.
- *
- * Rejects rather than exiting on any startup failure, including an invalid
- * configuration and a failed login, so index.js is the only place that decides
- * to end the process.
+ * Rejects rather than exiting on any startup failure, so index.js is the only
+ * place that decides to end the process.
  * @throws {ConfigError} If the configuration is unusable
  */
 export async function initBot() {
-    // Validate configuration before starting
     validateConfig();
-
-    // Initialize database before logging in
     initDB();
-
-    // Initialize notification service with bot instance
     initNotificationService(bot);
 
-    // Log in with the configured token explicitly. ClientOptions has no `token`
-    // field: discord.js ignores it and otherwise falls back to process.env.DISCORD_TOKEN,
-    // so passing it here is what actually keeps login working if the variable is ever
-    // renamed. Pino's redact paths only scrub matching keys on logged objects, so
-    // never interpolate the token into a log message.
+    // Passed explicitly: ClientOptions has no `token` field, so discord.js would
+    // otherwise fall back to process.env.DISCORD_TOKEN. Pino only redacts keys on
+    // logged objects, so never interpolate the token into a message.
     //
-    // Awaited: unawaited, initBot() resolved before login finished and a rejection
-    // (an invalid token, or disallowed intents) could never reach index.js.
+    // Awaited, or an invalid token or disallowed intents could never reach
+    // index.js: initBot() would resolve before login finished.
     await bot.login(config.discord.token);
 }
 
-/**
- * Bot ready event handler
- */
 bot.on(Events.ClientReady, async () => {
     try {
         botLogger.info("Started as " + bot.user.tag);
 
-        // Before serving anything: guilds joined while the bot was offline emit no
-        // guildCreate, so this is the only place they are caught.
+        // First: guilds joined while the bot was offline emit no guildCreate, so
+        // this is the only place they are caught.
         await enforceSingleGuild();
 
-        // Non-fatal on purpose: the commands Discord already holds from the previous run
-        // stay usable, so a 5xx or a REST timeout on this one PUT must not crash-loop the
-        // bot under the container restart policy. @discordjs/rest has already retried.
+        // Non-fatal: the commands Discord already holds stay usable, so a 5xx on
+        // this one PUT must not crash-loop the bot under the restart policy.
         try {
             await registerSlashCommands(bot);
         } catch (err) {
             botLogger.error({ err }, "Failed to register slash commands; continuing with the set Discord already has");
         }
 
-        // Start the interval function
         await intervalFunction();
-
-        // Single loop: refresh, embeds, then map-change notifications (store reference for cleanup)
         embedInterval = setInterval(intervalFunction, CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS);
-
-        // Start cleanup intervals for cache and rate limits
         startCleanupIntervals();
     } catch (err) {
         botLogger.fatal({ err }, "Failed during ready initialization");
@@ -153,9 +119,8 @@ bot.on(Events.ClientReady, async () => {
 });
 
 /**
- * Interval function: refresh server data, update embeds, then notify on map changes.
- * Map detection lives here rather than on its own timer so it always reads the
- * snapshot refresh() just wrote; two timers only drifted apart and could overlap.
+ * The single loop: refresh, update embeds, then notify on map changes. Detection
+ * shares this timer so it always reads the snapshot refresh() just wrote.
  */
 async function intervalFunction() {
     try {
@@ -168,15 +133,14 @@ async function intervalFunction() {
     const serverData = getServerData();
     const embed = makeEmbed(serverData);
 
-    // Process embeds in parallel with retry logic for faster updates
     await Promise.all(
         config.embeds.map(async (e) => {
             try {
                 await withRetry(async () => {
                     const channel = await bot.channels.fetch(e.channelID);
 
-                    // Validate permissions before editing. Terminal: a missing
-                    // permission needs an operator, not another attempt.
+                    // Terminal: a missing permission needs an operator, not
+                    // another attempt.
                     const permCheck = validateChannelForEdit(channel);
                     if (!permCheck.valid) {
                         throw new TerminalError(
@@ -186,9 +150,8 @@ async function intervalFunction() {
                     }
 
                     const message = await channel.messages.fetch(e.messageID);
-                    // Mentions denied: the embed is built from server names and map
-                    // names supplied by the game servers, and an edit re-resolves
-                    // mentions in the payload.
+                    // Mentions denied: the embed carries server and map names from
+                    // the game servers, and an edit re-resolves mentions.
                     await message.edit({ allowedMentions: { parse: [] }, content: "\u200B", embeds: [embed] });
                 }, { isRetryable: isRetryableDiscordError });
             } catch (err) {
@@ -210,10 +173,7 @@ async function intervalFunction() {
     }
 }
 
-/**
- * Leave a guild this instance does not serve.
- * @param {Object} guild - The guild to leave
- */
+/** @param {import('discord.js').Guild} guild */
 async function leaveOtherGuild(guild) {
     botLogger.warn({ guildId: guild.id, guildName: guild.name }, "Leaving a guild this instance does not serve");
 
@@ -225,10 +185,9 @@ async function leaveOtherGuild(guild) {
 }
 
 /**
- * Leave every guild but DISCORD_GUILD_ID, so one instance serves one guild.
- * Not being in the configured guild is fatal rather than another thing to fix by
- * leaving: read that way round, a typo in the ID would evict the bot from the guild
- * it actually belongs to.
+ * Leaves every guild but DISCORD_GUILD_ID, so one instance serves one guild.
+ * Missing from the configured guild is fatal, not another guild to leave: the
+ * other way round, a typo in the ID would evict the bot from its real guild.
  * @throws {Error} If the bot is not in the configured guild
  */
 async function enforceSingleGuild() {
@@ -242,9 +201,8 @@ async function enforceSingleGuild() {
 }
 
 /**
- * Decline an invite to any other guild by leaving it again.
- * discord.js emits this only for genuinely new guilds while the shard is ready, so
- * a guild coming back after an outage (guildAvailable) cannot trip it.
+ * discord.js emits this only for genuinely new guilds while the shard is ready,
+ * so a guild returning after an outage (guildAvailable) cannot trip it.
  */
 bot.on(Events.GuildCreate, (guild) => {
     if (guild.id === config.discord.guildID) {
@@ -255,9 +213,8 @@ bot.on(Events.GuildCreate, (guild) => {
 });
 
 /**
- * Handle guild member remove event - clean up follows when member leaves.
- * Scoped to the served guild: the bot is only ever in one, but an event from
- * anywhere else must not wipe follows made in this one.
+ * Cleans up a departed member's follows. Scoped to the served guild: an event
+ * from anywhere else must not wipe follows made in this one.
  */
 bot.on(Events.GuildMemberRemove, (member) => {
     if (member.guild?.id !== config.discord.guildID) {
@@ -272,25 +229,19 @@ bot.on(Events.GuildMemberRemove, (member) => {
     }
 });
 
-/**
- * Handle slash command interactions
- */
 bot.on(Events.InteractionCreate, async (interaction) => {
     await handleInteraction(interaction);
 });
 
 /**
- * Gateway lifecycle handling.
- *
- * Reconnects are observability only: the intervals keep running through one on
- * purpose. Server queries go to the game servers rather than Discord, and embed
- * edits are REST calls that do not depend on the gateway, are queued by discord.js,
- * and are already wrapped in withRetry plus a try/catch.
+ * Gateway lifecycle. The intervals keep running through a reconnect on purpose:
+ * server queries do not touch Discord, and embed edits are REST calls that
+ * discord.js queues and withRetry already covers.
  */
 bot.on(Events.ShardDisconnect, (event, shardId) => {
-    // Only emitted for unrecoverable close codes, so the shard will not come back:
-    // staying up means every embed edit and DM fails and no interaction ever arrives,
-    // while the container's restart policy never fires because nothing exited.
+    // Only emitted for unrecoverable close codes, so the shard will not return.
+    // Staying up would fail every edit and DM while the container's restart
+    // policy never fires, because nothing exited.
     botLogger.fatal({ code: event.code, shardId }, "Shard disconnected and will not reconnect");
     void gracefulShutdown(`shardDisconnect(${event.code})`, 1);
 });
@@ -311,21 +262,17 @@ bot.on(Events.ShardReady, (shardId) => {
     botLogger.info({ shardId }, "Shard ready");
 });
 
-/**
- * Longest the shutdown may take before the process exits regardless. Docker's
- * default grace period is 10s, so this stays well inside it.
- */
+// Inside Docker's 10s default grace period, so the process exits on its own terms.
 const SHUTDOWN_TIMEOUT_MS = 5000;
 
 // Set once shutdown starts, so a second signal cannot re-enter and double-close.
 let isShuttingDown = false;
 
 /**
- * Graceful shutdown handling
- * @param {string} signal - The signal that triggered the shutdown
- * @param {number} [initialExitCode] - Exit code for a shutdown that was itself caused by a
- *   failure, so a supervisor restart loop is visible as one rather than as a clean stop
- * @returns {Promise<void>} Resolves only if the process somehow survives the exit
+ * @param {string} signal - What triggered the shutdown, for the log line
+ * @param {number} [initialExitCode] - Non-zero when the shutdown was itself
+ *   caused by a failure, so a restart loop does not look like a clean stop
+ * @returns {Promise<void>}
  */
 async function gracefulShutdown(signal, initialExitCode = 0) {
     if (isShuttingDown) {
@@ -336,28 +283,26 @@ async function gracefulShutdown(signal, initialExitCode = 0) {
 
     botLogger.info(`Received ${signal}, shutting down...`);
 
-    // Hard exit so a hung destroy cannot wedge the container until Docker escalates
-    // to SIGKILL. Deliberately not unref'd: an unref'd timer lets Node exit 0 the
-    // moment the loop empties, which reports a stalled shutdown as a clean one.
+    // Hard exit so a hung destroy cannot wedge the container until Docker sends
+    // SIGKILL. Not unref'd: that would let Node exit 0 as soon as the loop
+    // empties, reporting a stalled shutdown as a clean one.
     const hardExit = setTimeout(async () => {
         botLogger.error(`Shutdown did not finish within ${SHUTDOWN_TIMEOUT_MS}ms, exiting anyway`);
         await flushLogs();
         process.exit(1);
     }, SHUTDOWN_TIMEOUT_MS);
 
-    // Clear intervals to prevent further operations
     if (embedInterval) {
         clearInterval(embedInterval);
         embedInterval = null;
     }
 
-    // Clear cleanup intervals for cache and rate limits
     clearCleanupIntervals();
 
     let exitCode = initialExitCode;
 
-    // Close the gateway instead of letting the process drop it, so discord.js stops
-    // its own sweepers and in-flight REST calls are not abandoned mid-request.
+    // Closed rather than dropped, so discord.js stops its own sweepers and
+    // in-flight REST calls are not abandoned mid-request.
     try {
         await bot.destroy();
     } catch (destroyError) {
@@ -365,7 +310,7 @@ async function gracefulShutdown(signal, initialExitCode = 0) {
         exitCode = 1;
     }
 
-    // Separate try: the database must be closed even if destroy failed, or SQLite
+    // Separate try: the database must close even if destroy failed, or SQLite
     // skips its WAL checkpoint.
     try {
         closeDB();
@@ -380,8 +325,8 @@ async function gracefulShutdown(signal, initialExitCode = 0) {
         botLogger.warn("Shutdown complete, with errors.");
     }
 
-    // Flushed before the exit, and while the hard exit is still armed, so a shutdown
-    // that says nothing is impossible either way.
+    // Before the exit and while hardExit is still armed, so a shutdown cannot
+    // end up saying nothing either way.
     await flushLogs();
 
     clearTimeout(hardExit);
@@ -391,8 +336,7 @@ async function gracefulShutdown(signal, initialExitCode = 0) {
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
 process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
-// Global error handlers for unhandled promise rejections and exceptions.
-// `reason` is not guaranteed to be an Error; Pino's err serializer passes
+// `reason` is not guaranteed to be an Error; pino's err serializer passes
 // non-Error values through unchanged.
 process.on("unhandledRejection", (reason) => {
     botLogger.error({ err: reason }, "Unhandled promise rejection");
@@ -401,8 +345,8 @@ process.on("unhandledRejection", (reason) => {
 process.on("uncaughtException", async (err) => {
     botLogger.fatal({ err }, "Uncaught exception");
 
-    // Best effort on the way out: the process is going down regardless, but leaving
-    // the connection open skips SQLite's WAL checkpoint.
+    // Best effort: the process is going down regardless, but leaving the
+    // connection open skips SQLite's WAL checkpoint.
     try {
         closeDB();
     } catch (dbError) {

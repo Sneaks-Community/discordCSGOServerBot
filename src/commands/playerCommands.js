@@ -1,8 +1,3 @@
-/**
- * Player-related slash command handlers
- * Handles /players and /keywords commands
- */
-
 import { MessageFlags } from "discord.js";
 
 import { serverObject } from "../config/index.js";
@@ -10,9 +5,12 @@ import { playerListEmbed, makeServerList } from "../embeds/playerEmbeds.js";
 import { isServerDataEmpty, getServerData, getServerByKeyword } from "../services/serverService.js";
 import { joinWithinLimit, MESSAGE_CONTENT_LIMIT } from "../utils/truncate.js";
 
+/** @typedef {import('discord.js').ChatInputCommandInteraction} Interaction */
+/** @typedef {import('discord.js').InteractionResponse} Reply */
+
 /**
- * Handle /players slash command
- * @param {Object} interaction - Discord interaction object
+ * @param {Interaction} interaction
+ * @returns {Promise<void|Reply>} - Early returns carry the reply; no caller reads it
  */
 export async function handleSlashPlayers(interaction) {
     if (isServerDataEmpty()) {
@@ -38,8 +36,8 @@ export async function handleSlashPlayers(interaction) {
 }
 
 /**
- * Handle /keywords slash command
- * @param {Object} interaction - Discord interaction object
+ * @param {Interaction} interaction
+ * @returns {Promise<void|Reply>} - Early returns carry the reply; no caller reads it
  */
 export async function handleSlashKeywords(interaction) {
     // 25 servers with several keywords each can pass the 2000 character content

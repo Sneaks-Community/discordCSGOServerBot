@@ -1,14 +1,12 @@
 /**
- * The single declaration of every slash command.
+ * The single declaration of every slash command. What Discord registers, what
+ * the dispatcher routes and what /help lists all derive from this array.
  *
- * What Discord registers, what the dispatcher routes and what /help lists are all
- * derived from this array, so a command cannot exist in one and be missing from
- * another, and no name, description or option is ever written out twice.
- *
- * utilityCommands imports getHelpEntries from here, so /help's handler makes this
- * module part of an import cycle. It is harmless because every handler is an
- * exported function declaration, which ESM hoists before any module body runs;
- * turning one into a `const` arrow function would break startup with a TDZ error.
+ * utilityCommands imports getHelpEntries from here, so /help's handler makes
+ * this module part of an import cycle. That is only harmless because every
+ * handler is an exported function declaration, which ESM hoists before any
+ * module body runs; turning one into a `const` arrow breaks startup with a TDZ
+ * error.
  */
 
 import { SlashCommandBuilder } from "discord.js";
@@ -19,11 +17,15 @@ import { handleSlashKeywords, handleSlashPlayers } from "./playerCommands.js";
 import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
 
 /**
- * Every command: its name, the description Discord shows, whether it requires
- * the admin role, the function that runs it, and a callback adding its string
- * option when it takes one.
- * @type {ReadonlyArray<{admin: boolean, description: string, handler: Function, name: string, options?: Function}>}
+ * @typedef {object} CommandDefinition
+ * @property {boolean} admin - Whether the admin role is required
+ * @property {string} description - The description Discord shows
+ * @property {Function} handler
+ * @property {string} name
+ * @property {Function} [options] - Adds the command's string option, if it takes one
  */
+
+/** @type {ReadonlyArray<CommandDefinition>} */
 export const COMMAND_DEFINITIONS = Object.freeze([
     { admin: false, description: "Show players on a server", handler: handleSlashPlayers, name: "players",
         options: opt => opt.setName("server").setDescription("Server keyword or name").setRequired(false) },
@@ -43,23 +45,21 @@ export const COMMAND_DEFINITIONS = Object.freeze([
 ]);
 
 /**
- * Commands by name, for the dispatcher's O(1) lookup.
- * @type {Map<string, {admin: boolean, description: string, handler: Function, name: string, options?: Function}>}
+ * For the dispatcher's O(1) lookup.
+ * @type {Map<string, CommandDefinition>}
  */
 export const COMMANDS_BY_NAME = new Map(COMMAND_DEFINITIONS.map(def => [def.name, def]));
 
 /**
- * Build one definition into its Discord command payload.
- * @param {{admin: boolean, description: string, handler: Function, name: string, options?: Function}} def - Command definition
- * @returns {import('discord.js').RESTPostAPIChatInputApplicationCommandsJSONBody} - Command payload
+ * @param {CommandDefinition} def
+ * @returns {import('discord.js').RESTPostAPIChatInputApplicationCommandsJSONBody}
  */
 function buildCommand(def) {
     const builder = new SlashCommandBuilder()
         .setName(def.name)
         .setDescription(def.description);
 
-    // Hide admin commands from everyone Discord has not been told may use them.
-    // The dispatcher still checks the role itself; this only trims the picker.
+    // Trims the picker only; the dispatcher still checks the role itself.
     if (def.admin) {
         builder.setDefaultMemberPermissions(0);
     }
@@ -71,17 +71,16 @@ function buildCommand(def) {
 }
 
 /**
- * Build every command in the shape the registration endpoint takes.
- * @returns {Array<import('discord.js').RESTPostAPIChatInputApplicationCommandsJSONBody>} - Command payloads
+ * Every command in the shape the registration endpoint takes.
+ * @returns {Array<import('discord.js').RESTPostAPIChatInputApplicationCommandsJSONBody>}
  */
 export function buildSlashCommands() {
     return COMMAND_DEFINITIONS.map(buildCommand);
 }
 
 /**
- * Render a command's usage line, reading the options back off the built payload
- * rather than restating them: required renders as `<name>`, optional as `[name]`.
- * @param {{admin: boolean, description: string, handler: Function, name: string, options?: Function}} def - Command definition
+ * Reads the options back off the built payload rather than restating them.
+ * @param {CommandDefinition} def
  * @returns {string} - e.g. `/players [server]`
  */
 function formatUsage(def) {
@@ -91,9 +90,8 @@ function formatUsage(def) {
 }
 
 /**
- * Usage lines and descriptions for /help.
  * @param {boolean} includeAdmin - Whether to list the admin-only commands
- * @returns {Array<{description: string, usage: string}>} - One entry per listed command
+ * @returns {Array<{description: string, usage: string}>}
  */
 export function getHelpEntries(includeAdmin) {
     return COMMAND_DEFINITIONS

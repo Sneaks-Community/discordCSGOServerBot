@@ -1,8 +1,3 @@
-/**
- * Server data management service
- * Handles server state, queries, and updates
- */
-
 import { GameDig } from "gamedig";
 import pLimit from "p-limit";
 
@@ -12,15 +7,14 @@ import { serviceLogger } from "../utils/logger.js";
 import { normalizeMapName } from "../utils/mapUtils.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
-// Server data state management
 let _serverData = {};
 let _isRefreshing = false;
 let _isNotifying = false;
 
 /**
- * Bounds one gamedig attempt rather than inheriting its 10s default. maxRetries is a
- * multiplier over the ports gamedig tries, not a total attempt budget, so that default
- * lets a single unreachable server occupy the better part of an update interval.
+ * Bounds one gamedig attempt rather than inheriting its 10s default. maxRetries
+ * multiplies over the ports gamedig tries, so that default lets one unreachable
+ * server occupy most of an update interval.
  */
 const QUERY_ATTEMPT_TIMEOUT_MS = 3000;
 
@@ -28,50 +22,41 @@ const QUERY_ATTEMPT_TIMEOUT_MS = 3000;
 const QUERY_SOCKET_TIMEOUT_MS = 2000;
 
 /**
- * Share of SERVER_UPDATE_INTERVAL a whole refresh pass may spend querying. Under 1 on
- * purpose: a pass that runs into the next tick is dropped by the _isRefreshing guard,
- * and the embed then republishes the previous snapshot under a description promising it
- * is current, with map-change detection a full interval late.
+ * Share of the update interval a refresh pass may spend querying. Under 1 so a
+ * pass cannot run into the next tick, where the _isRefreshing guard would drop
+ * it and the embed would republish a stale snapshot as current.
  */
 const REFRESH_BUDGET_FRACTION = 0.8;
 
-// Track old data for map change notifications
+// Last seen map per server, for map change detection. "" means not yet seen.
 const oldData = {};
 const serverObjectKeys = Object.keys(serverObject);
 
-// Initialize oldData with server keys
 for (const server of serverObjectKeys) {
     oldData[server] = "";
 }
 
-/**
- * Get current server data (immutable copy)
- * @returns {Object} - Copy of server data
- */
+/** @returns {object} - A copy, so callers cannot mutate the live snapshot */
 export function getServerData() {
     return { ..._serverData };
 }
 
 /**
- * Check if server data is empty (bot still starting)
+ * Empty until the first refresh lands, i.e. while the bot is still starting.
  * @returns {boolean}
  */
 export function isServerDataEmpty() {
     return Object.keys(_serverData).length === 0;
 }
 
-/**
- * Update server data atomically
- * @param {Object} newData - New server data from refresh
- */
+/** @param {object} newData - The snapshot refresh() just built */
 function setServerData(newData) {
     _serverData = { ...newData };
 }
 
 /**
- * Get a specific server by keyword or index
- * @param {string} keyword - Server keyword or index
- * @returns {Object|null} - Server object or null
+ * @param {string} keyword - A server keyword, or its index as a string
+ * @returns {object | null}
  */
 export function getServerByKeyword(keyword) {
     for (const server of Object.values(_serverData)) {
@@ -83,12 +68,12 @@ export function getServerByKeyword(keyword) {
 }
 
 /**
- * Sanitize one player or bot entry, replacing an unusable name rather than
- * dropping the row, which used to hide players and understate the count.
- * @param {Object} entry - gamedig player or bot entry
+ * Replaces an unusable name rather than dropping the row, which would hide the
+ * player and understate the count.
+ * @param {object} entry - A gamedig player or bot entry
  * @param {string} fallback - Name to use when the real one is unusable
  * @param {string} label - Field label for the validation message
- * @returns {Object} - Entry with a usable name
+ * @returns {object}
  */
 function sanitizeEntry(entry, fallback, label) {
     const result = validateWithZod(playerNameSchema, entry.name, label);
@@ -102,10 +87,10 @@ function sanitizeEntry(entry, fallback, label) {
 }
 
 /**
- * Read the counts the server reports for itself; `res.numplayers` includes bots
- * and `res.players` can be truncated, so take the larger of reported and listed.
- * @param {Object} res - gamedig query result
- * @returns {{numBots: number, numPlayers: number}} - Reported counts
+ * `res.numplayers` includes bots and `res.players` can be truncated, so take
+ * the larger of reported and listed.
+ * @param {object} res - A gamedig query result
+ * @returns {{numBots: number, numPlayers: number}}
  */
 function readCounts(res) {
     const reportedBots = Number(res.raw?.numbots);
@@ -118,13 +103,11 @@ function readCounts(res) {
 }
 
 /**
- * The data a server that could not be queried is represented by: enough for the
- * embed and /players to name it, and nothing that would read as live state.
- * Shared by getInfo's failed query and refresh's catch, which must produce the
- * same shape or a caller would see fields on one path and not the other.
- * @param {Object} server - Server configuration object
- * @param {number} index - Server index
- * @returns {Object} - Minimal offline server data
+ * Enough for the embed and /players to name the server, and nothing that reads
+ * as live state. Every give-up path must return this same shape.
+ * @param {object} server - The servers.json entry
+ * @param {number} index - Its 1-based position in the list
+ * @returns {object}
  */
 function buildOfflineServerData(server, index) {
     return {
@@ -136,21 +119,18 @@ function buildOfflineServerData(server, index) {
 }
 
 /**
- * Query server information using GameDig
- * @param {Object} server - Server configuration object
- * @param {number} index - Server index
- * @returns {Promise<Object>} - Server data object
+ * @param {object} server - The servers.json entry
+ * @param {number} index - Its 1-based position in the list
+ * @returns {Promise<object>}
  */
 export async function getInfo(server, index) {
-    // Split the host from the port. validateServersConfig has already rejected
-    // anything that is not "host" or "host:port" with a numeric in-range port,
-    // so the port only needs its default applied and a cast to a number.
+    // validateServersConfig has already rejected anything but "host" or
+    // "host:port" with an in-range port, so this only applies the default.
     const [host, rawPort] = server.ip.split(":");
     const port = rawPort === undefined ? DEFAULT_SERVER_PORT : Number(rawPort);
 
     let valid = true;
 
-    // Query the server using Gamedig
     const res = await GameDig.query({
         attemptTimeout: QUERY_ATTEMPT_TIMEOUT_MS,
         host: host,
@@ -172,22 +152,20 @@ export async function getInfo(server, index) {
 
         const { numBots, numPlayers } = readCounts(res);
 
-        // If the server is valid, populate the data object with server information
         data = {
-            bots: sanitizedBots, // Bots array {name, score, time}
-            fullIP: res.connect, // String with ip:port
+            bots: sanitizedBots,
+            fullIP: res.connect,
             index: index,
-            keywords: server.keywords, // array of keywords for --players command
-            map: normalizeMapName(res.map), // Current map, workshop path stripped to the bare name
+            keywords: server.keywords,
+            map: normalizeMapName(res.map),
             maxPlayers: res.maxplayers,
-            name: server.nick, // Short nickname
+            name: server.nick,
             numBots: numBots,
-            numPlayers: numPlayers, // Humans only; the bot count is reported separately
+            numPlayers: numPlayers, // Humans only; bots are counted separately
             online: true,
-            players: sanitizedPlayers // Players array {name, score, time}
+            players: sanitizedPlayers
         };
     } else {
-        // If the server is not valid, populate the data object with minimal information
         data = buildOfflineServerData(server, index);
     }
 
@@ -195,17 +173,14 @@ export async function getInfo(server, index) {
 }
 
 /**
- * Query one server, giving up on it once the pass has no time left to spend.
- *
- * Both giving-up paths return the same shape a failed query does, because they mean
- * the same thing to a caller: there is no live data for this server this tick. The
- * gamedig timeouts bound one attempt each, and MAX_CONCURRENT_QUERIES turns the
- * server list into batches, so neither one bounds the pass -- this does.
+ * The gamedig timeouts bound one attempt each and MAX_CONCURRENT_QUERIES only
+ * batches the list, so this is what bounds the whole pass. Giving up returns the
+ * offline shape, which means the same thing to a caller: no live data this tick.
  * @param {string} name - Server key in serverObject, for logging
- * @param {Object} server - Server configuration object
- * @param {number} index - Server index
+ * @param {object} server - The servers.json entry
+ * @param {number} index - Its 1-based position in the list
  * @param {number} deadline - Epoch ms the whole pass must be finished by
- * @returns {Promise<Object>} - Server data, or the offline shape if time ran out
+ * @returns {Promise<object>}
  */
 async function getInfoWithinDeadline(name, server, index, deadline) {
     const remainingMs = deadline - Date.now();
@@ -224,8 +199,8 @@ async function getInfoWithinDeadline(name, server, index, deadline) {
     });
 
     try {
-        // gamedig offers no cancellation, so a late answer is discarded rather than
-        // waited for. The socket work it leaves behind ends on its own timeouts.
+        // gamedig offers no cancellation, so a late answer is discarded rather
+        // than waited for; its sockets end on their own timeouts.
         return await Promise.race([getInfo(server, index), ranOut]);
     } finally {
         clearTimeout(timer);
@@ -233,7 +208,7 @@ async function getInfoWithinDeadline(name, server, index, deadline) {
 }
 
 /**
- * Refresh all server data with connection limits
+ * Queries every server, concurrency-limited, and swaps in the new snapshot.
  * @returns {Promise<void>}
  */
 export async function refresh() {
@@ -249,7 +224,6 @@ export async function refresh() {
         const serverEntries = Object.entries(serverObject);
         const deadline = startedAt + Math.round(CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS * REFRESH_BUDGET_FRACTION);
 
-        // Create a limiter for concurrent server queries
         const limit = pLimit(CONFIG_VALUES.MAX_CONCURRENT_SERVER_QUERIES);
 
         const results = await Promise.all(
@@ -260,7 +234,6 @@ export async function refresh() {
                         return [name, data];
                     } catch (err) {
                         serviceLogger.error({ err, server: name }, "Failed to query server");
-                        // Return minimal data on error
                         return [name, buildOfflineServerData(server, index + 1)];
                     }
                 })
@@ -271,11 +244,9 @@ export async function refresh() {
     } finally {
         _isRefreshing = false;
 
-        // Measured against the interval rather than the budget: hitting the budget is
-        // the deadline working, and is already logged per server. Passing the interval
-        // means the deadline did not hold, which costs the next tick entirely and is
-        // otherwise only visible as embeds that quietly stop matching the interval they
-        // advertise.
+        // Against the interval, not the budget: hitting the budget is the
+        // deadline working and is logged per server, but passing the interval
+        // means it did not hold and the next tick is lost.
         const elapsedMs = Date.now() - startedAt;
         if (elapsedMs > CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS) {
             serviceLogger.warn({ elapsedMs, intervalMs: CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS }, "Refresh pass outlasted the update interval; the next tick will be skipped");
@@ -286,13 +257,13 @@ export async function refresh() {
 }
 
 /**
- * Update server data and check for map changes
- * @param {Function} notifyCallback - Callback function for map change notifications
+ * Compares the latest snapshot against the last seen maps and notifies on change.
+ * @param {Function} notifyCallback - Called as (newMap, serverInfo)
  * @returns {Promise<void>}
  */
 export async function updateServerData(notifyCallback) {
-    // Belt and braces: the caller already awaits this once per tick, but DM fanout
-    // can outlast a tick and a second pass would re-read the same snapshot.
+    // The caller awaits this once per tick, but DM fanout can outlast a tick and
+    // a second pass would re-read the same snapshot.
     if (_isNotifying) {
         serviceLogger.debug("Skipping map change check -- notifications still in progress");
         return;
@@ -315,15 +286,15 @@ export async function updateServerData(notifyCallback) {
                 const newMap = currentMap;
                 const live = serverData[currentServer];
 
-                // Record the change before notifying: if the notification fails, this
-                // server must not re-detect the same map change on every subsequent tick.
+                // Recorded before notifying, so a failed notification does not
+                // re-detect the same change on every later tick.
                 oldData[currentServer] = newMap;
 
                 if (notifyCallback) {
                     try {
-                        // A fresh object each time. Writing the live counts onto
-                        // serverObject[currentServer] polluted the loaded servers.json,
-                        // which /keywords and validateServersConfig read as config.
+                        // A fresh object: writing live counts onto
+                        // serverObject[currentServer] would pollute the loaded
+                        // servers.json that /keywords and validation read.
                         await notifyCallback(newMap, {
                             ...currentServerObject,
                             fullIP: live.fullIP,

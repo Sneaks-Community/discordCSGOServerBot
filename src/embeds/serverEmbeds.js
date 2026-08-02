@@ -1,18 +1,10 @@
-/**
- * Server embed builders
- * Creates Discord embeds for server lists and status
- */
-
 import { CONFIG_VALUES } from "../config/index.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
 import { createBaseEmbed } from "./baseEmbed.js";
 
 /**
- * Describe an interval in words, for the embed description.
- *
- * SERVER_UPDATE_INTERVAL is validated at 30 seconds or more, so both units are
- * reachable. Minutes are rounded to one decimal so the default 90s still reads as
- * "1.5 minutes" rather than "2 minutes".
+ * Describe an interval in words, e.g. "45 seconds", "1.5 minutes". Minutes keep
+ * one decimal so the default 90s does not read as "2 minutes".
  * @param {number} ms - The interval in milliseconds
  * @returns {string} - e.g. "45 seconds", "1 minute", "1.5 minutes"
  */
@@ -27,18 +19,15 @@ export function describeInterval(ms) {
 }
 
 /**
- * Create a main server list embed
- * @param {Object} serverData - The server data object
- * @returns {EmbedBuilder} - The Discord embed
+ * @param {object} serverData - The full serverService snapshot
+ * @returns {import('discord.js').EmbedBuilder}
  */
 export function makeEmbed(serverData) {
     const embed = createBaseEmbed("Server List")
         .setDescription(`This list is updated every ${describeInterval(CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS)}.`);
 
-    // Iterate through the servers and add server details to the embed
     for (const server of Object.values(serverData)) {
         if (!server.online) {
-            // If the server is offline, add a field indicating it's not available
             embed.addFields({
                 inline: true,
                 name: escapeForDiscord(server.name),
@@ -47,8 +36,6 @@ export function makeEmbed(serverData) {
             continue;
         }
 
-        // Add a field for the online server with player, map, and IP details
-        // Use centralized escapeForDiscord which escapes backslashes FIRST (prevents injection)
         embed.addFields({
             inline: true,
             name: escapeForDiscord(server.name),

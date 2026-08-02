@@ -1,8 +1,3 @@
-/**
- * Admin slash command handlers
- * Handles /listallfollows, /testnotify, and /removeuser commands
- */
-
 import { MessageFlags } from "discord.js";
 
 import { getAllFollows, hasMap, unfollowAll } from "../db/index.js";
@@ -11,22 +6,23 @@ import { notifyUsers } from "../services/notificationService.js";
 import { replyWithPagedEmbed } from "../utils/pagination.js";
 import { validateWithZod } from "../utils/zodValidator.js";
 
+/** @typedef {import('discord.js').ChatInputCommandInteraction} Interaction */
+/** @typedef {import('discord.js').InteractionResponse} Reply */
+
 /**
- * Handle /listallfollows slash command (Admin only)
- * @param {Object} interaction - Discord interaction object
+ * @param {Interaction} interaction
+ * @returns {Promise<void|Reply>} - Early returns carry the reply; no caller reads it
  */
 export async function handleSlashListallfollows(interaction) {
     const follows = getAllFollows();
 
-    // An empty result has nothing to page. getAllFollows returns the rows already
-    // ordered by user, so there is nothing to sort here.
+    // getAllFollows returns rows already ordered by user, so nothing to sort.
     if (!follows || follows.length === 0) {
         return interaction.reply({ content: "There are no users following any maps.", flags: MessageFlags.Ephemeral });
     }
 
-    // This list grows with every follow in the database and would blow past the
-    // 4096 character embed description limit at roughly 130 rows, so it is paged
-    // rather than truncated: an admin needs to be able to read all of it.
+    // Paged rather than truncated: this grows with every follow in the database
+    // and an admin needs to read all of it.
     const lines = follows.map((follow) => `<@${follow.discord_id}>: ${follow.map_name}`);
 
     await replyWithPagedEmbed(interaction, {
@@ -37,13 +33,13 @@ export async function handleSlashListallfollows(interaction) {
 }
 
 /**
- * Handle /testnotify slash command (Admin only)
- * @param {Object} interaction - Discord interaction object
+ * @param {Interaction} interaction
+ * @returns {Promise<void|import('discord.js').Message>} - Deferred, so the early
+ *   returns carry an editReply result that no caller reads
  */
 export async function handleSlashTestnotify(interaction) {
-    // notifyUsers DMs each follower serially, which can outrun Discord's 3 second
-    // reply deadline. Defer up front; every reply on this command is ephemeral, so
-    // the flag carries over to each editReply below.
+    // The DM fanout can outrun Discord's 3 second reply deadline. Every reply
+    // here is ephemeral, so the flag carries over to each editReply below.
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const map = interaction.options.getString("map");
@@ -52,7 +48,6 @@ export async function handleSlashTestnotify(interaction) {
         return interaction.editReply({ content: "Please enter a valid map name." });
     }
 
-    // Validate map name using Zod v4 schema
     const mapValidation = validateWithZod(mapNameSchema, map, "Map name");
     if (!mapValidation.valid) {
         return interaction.editReply({ content: mapValidation.error });
@@ -63,15 +58,15 @@ export async function handleSlashTestnotify(interaction) {
         return interaction.editReply({ content: "No one is following this map." });
     }
 
-    // No client passed: notifyUsers defaults to the one initNotificationService was
-    // given, which is the same client this interaction arrived on.
+    // No client passed: notifyUsers defaults to the one initNotificationService
+    // was given, which is the client this interaction arrived on.
     await notifyUsers(sanitizedMap, { ip: "0.0.0.0:27015", nick: "Test Server" });
     await interaction.editReply({ content: `Notification sent for map: ${sanitizedMap}` });
 }
 
 /**
- * Handle /removeuser slash command (Admin only)
- * @param {Object} interaction - Discord interaction object
+ * @param {Interaction} interaction
+ * @returns {Promise<void|Reply>} - Early returns carry the reply; no caller reads it
  */
 export async function handleSlashRemoveuser(interaction) {
     const userID = interaction.options.getString("userid");
@@ -80,15 +75,13 @@ export async function handleSlashRemoveuser(interaction) {
         return interaction.reply({ content: "Please enter a valid user ID.", flags: MessageFlags.Ephemeral });
     }
 
-    // Validate Discord ID using Zod v4 schema
     const userIdValidation = validateWithZod(discordIdSchema, userID, "User ID");
     if (!userIdValidation.valid) {
         return interaction.reply({ content: userIdValidation.error, flags: MessageFlags.Ephemeral });
     }
 
     unfollowAll(userIdValidation.data);
-    // The only reply that renders a real mention in content rather than in an embed.
-    // Ephemeral replies do not notify anyone today, but P0-4 showed how easily that
-    // flag gets dropped, so the mention is denied here rather than relied upon.
+    // The only reply carrying a real mention in content rather than an embed.
+    // Mentions denied rather than relying on the ephemeral flag staying put.
     await interaction.reply({ allowedMentions: { parse: [] }, content: `Removed all maps from user <@${userID}>.`, flags: MessageFlags.Ephemeral });
 }

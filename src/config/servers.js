@@ -1,9 +1,7 @@
 /**
- * servers.json: the single place the file is read, and its validation.
- *
- * Validating at startup means a typo (missing ip, wrong type, duplicate keyword,
- * too many servers) fails fast with a precise message instead of surfacing later
- * as a runtime query failure or a broken embed.
+ * The single place servers.json is read, plus its validation. Checking at
+ * startup turns a typo into a precise message rather than a query failure or a
+ * broken embed later on.
  */
 
 import { readFileSync } from "node:fs";
@@ -15,26 +13,19 @@ import { formatZodPathSuffix } from "../utils/zodValidator.js";
 const SERVERS_PATH = new URL("../../servers.json", import.meta.url);
 
 /**
- * A read or parse failure, kept as data rather than thrown.
- *
- * The file is read at module load because consumers bind `serverObject` directly,
- * but that is far too early to report anything: an import assertion or a throw here
- * produces a bare stack before pino and before validateConfig exist. Holding the
- * message lets validateServersConfig hand it to the same ConfigError path as a
- * malformed entry.
+ * A read or parse failure, held as data rather than thrown. The file loads at
+ * module load because consumers bind `serverObject` directly, which is too early
+ * to report anything: a throw here lands before pino and validateConfig exist.
+ * Holding the message routes it through the same ConfigError path instead.
  * @type {string | null}
  */
 let loadError = null;
 
-/**
- * The parsed server list, the only place the file is read. Consumers read it
- * through config/index.js alongside the rest of the config.
- * Empty when the load failed, which validateServersConfig turns into a fatal error.
- */
+/** Empty when the load failed, which validateServersConfig turns into a fatal. */
 export const serverObject = readServers();
 
 /**
- * @returns {Object} - The parsed file, or `{}` after recording why it could not be read
+ * @returns {object} - The parsed file, or `{}` after recording why it could not be read
  */
 function readServers() {
     try {
@@ -55,10 +46,10 @@ function readServers() {
 const KNOWN_SERVER_FIELDS = new Set(["ip", "keywords", "nick", "protocol"]);
 
 /**
- * Render a Zod issue as a message prefixed with its location in servers.json.
- * File-level issues (empty path) already name the file, so they are left alone.
- * @param {import('zod').core.$ZodIssue} issue - Zod issue
- * @returns {string} - e.g. `servers.json: "Beginner_Surf".keywords[2]: ...`
+ * Prefixes an issue with its location, e.g. `servers.json: "Beginner_Surf"...`.
+ * File-level issues (empty path) already name the file, so they pass through.
+ * @param {import('zod').core.$ZodIssue} issue
+ * @returns {string}
  */
 function formatIssue(issue) {
     if (issue.path.length === 0) return issue.message;
@@ -69,9 +60,9 @@ function formatIssue(issue) {
 }
 
 /**
- * Collect non-fatal problems that are worth reporting but should not stop the bot
- * @param {Object} servers - The raw servers.json object
- * @returns {string[]} - Warning messages
+ * Problems worth reporting that should not stop the bot.
+ * @param {object} servers - The raw servers.json object
+ * @returns {string[]}
  */
 function collectWarnings(servers) {
     const warnings = [];
@@ -111,12 +102,11 @@ function collectWarnings(servers) {
 }
 
 /**
- * Validate the server list
- * @param {Object} [servers] - Server list to validate (defaults to servers.json)
+ * @param {object} [servers] - Defaults to the loaded servers.json
  * @returns {{ errors: string[], warnings: string[] }}
  */
 export function validateServersConfig(servers = serverObject) {
-    // Only the file itself can fail to load; an explicit argument is the caller's own object.
+    // Only the file can fail to load; an explicit argument is the caller's own.
     if (loadError !== null && servers === serverObject) {
         return { errors: [loadError], warnings: [] };
     }
@@ -126,9 +116,8 @@ export function validateServersConfig(servers = serverObject) {
     if (!result.success) {
         return {
             errors: result.error.issues.map(formatIssue),
-            // A failed parse means the entries cannot be trusted to have the
-            // shape collectWarnings reads, and startup aborts on errors anyway,
-            // so warnings would be noise ahead of the fatal line
+            // A failed parse means the entries need not have the shape
+            // collectWarnings reads, and startup aborts on errors anyway.
             warnings: []
         };
     }

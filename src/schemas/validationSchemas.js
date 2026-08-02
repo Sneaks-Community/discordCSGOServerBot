@@ -1,21 +1,13 @@
 import * as z from "zod";
 
-/**
- * Discord user ID schema: 17-19 digit numeric string
- * Discord IDs are always numeric strings assigned by Discord's infrastructure.
- * Used for user IDs and for the configured admin role ID (validateConfig).
- */
+/** Used for user IDs and for the configured admin role ID. */
 export const discordIdSchema = z
     .string()
     .min(17, "Discord ID must be 17-19 digits")
     .max(19, "Discord ID must be 17-19 digits")
     .regex(/^\d{17,19}$/, "Discord ID must contain only digits");
 
-/**
- * Map name schema: alphanumeric, underscores, hyphens, max 64 chars
- * CS:GO map names follow specific conventions with prefixes like de_, cs_, etc.
- * Transformed to lowercase for consistent database storage.
- */
+/** Lowercased, which is the casing follows are stored under. */
 export const mapNameSchema = z
     .string()
     .min(1, "Map name cannot be empty")
@@ -24,7 +16,6 @@ export const mapNameSchema = z
     .transform((val) => val.toLowerCase());
 
 /**
- * Player name schema: any single-line text, trimmed, max 64 characters.
  * Unicode names are common on CS servers, so only control characters and line
  * separators are rejected; escapeForDiscord handles markdown at render time.
  */
@@ -40,22 +31,16 @@ export const playerNameSchema = z
     );
 
 /**
- * Maximum number of servers `servers.json` may define.
- * makeEmbed adds one embed field per server and Discord caps an embed at 25
- * fields, so a 26th server makes every embed update fail with an API 400 and
- * the embed channel silently stops updating.
+ * makeEmbed adds one field per server and Discord caps an embed at 25 fields,
+ * so a 26th server makes every embed update fail with an API 400.
  */
 export const MAX_SERVERS = 25;
 
-/**
- * Default game port applied when a `servers.json` entry omits one.
- */
 export const DEFAULT_SERVER_PORT = 27015;
 
 /**
- * Server address schema: "host" or "host:port".
- * IPv6 is not supported (the colon is the host/port separator here), matching
- * the single-colon split in getInfo.
+ * "host" or "host:port". No IPv6: the colon is the separator here, matching the
+ * single-colon split in getInfo.
  */
 export const serverIpSchema = z
     .string({ error: "ip is required and must be a string" })
@@ -92,10 +77,8 @@ export const serverIpSchema = z
     });
 
 /**
- * Server keyword schema.
- * Keyword lookups lowercase the user's input (getServerByKeyword), so an
- * uppercase or space-padded keyword could never match and is a config error
- * rather than a cosmetic issue.
+ * getServerByKeyword lowercases the user's input, so an uppercase or padded
+ * keyword could never match. That is a config error, not a cosmetic one.
  */
 export const serverKeywordSchema = z
     .string({ error: "keyword must be a string" })
@@ -105,17 +88,16 @@ export const serverKeywordSchema = z
     .refine((keyword) => keyword === keyword.trim(), "keyword cannot have leading or trailing whitespace");
 
 /**
- * A single `servers.json` entry.
  * Unknown fields are stripped rather than rejected; validateServersConfig
- * reports them as warnings so a stale config still starts.
+ * reports them as warnings, so a stale config still starts.
  */
 export const serverEntrySchema = z.object({
     ip: serverIpSchema,
     keywords: z
         .array(serverKeywordSchema, { error: "keywords is required and must be an array" })
         .min(1, "keywords must list at least one keyword"),
-    // Bounded because nick appears in embed field names and in the /players
-    // title, both of which Discord caps at 256 characters
+    // Bounded: nick appears in embed field names and the /players title, both
+    // capped at 256 characters by Discord.
     nick: z
         .string({ error: "nick is required and must be a string" })
         .min(1, "nick cannot be empty")
@@ -126,10 +108,7 @@ export const serverEntrySchema = z.object({
         .optional()
 });
 
-/**
- * The whole `servers.json` file: a keyed object of server entries.
- * Cross-entry rules that cannot live on a single entry are checked here.
- */
+/** A keyed object of entries, plus the rules that span more than one. */
 export const serversFileSchema = z
     .record(z.string(), serverEntrySchema, { error: "servers.json must be a JSON object of server entries" })
     .refine((servers) => Object.keys(servers).length > 0, "servers.json must define at least one server")
@@ -138,8 +117,8 @@ export const serversFileSchema = z
         `servers.json cannot define more than ${MAX_SERVERS} servers; Discord caps an embed at ${MAX_SERVERS} fields and the server list embed adds one field per server`
     )
     .superRefine((servers, ctx) => {
-        // Keyword lookups return the first match, so a duplicate silently makes
-        // one of the two servers unreachable
+        // Lookups return the first match, so a duplicate keyword makes one of the
+        // two servers unreachable.
         const owners = new Map();
 
         for (const [name, server] of Object.entries(servers)) {
