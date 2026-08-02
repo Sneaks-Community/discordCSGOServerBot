@@ -1,0 +1,203 @@
+/**
+ * parseEnv is the whole configuration contract, and the comment at the top of
+ * envSchema.js lists the bugs that motivated it: MAX_CONCURRENT_QUERIES=0 stopping
+ * every query, RETRY_MAX_RETRIES=0 making withRetry a no-op, a malformed EMBEDS
+ * silently disabling the embed. Each of those is a test below.
+ */
+
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { formatEnvIssue, parseEnv } from "../src/schemas/envSchema.js";
+
+/** The two variables with no default; everything else may be absent. */
+const REQUIRED = Object.freeze({ DISCORD_GUILD_ID: "123456789012345678", DISCORD_TOKEN: "a-token" });
+
+/**
+ * @param {Object} [extra] - Variables to add to a valid baseline
+ * @returns {Object} - An environment that parses unless `extra` breaks it
+ */
+function env(extra = {}) {
+    return { ...REQUIRED, ...extra };
+}
+
+describe("parseEnv, defaults", () => {
+    it("accepts an environment with only the required variables", () => {
+        const { errors, values } = parseEnv(env());
+
+        assert.deepEqual(errors, []);
+        assert.equal(values.SERVER_UPDATE_INTERVAL, 90);
+        assert.equal(values.MAX_CONCURRENT_QUERIES, 10);
+        assert.equal(values.EMBED_COLOR, 7980240);
+        assert.equal(values.DATABASE_PATH, "db.sqlite");
+        assert.equal(values.BOT_ACTIVITY_TYPE, "custom");
+        assert.deepEqual(values.EMBEDS, []);
+    });
+
+    it("treats an empty value as unset", () => {
+        const { errors, values } = parseEnv(env({ DATABASE_PATH: "", SERVER_UPDATE_INTERVAL: "  " }));
+
+        assert.deepEqual(errors, []);
+        assert.equal(values.SERVER_UPDATE_INTERVAL, 90);
+        assert.equal(values.DATABASE_PATH, "db.sqlite");
+    });
+
+    it("warns about each optional feature left unset", () => {
+        const { warnings } = parseEnv(env());
+
+        assert.equal(warnings.length, 3);
+        assert.ok(warnings.some((warning) => warning.startsWith("ADMIN_ROLE_ID is not set")));
+        assert.ok(warnings.some((warning) => warning.startsWith("FALLBACK_CHANNEL_ID is not set")));
+        assert.ok(warnings.some((warning) => warning.startsWith("EMBEDS is not set")));
+    });
+
+    it("does not warn about a feature that is configured", () => {
+        const { warnings } = parseEnv(env({ ADMIN_ROLE_ID: "123456789012345678" }));
+
+        assert.ok(!warnings.some((warning) => warning.startsWith("ADMIN_ROLE_ID")));
+    });
+});
+
+describe("parseEnv, required variables", () => {
+    it("reports both required variables at once", () => {
+        const { errors } = parseEnv({});
+
+        assert.deepEqual(errors, [
+            "DISCORD_GUILD_ID: is required and must be a Discord ID (17-19 digits)",
+            "DISCORD_TOKEN: is required and must not be empty"
+        ]);
+    });
+
+    it("still returns usable values after a failure, so importing config cannot throw", () => {
+        const { errors, values } = parseEnv({});
+
+        assert.ok(errors.length > 0);
+        assert.equal(values.SERVER_UPDATE_INTERVAL, 90);
+    });
+
+    it("trims a pasted token", () => {
+        assert.equal(parseEnv(env({ DISCORD_TOKEN: "  tok\n" })).values.DISCORD_TOKEN, "tok");
+    });
+
+    it("rejects a guild id that is not a snowflake", () => {
+        assert.deepEqual(parseEnv(env({ DISCORD_GUILD_ID: "not-an-id" })).errors, [
+            "DISCORD_GUILD_ID: is required and must be a Discord ID (17-19 digits)"
+        ]);
+    });
+});
+
+describe("parseEnv, numbers", () => {
+    it("rejects a value parseInt would have accepted", () => {
+        assert.deepEqual(parseEnv(env({ SERVER_UPDATE_INTERVAL: "10s" })).errors, [
+            "SERVER_UPDATE_INTERVAL: must be a whole number"
+        ]);
+    });
+
+    it("rejects the zero that used to stop every server query", () => {
+        assert.deepEqual(parseEnv(env({ MAX_CONCURRENT_QUERIES: "0" })).errors, [
+            "MAX_CONCURRENT_QUERIES: must be between 1 and 100"
+        ]);
+    });
+
+    it("rejects the zero that used to make withRetry a no-op", () => {
+        assert.deepEqual(parseEnv(env({ RETRY_MAX_RETRIES: "0" })).errors, [
+            "RETRY_MAX_RETRIES: must be between 1 and 10"
+        ]);
+    });
+
+    it("rejects an interval that would hammer the game servers", () => {
+        assert.deepEqual(parseEnv(env({ SERVER_UPDATE_INTERVAL: "29" })).errors, [
+            "SERVER_UPDATE_INTERVAL: must be between 30 and 86400"
+        ]);
+    });
+
+    it("rejects an embed color wider than 24 bits", () => {
+        assert.deepEqual(parseEnv(env({ EMBED_COLOR: "16777216" })).errors, [
+            "EMBED_COLOR: must be between 0 and 16777215"
+        ]);
+    });
+
+    it("collects every bad number rather than stopping at the first", () => {
+        const { errors } = parseEnv(env({ GAMEDIG_MAX_RETRIES: "11", MAX_FOLLOWS_PER_USER: "-1", USER_CACHE_TTL: "x" }));
+
+        assert.equal(errors.length, 3);
+    });
+});
+
+describe("parseEnv, EMBEDS", () => {
+    it("rejects malformed JSON instead of quietly disabling the embed", () => {
+        const { errors } = parseEnv(env({ EMBEDS: "{oops" }));
+
+        assert.equal(errors.length, 1);
+        assert.ok(errors[0].startsWith("EMBEDS: must be valid JSON"));
+    });
+
+    it("names the offending entry and field", () => {
+        const { errors } = parseEnv(env({ EMBEDS: JSON.stringify([{ channelID: "12", messageID: "123456789012345678" }]) }));
+
+        assert.ok(errors.every((error) => error.startsWith("EMBEDS[0].channelID: ")), errors.join(", "));
+    });
+
+    it("parses a well formed list", () => {
+        const targets = [{ channelID: "123456789012345678", messageID: "123456789012345679" }];
+        const { errors, values } = parseEnv(env({ EMBEDS: JSON.stringify(targets) }));
+
+        assert.deepEqual(errors, []);
+        assert.deepEqual(values.EMBEDS, targets);
+    });
+
+    it("rejects a JSON value that is not an array of targets", () => {
+        assert.equal(parseEnv(env({ EMBEDS: "\"nope\"" })).errors.length, 1);
+    });
+});
+
+describe("parseEnv, URLs and presence", () => {
+    it("requires the map image base to end in a slash", () => {
+        const { errors } = parseEnv(env({ MAP_IMAGE_BASE_URL: "https://images.test/maps" }));
+
+        assert.equal(errors.length, 1);
+        assert.ok(errors[0].startsWith("MAP_IMAGE_BASE_URL: "));
+    });
+
+    it("accepts an empty map image base as \"no images\"", () => {
+        const { errors, values } = parseEnv(env({ MAP_IMAGE_BASE_URL: "" }));
+
+        assert.deepEqual(errors, []);
+        assert.equal(values.MAP_IMAGE_BASE_URL, "");
+    });
+
+    it("defaults the map image base when it is absent", () => {
+        assert.ok(parseEnv(env()).values.MAP_IMAGE_BASE_URL.endsWith("/"));
+    });
+
+    it("rejects a non-http fallback avatar", () => {
+        assert.deepEqual(parseEnv(env({ FALLBACK_AVATAR_URL: "ftp://example.test/a.png" })).errors, [
+            "FALLBACK_AVATAR_URL: must be an http(s) URL"
+        ]);
+    });
+
+    it("lowercases the activity type and rejects an unknown one", () => {
+        assert.equal(parseEnv(env({ BOT_ACTIVITY_TYPE: "PLAYING" })).values.BOT_ACTIVITY_TYPE, "playing");
+        assert.deepEqual(parseEnv(env({ BOT_ACTIVITY_TYPE: "dancing" })).errors, [
+            "BOT_ACTIVITY_TYPE: must be one of: competing, custom, listening, playing, watching"
+        ]);
+    });
+
+    it("rejects activity text Discord would not display", () => {
+        assert.equal(parseEnv(env({ BOT_ACTIVITY_TEXT: "x".repeat(129) })).errors.length, 1);
+        assert.deepEqual(parseEnv(env({ BOT_ACTIVITY_TEXT: "x".repeat(128) })).errors, []);
+    });
+});
+
+describe("formatEnvIssue", () => {
+    it("renders a top-level issue as VARIABLE: message", () => {
+        assert.equal(formatEnvIssue({ message: "is required", path: ["DISCORD_TOKEN"] }), "DISCORD_TOKEN: is required");
+    });
+
+    it("renders an index and a property as an accessor chain", () => {
+        assert.equal(
+            formatEnvIssue({ message: "bad", path: ["EMBEDS", 0, "channelID"] }),
+            "EMBEDS[0].channelID: bad"
+        );
+    });
+});

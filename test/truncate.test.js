@@ -1,0 +1,92 @@
+/**
+ * joinWithinLimit's contract is a hard one: "never longer than `limit`", on every
+ * branch. Discord rejects the whole request when an embed description passes 4096
+ * characters, so a single off-by-one here is a listing that stops working once it
+ * grows enough, and only then.
+ */
+
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { EMBED_DESCRIPTION_LIMIT, joinWithinLimit, MESSAGE_CONTENT_LIMIT } from "../src/utils/truncate.js";
+
+/**
+ * A shorter overflow notice than the default one, to show the caller's suffix is
+ * both used and accounted for in the budget.
+ * @param {number} remaining - Number of lines that did not fit
+ * @returns {string} - The notice
+ */
+function shortSuffix(remaining) {
+    return ` [+${remaining}]`;
+}
+
+describe("joinWithinLimit", () => {
+    it("joins with newlines when everything fits", () => {
+        assert.equal(joinWithinLimit(["one", "two", "three"], 100), "one\ntwo\nthree");
+    });
+
+    it("returns the joined text untouched at exactly the limit", () => {
+        const joined = joinWithinLimit(["abc", "def"], 7);
+
+        assert.equal(joined, "abc\ndef");
+        assert.equal(joined.length, 7);
+    });
+
+    it("drops non-strings and empty strings before joining", () => {
+        assert.equal(joinWithinLimit(["a", "", undefined, 5, null, "b"], 100), "a\nb");
+    });
+
+    it("returns an empty string when nothing survives the filter", () => {
+        assert.equal(joinWithinLimit([], 100), "");
+        assert.equal(joinWithinLimit(["", undefined, 7], 100), "");
+    });
+
+    it("keeps a whole prefix of the lines and reports the rest", () => {
+        const lines = Array.from({ length: 50 }, (_, index) => `line ${index}`);
+        const result = joinWithinLimit(lines, 100);
+        const [body, notice] = result.split("\n...and ");
+
+        assert.ok(result.length <= 100);
+        assert.match(notice, /^\d+ more$/);
+
+        // The kept lines must be the first N, in order, and the count must add up.
+        const kept = body.split("\n");
+        assert.deepEqual(kept, lines.slice(0, kept.length));
+        assert.equal(Number.parseInt(notice, 10), lines.length - kept.length);
+    });
+
+    it("hard-truncates a single line that cannot fit, marking the cut", () => {
+        const result = joinWithinLimit(["x".repeat(500)], 100);
+
+        assert.equal(result.length, 100);
+        assert.ok(result.endsWith("…"));
+    });
+
+    it("honors a custom separator and its cost", () => {
+        assert.equal(joinWithinLimit(["a", "b"], 100, { separator: ", " }), "a, b");
+
+        // "aaaa, bbbb" is 10 characters, so a limit of 9 has to drop one line.
+        const tight = joinWithinLimit(["aaaa", "bbbb"], 9, { separator: ", " });
+        assert.ok(tight.length <= 9);
+    });
+
+    it("uses a custom suffix and still respects the limit", () => {
+        const result = joinWithinLimit(["aaaaa", "bbbbb", "ccccc"], 12, { suffix: shortSuffix });
+
+        assert.ok(result.length <= 12);
+        assert.ok(result.includes("[+"));
+    });
+
+    it("never exceeds the limit, whatever the limit is", () => {
+        const lines = ["short", "a considerably longer line than the others", "mid", "y".repeat(200)];
+
+        for (let limit = 1; limit <= 120; limit++) {
+            assert.ok(joinWithinLimit(lines, limit).length <= limit, `overflowed at limit ${limit}`);
+        }
+    });
+
+    it("states Discord's limits as Discord defines them", () => {
+        assert.equal(EMBED_DESCRIPTION_LIMIT, 4096);
+        assert.equal(MESSAGE_CONTENT_LIMIT, 2000);
+    });
+});
