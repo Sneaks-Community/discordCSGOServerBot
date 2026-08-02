@@ -130,6 +130,10 @@ bot.on(Events.ClientReady, async () => {
 /**
  * The single loop: refresh, update embeds, then notify on map changes. Detection
  * shares this timer so it always reads the snapshot refresh() just wrote.
+ *
+ * A refresh failure ends the tick: there is nothing new to publish. Anything after
+ * it is contained to its own step, because the notifications have to outlive a
+ * broken embed.
  */
 async function intervalFunction() {
     recordTick();
@@ -140,10 +144,33 @@ async function intervalFunction() {
         botLogger.error({ err }, "Failed to refresh server data");
         return; // Skip embed update if refresh fails
     }
-    
-    const serverData = getServerData();
-    const embed = makeEmbed(serverData);
 
+    let embed = null;
+
+    try {
+        embed = makeEmbed(getServerData());
+    } catch (err) {
+        botLogger.error({ err }, "Failed to build the server embed; skipping the embed update for this tick");
+    }
+
+    if (embed) {
+        await updateEmbeds(embed);
+    }
+
+    try {
+        await updateServerData(notifyUsers);
+    } catch (err) {
+        botLogger.error({ err }, "Failed to check for map changes");
+    }
+}
+
+/**
+ * One edit per configured message, each failing on its own so a channel the bot
+ * has lost cannot stop the rest.
+ * @param {import('discord.js').EmbedBuilder} embed
+ * @returns {Promise<void>}
+ */
+async function updateEmbeds(embed) {
     await Promise.all(
         config.embeds.map(async (e) => {
             try {
@@ -175,13 +202,6 @@ async function intervalFunction() {
             }
         })
     );
-
-    // Last, because DM fanout can outlast the embed edits and should not delay them.
-    try {
-        await updateServerData(notifyUsers);
-    } catch (err) {
-        botLogger.error({ err }, "Failed to check for map changes");
-    }
 }
 
 /** @param {import('discord.js').Guild} guild */
