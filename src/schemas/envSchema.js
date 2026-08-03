@@ -53,6 +53,22 @@ function intEnv(defaultValue, min, max) {
 }
 
 /**
+ * A hex color, stored as the 24-bit integer discord.js wants. The leading "#" is
+ * optional because a pasted color often arrives without it.
+ * @param {string} defaultValue - Used when the variable is unset or empty
+ * @returns {import('zod').ZodType}
+ */
+function hexColorEnv(defaultValue) {
+    return z.preprocess(
+        (value) => (value === undefined || String(value).trim() === "" ? defaultValue : String(value).trim()),
+        z
+            .string()
+            .regex(/^#?[0-9a-f]{6}$/i, "must be a hex color, for example #79C4D0")
+            .transform((value) => Number.parseInt(value.replace("#", ""), 16))
+    );
+}
+
+/**
  * Empty means "feature disabled", which OPTIONAL_FEATURES turns into a startup
  * warning; a non-empty value has to be a real ID.
  * @returns {import('zod').ZodType}
@@ -201,8 +217,9 @@ export const envSchema = z.object({
         (value) => (value === undefined ? "" : String(value).trim()),
         z.string().min(1, "is required and must not be empty")
     ),
-    // Discord takes a 24-bit RGB integer; anything wider makes EmbedBuilder throw
-    EMBED_COLOR: intEnv(7980240, 0, 16777215),
+    // Six hex digits exactly: Discord takes a 24-bit RGB integer, and anything
+    // wider makes EmbedBuilder throw
+    EMBED_COLOR: hexColorEnv("#79C4D0"),
     EMBEDS: embedsEnv,
     FALLBACK_AVATAR_URL: urlEnv("https://i.imgur.com/cBiDnMi.png"),
     FALLBACK_CHANNEL_ID: optionalIdEnv(),

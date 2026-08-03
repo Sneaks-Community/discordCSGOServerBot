@@ -111,16 +111,27 @@ describe("parseEnv, numbers", () => {
         ]);
     });
 
-    it("rejects an embed color wider than 24 bits", () => {
-        assert.deepEqual(parseEnv(env({ EMBED_COLOR: "16777216" })).errors, [
-            "EMBED_COLOR: must be between 0 and 16777215"
-        ]);
-    });
-
     it("collects every bad number rather than stopping at the first", () => {
         const { errors } = parseEnv(env({ GAMEDIG_MAX_RETRIES: "11", MAX_FOLLOWS_PER_USER: "-1", USER_CACHE_TTL: "x" }));
 
         assert.equal(errors.length, 3);
+    });
+});
+
+describe("parseEnv, EMBED_COLOR", () => {
+    it("parses a hex color into the integer discord.js takes", () => {
+        assert.equal(parseEnv(env({ EMBED_COLOR: "#79c4d0" })).values.EMBED_COLOR, 7980240);
+        assert.equal(parseEnv(env({ EMBED_COLOR: "79C4D0" })).values.EMBED_COLOR, 7980240);
+        assert.equal(parseEnv(env({ EMBED_COLOR: "#000000" })).values.EMBED_COLOR, 0);
+        assert.equal(parseEnv(env({ EMBED_COLOR: "#ffffff" })).values.EMBED_COLOR, 16777215);
+    });
+
+    it("rejects anything that is not six hex digits", () => {
+        for (const value of ["7980240", "#79c4", "#79c4d0d0", "#79c4dg"]) {
+            assert.deepEqual(parseEnv(env({ EMBED_COLOR: value })).errors, [
+                "EMBED_COLOR: must be a hex color, for example #79C4D0"
+            ], value);
+        }
     });
 });
 

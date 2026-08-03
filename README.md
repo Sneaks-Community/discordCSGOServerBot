@@ -166,7 +166,7 @@ selects its default.
 | `LOG_LEVEL` | No | `info` | `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent` | stdout verbosity. An unrecognized value falls back to `info` with a warning rather than aborting, since logging is how problems get reported |
 | `FALLBACK_CHANNEL_ID` | No | - | snowflake or empty | Channel used when a DM cannot be delivered. Must be in `DISCORD_GUILD_ID`. Empty disables fallback notifications |
 | `EMBEDS` | No | `[]` | JSON array of `{channelID, messageID}` | Messages the bot keeps the server list in: `[{"channelID":"xxx","messageID":"yyy"}]`. Each message **must have been posted by the bot itself**, since Discord forbids editing anyone else's. Empty disables embed updates; malformed JSON is a startup error |
-| `EMBED_COLOR` | No | `7980240` | 0 to 16777215 | Embed color as a 24-bit decimal |
+| `EMBED_COLOR` | No | `#79C4D0` | Six hex digits, `#` optional | Embed color as a hex color |
 | `DATABASE_PATH` | No | `db.sqlite` | non-empty | SQLite file path. In Docker it must stay on the mounted volume (`/app/data/db.sqlite`, the image default) |
 | `SERVER_UPDATE_INTERVAL` | No | `90` | 30 to 86400 | How often the bot queries the servers, updates the embeds and checks for map changes, in that order, on one timer (seconds). The embed states this interval in its description |
 | `MAX_CONCURRENT_QUERIES` | No | `10` | 1 to 100 | Maximum concurrent server queries |
