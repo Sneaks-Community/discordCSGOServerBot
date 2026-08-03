@@ -1,15 +1,11 @@
 services:
-  bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
+  discordserverbot:
     image: discordserverbot:latest
     container_name: discordserverbot
     # Security
     security_opt:
       - "apparmor=docker-default"
       - "no-new-privileges=true"
-    # Drop all container capabilities
     cap_drop:
       - ALL
     read_only: true
@@ -29,8 +25,7 @@ services:
       - DATABASE_PATH=/app/data/db.sqlite
     volumes:
       - ./servers.json:/app/servers.json:ro
-      # Persist SQLite database
-      - bot-data:/app/data
+      - discordserverbot-data:/app/data
     deploy:
       resources:
         limits:
@@ -38,5 +33,5 @@ services:
           cpus: '0.5'
 
 volumes:
-  bot-data:
+  discordserverbot-data:
     driver: local
