@@ -1,8 +1,8 @@
-import Discord, { Events, GatewayIntentBits, Options } from "discord.js";
+import Discord, { Events, GatewayIntentBits, Options, RESTJSONErrorCodes } from "discord.js";
 
 import { registerSlashCommands, handleInteraction } from "./commands/index.js";
 import { config, CONFIG_VALUES, validateConfig } from "./config/index.js";
-import { initDB, closeDB, unfollowAll } from "./db/index.js";
+import { initDB, closeDB, unfollowAll, clearEmbedMessage, getEmbedMessage, setEmbedMessage } from "./db/index.js";
 import { makeEmbed } from "./embeds/serverEmbeds.js";
 import { startCleanupIntervals, clearCleanupIntervals } from "./services/cacheService.js";
 import { reconcileFollows } from "./services/followReconciliation.js";
@@ -11,7 +11,7 @@ import { notifyUsers, initNotificationService } from "./services/notificationSer
 import { refresh, getServerData, updateServerData } from "./services/serverService.js";
 import { getTerminalReason, isRetryableDiscordError, TerminalError } from "./utils/discordErrors.js";
 import { botLogger, flushLogs } from "./utils/logger.js";
-import { validateChannelForEdit } from "./utils/permissions.js";
+import { validateChannelForStatus } from "./utils/permissions.js";
 import { withRetry } from "./utils/retry.js";
 
 let embedInterval = null;
@@ -64,10 +64,10 @@ const bot = new Discord.Client({
     sweepers: {
         ...Options.DefaultSweeperSettings,
         // Keep the bot's own member: guild.members.me returns null if swept
-        // rather than re-fetching, and validateChannelForEdit reads that null as
+        // rather than re-fetching, and validateChannelForStatus reads that null as
         // a missing permission and gives up on the channel for good.
         guildMembers: { filter: sweepAllButClient, interval: CACHE_SWEEP_INTERVAL_SECONDS },
-        // Only the embed messages are fetched, and they are re-fetched every tick.
+        // Only the server list message is fetched, and it is re-fetched every tick.
         messages: { interval: CACHE_SWEEP_INTERVAL_SECONDS, lifetime: MESSAGE_CACHE_LIFETIME_SECONDS },
         // getCachedUser keeps its own TTL cache in front of bot.users, so this
         // copy is not authoritative.
@@ -154,7 +154,7 @@ async function intervalFunction() {
     }
 
     if (embed) {
-        await updateEmbeds(embed);
+        await publishEmbed(embed);
     }
 
     try {
@@ -165,43 +165,99 @@ async function intervalFunction() {
 }
 
 /**
- * One edit per configured message, each failing on its own so a channel the bot
- * has lost cannot stop the rest.
+ * Mentions are denied everywhere below: the embed carries server and map names
+ * straight from the game servers, and both posting and editing resolve mentions.
+ * @param {import('discord.js').EmbedBuilder} embed
+ * @returns {{ allowedMentions: { parse: [] }, embeds: import('discord.js').EmbedBuilder[] }}
+ */
+function embedPayload(embed) {
+    return { allowedMentions: { parse: [] }, embeds: [embed] };
+}
+
+/**
+ * Edits the message the bot posted last time.
+ * @param {import('discord.js').TextChannel} channel
+ * @param {string} messageID
+ * @param {import('discord.js').EmbedBuilder} embed
+ * @returns {Promise<boolean>} - False if that message is gone, so the caller
+ *   posts a replacement. Every other failure throws to withRetry.
+ */
+async function editTrackedMessage(channel, messageID, embed) {
+    try {
+        const message = await channel.messages.fetch(messageID);
+        await message.edit(embedPayload(embed));
+        return true;
+    } catch (err) {
+        // Caught here rather than left to isRetryableDiscordError, which reads
+        // this code as terminal: for this one call site a deleted message is
+        // recoverable, and the bot simply posts another.
+        if (err?.code === RESTJSONErrorCodes.UnknownMessage) {
+            botLogger.warn({ channelId: channel.id, messageId: messageID }, "The server list message is gone; posting a new one");
+            return false;
+        }
+
+        throw err;
+    }
+}
+
+/**
+ * Keeps EMBED_CHANNEL_ID holding one up-to-date server list: edits the tracked
+ * message, or posts one and remembers it when there is nothing to edit.
  * @param {import('discord.js').EmbedBuilder} embed
  * @returns {Promise<void>}
  */
-async function updateEmbeds(embed) {
-    await Promise.all(
-        config.embeds.map(async (e) => {
-            try {
-                await withRetry(async () => {
-                    const channel = await bot.channels.fetch(e.channelID);
+async function publishEmbed(embed) {
+    const channelID = config.embedsConfig.channelID;
 
-                    // Terminal: a missing permission needs an operator, not
-                    // another attempt.
-                    const permCheck = validateChannelForEdit(channel);
-                    if (!permCheck.valid) {
-                        throw new TerminalError(
-                            `Permission check failed for channel ${e.channelID}: ${permCheck.error}`,
-                            `${permCheck.error} in channel ${e.channelID}; grant the bot those permissions there`
-                        );
-                    }
+    // Empty means the feature is off, which validateConfig already warned about.
+    if (!channelID) {
+        return;
+    }
 
-                    const message = await channel.messages.fetch(e.messageID);
-                    // Mentions denied: the embed carries server and map names from
-                    // the game servers, and an edit re-resolves mentions.
-                    await message.edit({ allowedMentions: { parse: [] }, content: "\u200B", embeds: [embed] });
-                }, { isRetryable: isRetryableDiscordError });
-            } catch (err) {
-                const reason = getTerminalReason(err);
-                if (reason) {
-                    botLogger.error({ channelId: e.channelID, err, messageId: e.messageID }, `Embed update cannot succeed and will not be retried. ${reason}`);
-                } else {
-                    botLogger.error({ channelId: e.channelID, err }, "Failed to update embed after retries");
-                }
+    try {
+        await withRetry(async () => {
+            const channel = await bot.channels.fetch(channelID);
+
+            // Terminal: a missing permission needs an operator, not another attempt.
+            const permCheck = validateChannelForStatus(channel);
+            if (!permCheck.valid) {
+                throw new TerminalError(
+                    `Permission check failed for channel ${channelID}: ${permCheck.error}`,
+                    `${permCheck.error} in channel ${channelID}; grant the bot those permissions there`
+                );
             }
-        })
-    );
+
+            const tracked = getEmbedMessage();
+
+            // A message in some other channel means EMBED_CHANNEL_ID changed. It
+            // is left where it is, frozen, rather than deleted from a channel the
+            // bot is no longer configured for.
+            if (tracked && tracked.channelID !== channelID) {
+                botLogger.info({ channelId: channelID, previousChannelId: tracked.channelID }, "EMBED_CHANNEL_ID changed; posting a new server list and abandoning the old message");
+                clearEmbedMessage();
+            } else if (tracked && await editTrackedMessage(channel, tracked.messageID, embed)) {
+                return;
+            }
+
+            const message = await channel.send(embedPayload(embed));
+
+            // Swallowed: the send already succeeded, and throwing here would send
+            // withRetry round again and post a duplicate. A lost ID costs one
+            // abandoned message, which the next tick replaces.
+            try {
+                setEmbedMessage(channelID, message.id);
+            } catch (err) {
+                botLogger.error({ channelId: channelID, err, messageId: message.id }, "Posted the server list but could not record its ID; the next update will post another");
+            }
+        }, { isRetryable: isRetryableDiscordError });
+    } catch (err) {
+        const reason = getTerminalReason(err);
+        if (reason) {
+            botLogger.error({ channelId: channelID, err }, `Embed update cannot succeed and will not be retried. ${reason}`);
+        } else {
+            botLogger.error({ channelId: channelID, err }, "Failed to update embed after retries");
+        }
+    }
 }
 
 /** @param {import('discord.js').Guild} guild */

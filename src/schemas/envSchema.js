@@ -146,34 +146,6 @@ const activityTextEnv = z.preprocess(
     z.string().max(ACTIVITY_TEXT_MAX_LENGTH, `must be at most ${ACTIVITY_TEXT_MAX_LENGTH} characters (Discord's activity limit), or empty to show no activity`)
 );
 
-/** One entry of EMBEDS: the message the bot keeps the server list in. */
-const embedEntrySchema = z.object({
-    channelID: z.string({ error: "is required and must be a string" }).pipe(discordIdSchema),
-    messageID: z.string({ error: "is required and must be a string" }).pipe(discordIdSchema)
-});
-
-/**
- * A JSON array of embed targets. Malformed JSON is an error rather than an empty
- * list, so a typo cannot quietly switch the embed feature off.
- */
-const embedsEnv = z.preprocess(
-    (value) => (value === undefined || String(value).trim() === "" ? "[]" : String(value)),
-    z
-        .string()
-        .transform((value, ctx) => {
-            try {
-                return JSON.parse(value);
-            } catch {
-                ctx.addIssue({
-                    code: "custom",
-                    message: "must be valid JSON, for example [{\"channelID\":\"123456789012345678\",\"messageID\":\"123456789012345679\"}]"
-                });
-                return z.NEVER;
-            }
-        })
-        .pipe(z.array(embedEntrySchema, { error: "must be a JSON array of {channelID, messageID} objects" }))
-);
-
 /** Levels pino accepts, least to most severe. */
 export const LOG_LEVELS = Object.freeze(["trace", "debug", "info", "warn", "error", "fatal", "silent"]);
 
@@ -217,10 +189,12 @@ export const envSchema = z.object({
         (value) => (value === undefined ? "" : String(value).trim()),
         z.string().min(1, "is required and must not be empty")
     ),
+    // The channel the bot posts its server list in and then keeps editing. It
+    // owns that message, so nothing here identifies one; see db/embedMessage.js.
+    EMBED_CHANNEL_ID: optionalIdEnv(),
     // Six hex digits exactly: Discord takes a 24-bit RGB integer, and anything
     // wider makes EmbedBuilder throw
     EMBED_COLOR: hexColorEnv("#79C4D0"),
-    EMBEDS: embedsEnv,
     FALLBACK_AVATAR_URL: urlEnv("https://i.imgur.com/cBiDnMi.png"),
     FALLBACK_CHANNEL_ID: optionalIdEnv(),
     // A multiplier over the ports gamedig tries, not a total attempt budget, so
@@ -262,7 +236,7 @@ export const envSchema = z.object({
 const OPTIONAL_FEATURES = Object.freeze([
     { disables: "admin commands will be inaccessible", variable: "ADMIN_ROLE_ID" },
     { disables: "fallback notifications will be disabled", variable: "FALLBACK_CHANNEL_ID" },
-    { disables: "server list embeds will not be updated", variable: "EMBEDS" }
+    { disables: "server list embeds will not be updated", variable: "EMBED_CHANNEL_ID" }
 ]);
 
 /**
@@ -276,7 +250,7 @@ const PLACEHOLDER_ENV = Object.freeze({
 });
 
 /**
- * Both strings and the EMBEDS array answer to `.length`, so one check covers all.
+ * Every optional feature is switched off by an empty string.
  * @param {object} values - Validated environment values
  * @returns {string[]} - Warning messages
  */
@@ -288,7 +262,7 @@ function collectOptionalFeatureWarnings(values) {
 
 /**
  * @param {import('zod').core.$ZodIssue} issue
- * @returns {string} - e.g. `EMBEDS[0].channelID: must contain only digits`
+ * @returns {string} - e.g. `SERVERS[0].nick: must contain only digits`
  */
 export function formatEnvIssue(issue) {
     const [name, ...rest] = issue.path;

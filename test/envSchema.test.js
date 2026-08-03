@@ -1,8 +1,8 @@
 /**
  * parseEnv is the whole configuration contract, and the comment at the top of
  * envSchema.js lists the bugs that motivated it: MAX_CONCURRENT_QUERIES=0 stopping
- * every query, RETRY_MAX_RETRIES=0 making withRetry a no-op, a malformed EMBEDS
- * silently disabling the embed. Each of those is a test below.
+ * every query, RETRY_MAX_RETRIES=0 making withRetry a no-op, a mistyped channel
+ * ID silently disabling a feature. Each of those is a test below.
  */
 
 import assert from "node:assert/strict";
@@ -31,7 +31,7 @@ describe("parseEnv, defaults", () => {
         assert.equal(values.EMBED_COLOR, 7980240);
         assert.equal(values.DATABASE_PATH, "db.sqlite");
         assert.equal(values.BOT_ACTIVITY_TYPE, "custom");
-        assert.deepEqual(values.EMBEDS, []);
+        assert.equal(values.EMBED_CHANNEL_ID, "");
     });
 
     it("treats an empty value as unset", () => {
@@ -48,7 +48,7 @@ describe("parseEnv, defaults", () => {
         assert.equal(warnings.length, 3);
         assert.ok(warnings.some((warning) => warning.startsWith("ADMIN_ROLE_ID is not set")));
         assert.ok(warnings.some((warning) => warning.startsWith("FALLBACK_CHANNEL_ID is not set")));
-        assert.ok(warnings.some((warning) => warning.startsWith("EMBEDS is not set")));
+        assert.ok(warnings.some((warning) => warning.startsWith("EMBED_CHANNEL_ID is not set")));
     });
 
     it("does not warn about a feature that is configured", () => {
@@ -135,30 +135,26 @@ describe("parseEnv, EMBED_COLOR", () => {
     });
 });
 
-describe("parseEnv, EMBEDS", () => {
-    it("rejects malformed JSON instead of quietly disabling the embed", () => {
-        const { errors } = parseEnv(env({ EMBEDS: "{oops" }));
-
-        assert.equal(errors.length, 1);
-        assert.ok(errors[0].startsWith("EMBEDS: must be valid JSON"));
-    });
-
-    it("names the offending entry and field", () => {
-        const { errors } = parseEnv(env({ EMBEDS: JSON.stringify([{ channelID: "12", messageID: "123456789012345678" }]) }));
-
-        assert.ok(errors.every((error) => error.startsWith("EMBEDS[0].channelID: ")), errors.join(", "));
-    });
-
-    it("parses a well formed list", () => {
-        const targets = [{ channelID: "123456789012345678", messageID: "123456789012345679" }];
-        const { errors, values } = parseEnv(env({ EMBEDS: JSON.stringify(targets) }));
+describe("parseEnv, EMBED_CHANNEL_ID", () => {
+    it("accepts a channel ID", () => {
+        const { errors, values } = parseEnv(env({ EMBED_CHANNEL_ID: "123456789012345678" }));
 
         assert.deepEqual(errors, []);
-        assert.deepEqual(values.EMBEDS, targets);
+        assert.equal(values.EMBED_CHANNEL_ID, "123456789012345678");
     });
 
-    it("rejects a JSON value that is not an array of targets", () => {
-        assert.equal(parseEnv(env({ EMBEDS: "\"nope\"" })).errors.length, 1);
+    it("treats empty as the feature being switched off, not an error", () => {
+        const { errors, warnings } = parseEnv(env({ EMBED_CHANNEL_ID: "" }));
+
+        assert.deepEqual(errors, []);
+        assert.ok(warnings.some((warning) => warning.startsWith("EMBED_CHANNEL_ID is not set")));
+    });
+
+    it("rejects a mistyped ID rather than quietly disabling the server list", () => {
+        const { errors } = parseEnv(env({ EMBED_CHANNEL_ID: "#server-status" }));
+
+        assert.equal(errors.length, 1);
+        assert.ok(errors[0].startsWith("EMBED_CHANNEL_ID: must be a Discord ID"), errors[0]);
     });
 });
 
@@ -207,8 +203,8 @@ describe("formatEnvIssue", () => {
 
     it("renders an index and a property as an accessor chain", () => {
         assert.equal(
-            formatEnvIssue({ message: "bad", path: ["EMBEDS", 0, "channelID"] }),
-            "EMBEDS[0].channelID: bad"
+            formatEnvIssue({ message: "bad", path: ["SERVERS", 0, "channelID"] }),
+            "SERVERS[0].channelID: bad"
         );
     });
 });

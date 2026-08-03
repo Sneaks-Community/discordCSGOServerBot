@@ -9,8 +9,9 @@ keeps a channel message in sync with their status, and DMs users when a followed
 
 ## Features
 
-- **Server monitoring**: queries every configured server on one interval and keeps a channel
-  message updated with a rich embed of their status
+- **Server monitoring**: queries every configured server on one interval and keeps a single
+  message in a channel of your choosing updated with a rich embed of their status, posting that
+  message itself the first time
 - **Map notifications**: DMs everyone following a map when it appears on a server, falling back
   to a configured channel for recipients whose DMs are closed
 - **Slash commands**: all interaction is through slash commands, rate limited per user
@@ -62,10 +63,10 @@ work but do not appear in their picker. All replies are ephemeral.
   [Discord Developer Portal](https://discord.com/developers/applications) stops anyone else
   adding it in the first place.
 
-- **Permissions**, in every channel listed in `EMBEDS` and in the fallback channel:
-  - View Channel and Embed Links, in both
-  - Read Message History, in the `EMBEDS` channels, to fetch the message being edited
-  - Send Messages, in the fallback channel
+- **Permissions**, in the `EMBED_CHANNEL_ID` channel and in the fallback channel:
+  - View Channel, Send Messages and Embed Links, in both
+  - Read Message History, in the `EMBED_CHANNEL_ID` channel, to re-fetch the server list message
+    it is editing
 
   DMs to followers need no permission.
 
@@ -94,7 +95,13 @@ git.
    cp servers.json.example servers.json
    ```
 
-3. **Edit both.** `.env` needs at least `DISCORD_TOKEN` (see
+3. **Create a channel for the server list**, if you want one. Enable **Developer Mode** under
+   User Settings → Advanced, then right-click the channel and **Copy Channel ID**. That ID goes
+   in `EMBED_CHANNEL_ID`. The bot posts its own message there and keeps editing it, so there is
+   nothing else to create; give it a channel of its own and nobody has to scroll past chat to
+   see the servers.
+
+4. **Edit both files.** `.env` needs at least `DISCORD_TOKEN` (see
    [Environment Variables](#environment-variables)), and `servers.json` needs your game servers
    (see [Server Configuration](#server-configuration)).
 
@@ -165,7 +172,7 @@ selects its default.
 | `BOT_ACTIVITY_TYPE` | No | `custom` | `custom`, `playing`, `listening`, `watching`, `competing` | How `BOT_ACTIVITY_TEXT` renders. `custom` shows it verbatim; the others have their verb prepended by Discord (`Playing ...`, `Listening to ...`) |
 | `LOG_LEVEL` | No | `info` | `trace`, `debug`, `info`, `warn`, `error`, `fatal`, `silent` | stdout verbosity. An unrecognized value falls back to `info` with a warning rather than aborting, since logging is how problems get reported |
 | `FALLBACK_CHANNEL_ID` | No | - | snowflake or empty | Channel used when a DM cannot be delivered. Must be in `DISCORD_GUILD_ID`. Empty disables fallback notifications |
-| `EMBEDS` | No | `[]` | JSON array of `{channelID, messageID}` | Messages the bot keeps the server list in: `[{"channelID":"xxx","messageID":"yyy"}]`. Each message **must have been posted by the bot itself**, since Discord forbids editing anyone else's. Empty disables embed updates; malformed JSON is a startup error |
+| `EMBED_CHANNEL_ID` | No | - | snowflake or empty | Channel the bot keeps the server list in. It posts one message there on its first update and edits that message from then on, remembering which one in the database. Give it a dedicated channel. Empty disables the server list |
 | `EMBED_COLOR` | No | `#79C4D0` | Six hex digits, `#` optional | Embed color as a hex color |
 | `DATABASE_PATH` | No | `db.sqlite` | non-empty | SQLite file path. In Docker it must stay on the mounted volume (`/app/data/db.sqlite`, the image default) |
 | `SERVER_UPDATE_INTERVAL` | No | `90` | 30 to 86400 | How often the bot queries the servers, updates the embeds and checks for map changes, in that order, on one timer (seconds). The embed states this interval in its description |

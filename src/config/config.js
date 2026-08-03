@@ -44,8 +44,8 @@ const baseConfig = {
         guildID: env.DISCORD_GUILD_ID,
         token: env.DISCORD_TOKEN
     },
-    embeds: env.EMBEDS,
     embedsConfig: {
+        channelID: env.EMBED_CHANNEL_ID,
         color: env.EMBED_COLOR
     },
     fallback: {

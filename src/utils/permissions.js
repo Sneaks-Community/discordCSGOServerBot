@@ -73,12 +73,15 @@ export function validateChannelForSend(channel) {
 }
 
 /**
+ * The server list channel, which needs both halves: the bot posts its message
+ * once and re-fetches it to edit on every tick after that.
  * @param {import('discord.js').GuildChannel} channel
  * @returns {{valid: boolean, error?: string}}
  */
-export function validateChannelForEdit(channel) {
+export function validateChannelForStatus(channel) {
     return validateChannel(channel, [
         PermissionFlagsBits.ViewChannel,
+        PermissionFlagsBits.SendMessages,
         PermissionFlagsBits.ReadMessageHistory,
         PermissionFlagsBits.EmbedLinks
     ]);

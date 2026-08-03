@@ -45,6 +45,17 @@ export function initDB() {
         `);
         db.exec("CREATE INDEX IF NOT EXISTS idx_map_name ON players_follow(map_name)");
         db.exec("CREATE INDEX IF NOT EXISTS idx_discord_id ON players_follow(discord_id)");
+
+        // CHECK (id = 1): the bot maintains exactly one server list message, so
+        // "at most one row" is the table's own invariant rather than a promise
+        // the writing code has to keep.
+        db.exec(`
+            CREATE TABLE IF NOT EXISTS embed_message (
+                id INTEGER PRIMARY KEY CHECK (id = 1),
+                channel_id TEXT NOT NULL,
+                message_id TEXT NOT NULL
+            )
+        `);
     });
 
     initTransaction();

@@ -6,6 +6,8 @@
 
 export { initDB, closeDB } from "./connection.js";
 
+export { clearEmbedMessage, getEmbedMessage, setEmbedMessage } from "./embedMessage.js";
+
 export {
     followMap,
     unfollowMap,
