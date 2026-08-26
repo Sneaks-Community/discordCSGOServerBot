@@ -39,6 +39,13 @@ const MAX_SERVERS = 25;
 export const DEFAULT_SERVER_PORT = 27015;
 
 /**
+ * Caps both the address configured in servers.json and the connect string a game
+ * server reports back, which getInfo stores as `fullIP`. A 253-character
+ * hostname plus ":65535" is the longest either can legitimately be.
+ */
+export const SERVER_IP_MAX_LENGTH = 255;
+
+/**
  * "host" or "host:port". No IPv6: the colon is the separator here, matching the
  * single-colon split in getInfo.
  */

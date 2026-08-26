@@ -2,7 +2,7 @@ import { GameDig } from "gamedig";
 import pLimit from "p-limit";
 
 import { CONFIG_VALUES, serverObject } from "../config/index.js";
-import { DEFAULT_SERVER_PORT, playerNameSchema } from "../schemas/validationSchemas.js";
+import { DEFAULT_SERVER_PORT, playerNameSchema, SERVER_IP_MAX_LENGTH } from "../schemas/validationSchemas.js";
 import { serviceLogger } from "../utils/logger.js";
 import { normalizeMapName } from "../utils/mapUtils.js";
 import { validateWithZod } from "../utils/zodValidator.js";
@@ -154,7 +154,10 @@ export async function getInfo(server, index) {
 
         data = {
             bots: sanitizedBots,
-            fullIP: res.connect,
+            // Whatever the server chose to answer with, and it reaches an embed
+            // field, the DM's steam:// link and the fallback message. Falls back
+            // to the configured address when the reply carries no usable one.
+            fullIP: (typeof res.connect === "string" ? res.connect : server.ip).slice(0, SERVER_IP_MAX_LENGTH),
             index: index,
             keywords: server.keywords,
             map: normalizeMapName(res.map),
