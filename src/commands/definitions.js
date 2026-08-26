@@ -26,7 +26,7 @@ import { handleSlashHelp, handleSlashPing } from "./utilityCommands.js";
  */
 
 /** @type {ReadonlyArray<CommandDefinition>} */
-export const COMMAND_DEFINITIONS = Object.freeze([
+const COMMAND_DEFINITIONS = Object.freeze([
     { admin: false, description: "Show players on a server", handler: handleSlashPlayers, name: "players",
         options: opt => opt.setName("server").setDescription("Server keyword or name").setRequired(false) },
     { admin: false, description: "List all available server keywords", handler: handleSlashKeywords, name: "keywords" },

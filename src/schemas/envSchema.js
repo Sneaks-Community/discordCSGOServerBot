@@ -129,7 +129,7 @@ export const ACTIVITY_TYPE_BY_NAME = Object.freeze({
 });
 
 /** @type {string[]} */
-export const ACTIVITY_TYPES = Object.keys(ACTIVITY_TYPE_BY_NAME);
+const ACTIVITY_TYPES = Object.keys(ACTIVITY_TYPE_BY_NAME);
 
 // Discord's activity text limit, the same for a custom state and every name.
 const ACTIVITY_TEXT_MAX_LENGTH = 128;

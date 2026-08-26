@@ -34,7 +34,7 @@ export const playerNameSchema = z
  * makeEmbed adds one field per server and Discord caps an embed at 25 fields,
  * so a 26th server makes every embed update fail with an API 400.
  */
-export const MAX_SERVERS = 25;
+const MAX_SERVERS = 25;
 
 export const DEFAULT_SERVER_PORT = 27015;
 
@@ -42,7 +42,7 @@ export const DEFAULT_SERVER_PORT = 27015;
  * "host" or "host:port". No IPv6: the colon is the separator here, matching the
  * single-colon split in getInfo.
  */
-export const serverIpSchema = z
+const serverIpSchema = z
     .string({ error: "ip is required and must be a string" })
     .min(1, "ip cannot be empty")
     .superRefine((value, ctx) => {
@@ -80,7 +80,7 @@ export const serverIpSchema = z
  * getServerByKeyword lowercases the user's input, so an uppercase or padded
  * keyword could never match. That is a config error, not a cosmetic one.
  */
-export const serverKeywordSchema = z
+const serverKeywordSchema = z
     .string({ error: "keyword must be a string" })
     .min(1, "keyword cannot be empty")
     .max(32, "keyword cannot exceed 32 characters")
@@ -91,7 +91,7 @@ export const serverKeywordSchema = z
  * Unknown fields are stripped rather than rejected; validateServersConfig
  * reports them as warnings, so a stale config still starts.
  */
-export const serverEntrySchema = z.object({
+const serverEntrySchema = z.object({
     ip: serverIpSchema,
     keywords: z
         .array(serverKeywordSchema, { error: "keywords is required and must be an array" })
