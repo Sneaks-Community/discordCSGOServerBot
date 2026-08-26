@@ -47,6 +47,21 @@ describe("normalizeMapName", () => {
             assert.equal(normalizeMapName(value), value);
         }
     });
+
+    it("caps a hostile name at the 64 characters mapNameSchema allows", () => {
+        assert.equal(normalizeMapName("a".repeat(5000)), "a".repeat(64));
+    });
+
+    it("leaves a name of exactly 64 characters alone", () => {
+        const exact = "b".repeat(64);
+
+        assert.equal(normalizeMapName(exact), exact);
+    });
+
+    it("caps the final segment, not the path it came from", () => {
+        // A long workshop id must not eat the budget the map name needs.
+        assert.equal(normalizeMapName(`workshop/${"9".repeat(200)}/${"c".repeat(100)}`), "c".repeat(64));
+    });
 });
 
 describe("getMapImage", () => {
