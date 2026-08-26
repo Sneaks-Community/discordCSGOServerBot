@@ -1,8 +1,7 @@
 services:
   discordserverbot:
-    image: discordserverbot:latest
+    image: ghcr.io/sneaks-community/discordserverbot:latest
     container_name: discordserverbot
-    # Security
     security_opt:
       - "apparmor=docker-default"
       - "no-new-privileges=true"
