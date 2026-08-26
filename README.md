@@ -159,6 +159,39 @@ npm install                            # Node
 docker compose pull && docker compose up -d   # Docker
 ```
 
+## Backups
+
+Follows and the tracked embed message are the only state on disk. The database runs in WAL mode,
+so copying `db.sqlite` with `cp` can capture a stale or torn snapshot. Use SQLite's online
+backup, which is safe while the bot is running:
+
+```bash
+# Docker: sqlite3 is in the image, /tmp is writable tmpfs and clears on restart
+docker compose exec discordserverbot sqlite3 /app/data/db.sqlite ".backup /tmp/db.bak"
+docker compose cp discordserverbot:/tmp/db.bak "db-$(date +%F).sqlite"
+
+# Node
+sqlite3 db.sqlite ".backup db-$(date +%F).sqlite"
+```
+
+The file holds one row per follow, so it stays small; a nightly cron keeping 30 days costs a few
+megabytes. To restore:
+
+```bash
+docker compose stop
+docker compose cp db-2026-08-26.sqlite discordserverbot:/app/data/db.sqlite
+docker compose start
+```
+
+A clean stop checkpoints the WAL and leaves no sidecar files. If the bot was killed instead,
+delete the stale ones first, or they will be replayed over the restored file:
+
+```bash
+docker compose run --rm --entrypoint sh discordserverbot -c 'rm -f /app/data/db.sqlite-wal /app/data/db.sqlite-shm'
+```
+
+Under Node, stop the bot and replace `db.sqlite` (and any `-wal`/`-shm` beside it) directly.
+
 ## Environment Variables
 
 Every value is validated at startup. A malformed or out-of-range one aborts startup with a
