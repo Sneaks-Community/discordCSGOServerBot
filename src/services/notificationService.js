@@ -2,7 +2,7 @@ import pLimit from "p-limit";
 
 import { CONFIG_VALUES, config } from "../config/index.js";
 import { getUsersFollowingMap } from "../db/index.js";
-import { createBaseEmbed } from "../embeds/baseEmbed.js";
+import { createBaseEmbed, formatPlayerCounts } from "../embeds/baseEmbed.js";
 import { mapNameSchema } from "../schemas/validationSchemas.js";
 import { getTerminalReason, isRecipientRefusal, isRetryableDiscordError, TerminalError } from "../utils/discordErrors.js";
 import { serviceLogger } from "../utils/logger.js";
@@ -147,9 +147,7 @@ function describeUndeliverable({ failed, inCooldown, refused, total }) {
  */
 function buildMapNotificationEmbed({ mapImage, mapName, server, serverObj }) {
     const embed = createBaseEmbed(`${mapName} is now on ${server}`)
-        .setDescription(
-            `**__Players:__** ${serverObj?.numPlayers ?? "unknown"} (${serverObj?.numBots ?? "unknown"}) / ${serverObj?.maxPlayers ?? "unknown"}`
-        );
+        .setDescription(`**__Players:__** ${formatPlayerCounts(serverObj)}`);
 
     if (mapImage) embed.setImage(mapImage);
 

@@ -1,6 +1,6 @@
 import { CONFIG_VALUES } from "../config/index.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
-import { createBaseEmbed } from "./baseEmbed.js";
+import { createBaseEmbed, formatPlayerCounts } from "./baseEmbed.js";
 
 /**
  * Describe an interval in words, e.g. "45 seconds", "1.5 minutes". Minutes keep
@@ -39,7 +39,7 @@ export function makeEmbed(serverData) {
         embed.addFields({
             inline: true,
             name: escapeForDiscord(server.name),
-            value: `**__Players:__** ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers}\n**__Map:__** ${escapeForDiscord(server.map)}\n**__IP:__** ${escapeForDiscord(server.fullIP)}`
+            value: `**__Players:__** ${formatPlayerCounts(server)}\n**__Map:__** ${escapeForDiscord(server.map)}\n**__IP:__** ${escapeForDiscord(server.fullIP)}`
         });
     }
 

@@ -1,7 +1,7 @@
 import { CONFIG_VALUES } from "../config/index.js";
 import { escapeForDiscord, escapeLines } from "../utils/discordEscape.js";
 import { EMBED_DESCRIPTION_LIMIT, joinWithinLimit } from "../utils/truncate.js";
-import { createBaseEmbed } from "./baseEmbed.js";
+import { createBaseEmbed, formatPlayerCounts } from "./baseEmbed.js";
 
 /**
  * @param {object} server - One entry from the serverService snapshot
@@ -11,7 +11,7 @@ export function playerListEmbed(server) {
     let embed;
 
     if (server.online) {
-        embed = createBaseEmbed(`${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} players connected to ${escapeForDiscord(server.name)} on ${escapeForDiscord(server.map)}`);
+        embed = createBaseEmbed(`${formatPlayerCounts(server)} players connected to ${escapeForDiscord(server.name)} on ${escapeForDiscord(server.map)}`);
 
         // A full 64-slot server with long names can pass the 4096 character
         // description limit, which would reject the whole reply.
@@ -42,7 +42,7 @@ export function makeServerList(serverData) {
     const lines = Object.values(serverData)
         .map((server) => {
             const escapedName = escapeForDiscord(server.name);
-            return server.online ? `${server.index}: **__${escapedName}__**: ${server.numPlayers} (${server.numBots}) / ${server.maxPlayers} on ${escapeForDiscord(server.map)}` : `${server.index}: **__${escapedName}__**: is currently unavailable.`;
+            return server.online ? `${server.index}: **__${escapedName}__**: ${formatPlayerCounts(server)} on ${escapeForDiscord(server.map)}` : `${server.index}: **__${escapedName}__**: is currently unavailable.`;
         });
     const list = joinWithinLimit(lines, EMBED_DESCRIPTION_LIMIT);
 
