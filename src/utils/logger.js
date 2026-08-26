@@ -93,6 +93,7 @@ const logger = createLogger();
 export const botLogger = logger.child({ module: "bot" });
 export const commandLogger = logger.child({ module: "commands" });
 export const dbLogger = logger.child({ module: "database" });
+export const embedLogger = logger.child({ module: "embeds" });
 export const serviceLogger = logger.child({ module: "services" });
 export const configLogger = logger.child({ module: "config" });
 export const mainLogger = logger.child({ module: "main" });

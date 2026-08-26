@@ -11,7 +11,7 @@ process.env.DISCORD_GUILD_ID = "123456789012345678";
 process.env.DISCORD_TOKEN = "test-token";
 process.env.LOG_LEVEL = "silent";
 
-const { formatPlayerCounts } = await import("../src/embeds/baseEmbed.js");
+const { createBaseEmbed, formatPlayerCounts } = await import("../src/embeds/baseEmbed.js");
 
 describe("formatPlayerCounts", () => {
     it("puts bots in parentheses, between humans and the cap", () => {
@@ -36,5 +36,21 @@ describe("formatPlayerCounts", () => {
     it("survives no server at all", () => {
         assert.equal(formatPlayerCounts(), "unknown (unknown) / unknown");
         assert.equal(formatPlayerCounts(null), "unknown (unknown) / unknown");
+    });
+});
+
+describe("createBaseEmbed", () => {
+    it("clamps a title past Discord's 256 characters", () => {
+        const { title } = createBaseEmbed("t".repeat(5000)).toJSON();
+
+        assert.equal(title.length, 256);
+        assert.ok(title.endsWith("\u2026"));
+    });
+
+    // playerListEmbed builds its title from a server name and a map, both of
+    // which arrive from the game server.
+    it("leaves a normal title untouched", () => {
+        assert.equal(createBaseEmbed("12 (2) / 24 players connected to Surf on de_dust2").toJSON().title,
+            "12 (2) / 24 players connected to Surf on de_dust2");
     });
 });

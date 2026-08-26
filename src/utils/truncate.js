@@ -6,7 +6,32 @@
 
 export const EMBED_DESCRIPTION_LIMIT = 4096;
 
+export const EMBED_FIELD_NAME_LIMIT = 256;
+
+export const EMBED_FIELD_VALUE_LIMIT = 1024;
+
+export const EMBED_TITLE_LIMIT = 256;
+
+/** Title, description, field names and field values of one embed, summed. */
+export const EMBED_TOTAL_LIMIT = 6000;
+
 export const MESSAGE_CONTENT_LIMIT = 2000;
+
+/**
+ * Hard-caps one value, marking the cut so a truncated name cannot be mistaken
+ * for the real one. For a list of lines use joinWithinLimit instead.
+ * @param {string} value
+ * @param {number} limit
+ * @returns {string} Never longer than `limit`
+ */
+export function clampText(value, limit) {
+    const text = typeof value === "string" ? value : String(value ?? "");
+    if (text.length <= limit) return text;
+
+    // The marker has to fit inside the limit too, so a limit below 1 has room
+    // for nothing at all.
+    return limit < 1 ? "" : text.slice(0, limit - 1) + "\u2026";
+}
 
 /**
  * Default overflow notice appended when lines had to be dropped.

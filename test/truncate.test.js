@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { EMBED_DESCRIPTION_LIMIT, joinWithinLimit, MESSAGE_CONTENT_LIMIT } from "../src/utils/truncate.js";
+import { clampText, EMBED_DESCRIPTION_LIMIT, EMBED_FIELD_NAME_LIMIT, EMBED_FIELD_VALUE_LIMIT, EMBED_TITLE_LIMIT, EMBED_TOTAL_LIMIT, joinWithinLimit, MESSAGE_CONTENT_LIMIT } from "../src/utils/truncate.js";
 
 /**
  * A shorter overflow notice than the default one, to show the caller's suffix is
@@ -87,6 +87,40 @@ describe("joinWithinLimit", () => {
 
     it("states Discord's limits as Discord defines them", () => {
         assert.equal(EMBED_DESCRIPTION_LIMIT, 4096);
+        assert.equal(EMBED_FIELD_NAME_LIMIT, 256);
+        assert.equal(EMBED_FIELD_VALUE_LIMIT, 1024);
+        assert.equal(EMBED_TITLE_LIMIT, 256);
+        assert.equal(EMBED_TOTAL_LIMIT, 6000);
         assert.equal(MESSAGE_CONTENT_LIMIT, 2000);
+    });
+});
+
+describe("clampText", () => {
+    it("leaves a value that already fits alone", () => {
+        assert.equal(clampText("de_dust2", 64), "de_dust2");
+        assert.equal(clampText("exactly-ten", 11), "exactly-ten");
+    });
+
+    it("marks the cut so a truncated value cannot pass as the real one", () => {
+        const result = clampText("a".repeat(100), 10);
+
+        assert.equal(result.length, 10);
+        assert.equal(result, "aaaaaaaaa\u2026");
+    });
+
+    it("never exceeds the limit, whatever the limit is", () => {
+        for (let limit = 0; limit <= 50; limit++) {
+            assert.ok(clampText("z".repeat(200), limit).length <= limit, `overflowed at limit ${limit}`);
+        }
+    });
+
+    it("returns an empty string for a limit of zero", () => {
+        assert.equal(clampText("anything", 0), "");
+    });
+
+    it("coerces a non-string rather than throwing on .length", () => {
+        assert.equal(clampText(undefined, 10), "");
+        assert.equal(clampText(null, 10), "");
+        assert.equal(clampText(42, 10), "42");
     });
 });

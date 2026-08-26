@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 
 import { CONFIG_VALUES } from "../config/index.js";
+import { clampText, EMBED_TITLE_LIMIT } from "../utils/truncate.js";
 
 const LAST_UPDATED_FOOTER = { iconURL: CONFIG_VALUES.FALLBACK_AVATAR, text: "Last Updated" };
 
@@ -25,7 +26,9 @@ export function formatPlayerCounts(server) {
  */
 export function createBaseEmbed(title, { footer = LAST_UPDATED_FOOTER } = {}) {
     const embed = new EmbedBuilder()
-        .setTitle(title)
+        // playerListEmbed interpolates a server name and a map into its title,
+        // both of which arrive from the game server.
+        .setTitle(clampText(title, EMBED_TITLE_LIMIT))
         .setColor(CONFIG_VALUES.EMBED_COLOR)
         .setTimestamp(Date.now());
 

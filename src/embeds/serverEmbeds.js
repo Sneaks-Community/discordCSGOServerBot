@@ -1,6 +1,12 @@
 import { CONFIG_VALUES } from "../config/index.js";
 import { escapeForDiscord } from "../utils/discordEscape.js";
+import { embedLogger } from "../utils/logger.js";
+import { clampText, EMBED_FIELD_NAME_LIMIT, EMBED_FIELD_VALUE_LIMIT, EMBED_TOTAL_LIMIT } from "../utils/truncate.js";
 import { createBaseEmbed, formatPlayerCounts } from "./baseEmbed.js";
+
+// createBaseEmbed's "Last Updated" footer counts toward the same 6000, with room
+// to spare so the reservation never has to track the footer text itself.
+const FOOTER_ALLOWANCE = 64;
 
 /**
  * Describe an interval in words, e.g. "45 seconds", "1.5 minutes". Minutes keep
@@ -23,24 +29,35 @@ export function describeInterval(ms) {
  * @returns {import('discord.js').EmbedBuilder}
  */
 export function makeEmbed(serverData) {
-    const embed = createBaseEmbed("Server List")
-        .setDescription(`This list is updated every ${describeInterval(CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS)}.`);
+    const title = "Server List";
+    const description = `This list is updated every ${describeInterval(CONFIG_VALUES.EMBED_UPDATE_INTERVAL_MS)}.`;
+    const embed = createBaseEmbed(title).setDescription(description);
+
+    // Every field here is built from a game server's own reply, so both the
+    // per-field limit and the embed-wide total are enforced rather than assumed.
+    // Passing either 400s the edit, and the list then freezes until the next tick
+    // that happens to fit.
+    let used = title.length + description.length + FOOTER_ALLOWANCE;
+    let dropped = 0;
 
     for (const server of Object.values(serverData)) {
-        if (!server.online) {
-            embed.addFields({
-                inline: true,
-                name: escapeForDiscord(server.name),
-                value: "**Server is not available.**"
-            });
+        const name = clampText(escapeForDiscord(server.name), EMBED_FIELD_NAME_LIMIT);
+        const value = clampText(server.online
+            ? `**__Players:__** ${formatPlayerCounts(server)}\n**__Map:__** ${escapeForDiscord(server.map)}\n**__IP:__** ${escapeForDiscord(server.fullIP)}`
+            : "**Server is not available.**", EMBED_FIELD_VALUE_LIMIT);
+
+        // Skip rather than break: a later, smaller server can still fit.
+        if (used + name.length + value.length > EMBED_TOTAL_LIMIT) {
+            dropped++;
             continue;
         }
 
-        embed.addFields({
-            inline: true,
-            name: escapeForDiscord(server.name),
-            value: `**__Players:__** ${formatPlayerCounts(server)}\n**__Map:__** ${escapeForDiscord(server.map)}\n**__IP:__** ${escapeForDiscord(server.fullIP)}`
-        });
+        embed.addFields({ inline: true, name, value });
+        used += name.length + value.length;
+    }
+
+    if (dropped > 0) {
+        embedLogger.warn({ dropped, used }, "Server list embed reached Discord's 6000 character total; some servers were left out");
     }
 
     return embed;
