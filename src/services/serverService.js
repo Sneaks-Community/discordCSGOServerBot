@@ -209,12 +209,13 @@ async function getInfoWithinDeadline(name, server, index, deadline) {
 
 /**
  * Queries every server, concurrency-limited, and swaps in the new snapshot.
- * @returns {Promise<void>}
+ * @returns {Promise<boolean>} - False when a pass was already in flight, so the
+ *   snapshot is untouched and there is nothing new to publish
  */
 export async function refresh() {
     if (_isRefreshing) {
         serviceLogger.debug("Skipping refresh -- already in progress");
-        return;
+        return false;
     }
 
     _isRefreshing = true;
@@ -241,6 +242,8 @@ export async function refresh() {
         );
 
         setServerData(Object.fromEntries(results));
+
+        return true;
     } finally {
         _isRefreshing = false;
 

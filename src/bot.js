@@ -138,25 +138,34 @@ bot.on(Events.ClientReady, async () => {
 async function intervalFunction() {
     recordTick();
 
+    // Only read when refresh() returned, so the catch below needs no value here.
+    let refreshed;
+
     try {
-        await refresh();
+        refreshed = await refresh();
     } catch (err) {
         botLogger.error({ err }, "Failed to refresh server data");
         return; // Skip embed update if refresh fails
     }
 
-    let embed = null;
+    // A skipped pass left the snapshot untouched, so republishing it would only
+    // move the "Last Updated" footer to a time nothing was read at.
+    if (refreshed) {
+        let embed = null;
 
-    try {
-        embed = makeEmbed(getServerData());
-    } catch (err) {
-        botLogger.error({ err }, "Failed to build the server embed; skipping the embed update for this tick");
+        try {
+            embed = makeEmbed(getServerData());
+        } catch (err) {
+            botLogger.error({ err }, "Failed to build the server embed; skipping the embed update for this tick");
+        }
+
+        if (embed) {
+            await publishEmbed(embed);
+        }
     }
 
-    if (embed) {
-        await publishEmbed(embed);
-    }
-
+    // Still runs on a skipped pass: a map change the previous tick could not
+    // notify on (fanout still running) is detected here rather than deferred.
     try {
         await updateServerData(notifyUsers);
     } catch (err) {
