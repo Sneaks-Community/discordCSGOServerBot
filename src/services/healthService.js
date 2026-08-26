@@ -82,7 +82,7 @@ function handleRequest(bot, req, res) {
 }
 
 /**
- * No-op when HEALTH_PORT is 0, so a bare `npm start` opens no socket at all.
+ * No-op when HEALTH_PORT is 0, the explicit opt-out from opening a socket.
  * @param {import('discord.js').Client} bot
  * @returns {import('node:http').Server | null} - Null when disabled; returned for tests
  */

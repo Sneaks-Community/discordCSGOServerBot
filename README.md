@@ -114,32 +114,35 @@ npm start
 
 ### Run with Docker
 
-`docker-compose.yml` bind-mounts `servers.json` and keeps the database in a named volume, so
-both files from [Setup](#setup) must exist before the container starts.
+`docker-compose.yml` pulls the published image, bind-mounts `servers.json` and keeps the
+database in a named volume, so both files from [Setup](#setup) must exist before the container
+starts.
 
 ```bash
-docker compose up -d      # build and start
+docker compose up -d      # pull and start
 docker compose logs -f    # follow the logs
 ```
 
-The image is a multi-stage `node:24-alpine` build, roughly 100MB. To run it without Compose:
+The image is a multi-stage `node:24-alpine` build, roughly 100MB, published to
+`ghcr.io/sneaks-community/discordserverbot`. To run it without Compose:
 
 ```bash
-docker build -t discordserverbot .
-
 docker run -d \
   --name discordserverbot \
   --env-file .env \
   -e DATABASE_PATH=/app/data/db.sqlite \
   -v $(pwd)/servers.json:/app/servers.json:ro \
-  -v bot-data:/app/data \
+  -v discordserverbot-data:/app/data \
   --log-opt max-size=10m \
   --log-opt max-file=5 \
-  discordserverbot
+  ghcr.io/sneaks-community/discordserverbot:latest
 ```
 
+To build it yourself instead, `docker build -t discordserverbot .` and use that tag in place of
+the registry one.
+
 Follows are the only state on disk, and they live in the SQLite file at `DATABASE_PATH`, so it
-has to resolve inside the `bot-data` volume mounted at `/app/data`. Under `docker run` above,
+has to resolve inside the `discordserverbot-data` volume mounted at `/app/data`. Under `docker run` above,
 anywhere else is the container's writable layer, which is discarded whenever the container is
 recreated; under Compose it fails outright, because `docker-compose.yml` sets
 `read_only: true` and the only writable path is the volume. The image and
@@ -152,8 +155,8 @@ explicitly: an explicit `-e` wins.
 
 ```bash
 git pull
-npm install                    # Node
-docker compose up -d --build   # Docker
+npm install                            # Node
+docker compose pull && docker compose up -d   # Docker
 ```
 
 ## Environment Variables
@@ -189,7 +192,7 @@ selects its default.
 | `RATE_LIMIT_NOTIFICATION_PER_MINUTE` | No | `10` | 1 to 1000 | Max map-change DMs per minute per user. Repeats of the same map (for example one map live on two servers) are always collapsed to one DM and do not count against this |
 | `MAX_FOLLOWS_PER_USER` | No | `50` | 1 to 10000 | Maximum maps a single user may follow at once |
 | `MAX_NOTIFICATION_RECIPIENTS` | No | `200` | 1 to 10000 | Maximum users DMed for a single map change; a truncated fanout is logged |
-| `HEALTH_PORT` | No | `0` | 0 to 65535 | Port for the `GET /health` liveness endpoint, which reports 503 once no update tick has started in three intervals. `0` opens no socket; the Docker image sets `3000` for its healthcheck |
+| `HEALTH_PORT` | No | `3000` | 0 to 65535 | Port for the `GET /health` liveness endpoint, which reports 503 once no update tick has started in three intervals. This is the port the image's `HEALTHCHECK` probes, so leave it alone under Docker; `0` opens no socket and makes that healthcheck fail |
 | `HEALTH_HOST` | No | `127.0.0.1` | non-empty | Address the health endpoint binds to. Loopback keeps it reachable from inside the container only; set `0.0.0.0` and publish the port for an external monitor |
 
 Rate limits, the user cache and the per-map notification history are all held in memory, so a

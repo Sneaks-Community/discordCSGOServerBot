@@ -205,9 +205,9 @@ export const envSchema = z.object({
         (value) => (value === undefined || String(value).trim() === "" ? "127.0.0.1" : String(value).trim()),
         z.string().min(1, "cannot be empty")
     ),
-    // 0 means disabled, not "pick a port", so npm start opens no socket. The
-    // image sets 3000.
-    HEALTH_PORT: intEnv(0, 0, 65535),
+    // 0 means disabled, not "pick a port". Defaults to the port the image's
+    // HEALTHCHECK probes, so Docker works with nothing set anywhere.
+    HEALTH_PORT: intEnv(3000, 0, 65535),
     MAP_IMAGE_BASE_URL: mapImageBaseUrlEnv,
     // p-limit throws on a concurrency below 1
     MAX_CONCURRENT_QUERIES: intEnv(10, 1, 100),
